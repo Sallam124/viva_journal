@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:your_app_name/login_screen.dart'; // Ensure correct path
+import 'package:viva_journal/screens//login_screen.dart'; // Ensure correct path
 
 void main() {
   runApp(const MyApp());
