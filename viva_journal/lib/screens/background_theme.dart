@@ -26,12 +26,11 @@ class BackgroundWidget extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: RadialGradient(
               center: Alignment.center,
-              radius: 1.2, // Controls how much white fades in
+              radius: 1.2,
               colors: <Color>[
                 Colors.white.withAlpha(0), // Fully transparent white
                 Colors.white.withAlpha(80), // 20% opacity white
               ],
-
               stops: [0.6, 1.0], // Defines where the fading effect starts
             ),
           ),
