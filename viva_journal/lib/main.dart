@@ -17,7 +17,13 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Flutter Journal App',
       theme: ThemeData(
-        primarySwatch: Colors.grey
+        fontFamily: 'SF Pro Display',
+        primarySwatch: Colors.grey,
+        textTheme: TextTheme(
+          bodyLarge: TextStyle(fontFamily: 'SF Pro Display'),
+          bodyMedium: TextStyle(fontFamily: 'SF Pro Display'),
+          bodySmall: TextStyle(fontFamily: 'SF Pro Display'),
+        ),
       ),
       home: LoginScreen(), // Initial screen (LoginScreen)
       routes: {
