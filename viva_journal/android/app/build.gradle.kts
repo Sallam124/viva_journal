@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.example.viva_journal"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973" // Update this line with the required NDK version
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

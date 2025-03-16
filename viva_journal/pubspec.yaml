@@ -8,6 +8,8 @@ environment:
   sdk: ^3.7.0
 
 dependencies:
+  google_sign_in: ^5.0.7
+  firebase_auth: ^4.0.0  # Only if you're using Firebase for authentication
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
@@ -24,6 +26,8 @@ flutter:
     - assets/fonts/SF-Pro-Display-Regular.ttf
     - assets/fonts/SF-Pro-Display-Bold.ttf
     - assets/fonts/SF-Pro.ttf
+    - assets/background.png
+    - assets/google_logo.png
 
   fonts:
     - family: SF Pro Display
@@ -34,4 +38,3 @@ flutter:
           weight: 700
         - asset: assets/fonts/SF-Pro.ttf
           weight: 500
-

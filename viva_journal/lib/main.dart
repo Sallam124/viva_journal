@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:viva_journal/screens/login_screen.dart';
 import 'package:viva_journal/screens/sign_up_screen.dart';
 import 'package:viva_journal/screens/home.dart';
+import 'package:viva_journal/screens/background_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,17 +20,40 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         fontFamily: 'SF Pro Display',
         primarySwatch: Colors.grey,
-        textTheme: TextTheme(
-          bodyLarge: TextStyle(fontFamily: 'SF Pro Display'),
-          bodyMedium: TextStyle(fontFamily: 'SF Pro Display'),
-          bodySmall: TextStyle(fontFamily: 'SF Pro Display'),
-        ),
       ),
-      home: LoginScreen(), // Initial screen (LoginScreen)
+      home: WillPopScope(
+        onWillPop: () async {
+          return await _onWillPop(context);  // Check for back press
+        },
+        child: BackgroundContainer(child: SignUpScreen()), // Wrap with background
+      ),
       routes: {
-        '/signUp': (context) => SignUpScreen(),
-        '/home': (context) => HomeScreen(),
+        '/signUp': (context) => BackgroundContainer(child: SignUpScreen()),
+        '/home': (context) => BackgroundContainer(child: HomeScreen()),
+        '/login': (context) => BackgroundContainer(child: LoginScreen()),
       },
     );
+  }
+
+  Future<bool> _onWillPop(BuildContext context) async {
+    // Show a confirmation dialog when the back button is pressed
+    final shouldExit = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Are you sure?'),
+        content: const Text('Do you want to exit the app?'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false), // Don't exit
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true), // Exit
+            child: const Text('Yes'),
+          ),
+        ],
+      ),
+    );
+    return shouldExit ?? false; // Only exit if the user confirms
   }
 }
