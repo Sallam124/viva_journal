@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:viva_journal/screens/loading_screen.dart';
 import 'package:viva_journal/screens/login_screen.dart';
 import 'package:viva_journal/screens/sign_up_screen.dart';
 import 'package:viva_journal/screens/home.dart';
@@ -29,7 +30,7 @@ class MyApp extends StatelessWidget {
       ),
       routes: {
         '/signUp': (context) => BackgroundContainer(child: SignUpScreen()),
-        '/home': (context) => BackgroundContainer(child: HomeScreen()),
+        // '/home': (context) => BackgroundContainer(child: ()),
         '/login': (context) => BackgroundContainer(child: LoginScreen()),
       },
     );
