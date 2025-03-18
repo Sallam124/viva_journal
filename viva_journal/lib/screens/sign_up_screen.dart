@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
 import 'package:viva_journal/widgets/widgets.dart';
 import 'package:viva_journal/screens/background_theme.dart';
 import 'package:viva_journal/screens/home.dart';
@@ -14,10 +16,14 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   final FocusNode _usernameFocusNode = FocusNode();
   final FocusNode _emailFocusNode = FocusNode();
@@ -26,7 +32,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   String? errorMessage;
 
@@ -39,65 +44,84 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
-  /// ✅ Handles Sign-Up with Email & Password
+  /// **Hashes a password using SHA-256**
+  String _hashPassword(String password) {
+    final bytes = utf8.encode(password);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
+  /// **Handles email/password sign-up using Firebase**
   Future<void> _signUp() async {
-    if (_usernameController.text.isEmpty ||
-        _emailController.text.isEmpty ||
-        _passwordController.text.isEmpty ||
-        _confirmPasswordController.text.isEmpty) {
-      setState(() {
-        errorMessage = 'Please fill in all the fields.';
-      });
+    final username = _usernameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
+
+    if (username.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty) {
+      _showErrorPopup('Please fill the missing fields');
       return;
     }
 
-    if (_passwordController.text != _confirmPasswordController.text) {
-      setState(() {
-        errorMessage = 'Passwords do not match.';
-      });
+    if (!RegExp(
+      r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
+    ).hasMatch(email)) {
+      _showErrorPopup('Invalid email format');
       return;
     }
+
+    if (password != confirmPassword) {
+      _showErrorPopup('Passwords do not match');
+      return;
+    }
+
+    final hashedPassword = _hashPassword(password);
 
     try {
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+      await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
       );
-
-      print("User registered: ${userCredential.user?.email}");
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen()));
-    } on FirebaseAuthException catch (e) {
-      setState(() {
-        errorMessage = e.message;
-      });
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomeScreen()),
+      );
+    } catch (error) {
+      _showErrorPopup("Sign-up failed: $error");
     }
   }
 
-  /// ✅ Handles Google Sign-In & Links to Firebase
+  /// **Handles Google Sign-In and Firebase Authentication**
   Future<void> _handleGoogleSignIn() async {
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        setState(() {
-          errorMessage = "Google Sign-In failed. Please try again.";
-        });
+        _showErrorPopup("Google Sign-In canceled.");
         return;
       }
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      UserCredential userCredential = await _auth.signInWithCredential(credential);
-      print("Google User signed in: ${userCredential.user?.email}");
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen()));
+      await _auth.signInWithCredential(credential);
+      Navigator.pushReplacementNamed(context, '/home');
     } catch (error) {
-      setState(() {
-        errorMessage = "Google Sign-In error: $error";
-      });
+      _showErrorPopup("Google Sign-In error: $error");
     }
+  }
+
+  /// **Shows a temporary popup message for 2 seconds**
+  void _showErrorPopup(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+    );
   }
 
   @override
@@ -116,27 +140,68 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 10),
-                const Text('Create Your Account', style: TextStyle(fontSize: 16, color: Colors.black54)),
+                const Text(
+                  'Create Your Account',
+                  style: TextStyle(fontSize: 16, color: Colors.black54),
+                ),
                 const SizedBox(height: 40),
-                buildTextField(_usernameController, 'Username', _usernameFocusNode, context, () {}),
+                buildTextField(
+                  _usernameController,
+                  'Username',
+                  _usernameFocusNode,
+                  context,
+                  () => FocusScope.of(context).requestFocus(_usernameFocusNode),
+                ),
                 const SizedBox(height: 15),
-                buildTextField(_emailController, 'Email', _emailFocusNode, context, () {}),
+                buildTextField(
+                  _emailController,
+                  'Email',
+                  _emailFocusNode,
+                  context,
+                  () => FocusScope.of(context).requestFocus(_emailFocusNode),
+                ),
                 const SizedBox(height: 15),
-                buildPasswordField(_passwordController, 'Password', _passwordFocusNode, context, () {}, _obscurePassword, () {
-                  setState(() {
-                    _obscurePassword = !_obscurePassword;
-                  });
-                }),
+                buildPasswordField(
+                  _passwordController,
+                  'Password',
+                  true,
+                  _passwordFocusNode,
+                  context,
+                  () => FocusScope.of(context).requestFocus(_passwordFocusNode),
+                  _obscurePassword,
+                  () {
+                    setState(() {
+                      _obscurePassword = !_obscurePassword;
+                    });
+                  },
+                ),
                 const SizedBox(height: 15),
-                buildPasswordField(_confirmPasswordController, 'Confirm Password', _confirmPasswordFocusNode, context, () {}, _obscureConfirmPassword, () {
-                  setState(() {
-                    _obscureConfirmPassword = !_obscureConfirmPassword;
-                  });
-                }),
-                const SizedBox(height: 20),
-
+                buildPasswordField(
+                  _confirmPasswordController,
+                  'Confirm Password',
+                  false,
+                  _confirmPasswordFocusNode,
+                  context,
+                  () => FocusScope.of(
+                    context,
+                  ).requestFocus(_confirmPasswordFocusNode),
+                  _obscureConfirmPassword,
+                  () {
+                    setState(() {
+                      _obscureConfirmPassword = !_obscureConfirmPassword;
+                    });
+                  },
+                ),
+                const SizedBox(height: 30),
                 if (errorMessage != null)
-                  Text(errorMessage!, style: const TextStyle(color: Colors.black54, fontSize: 14, fontWeight: FontWeight.bold)),
+                  Text(
+                    errorMessage!,
+                    style: const TextStyle(
+                      color: Colors.black54,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 const SizedBox(height: 25),
                 SizedBox(
                   width: double.infinity,
@@ -145,32 +210,36 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
                     ),
-                    child: const Text('Sign Up', style: TextStyle(fontSize: 16, color: Colors.white)),
+                    child: const Text(
+                      'Sign Up',
+                      style: TextStyle(fontSize: 16, color: Colors.white),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 25),
-                const Text('or', style: TextStyle(fontSize: 20, color: Colors.black54)),
+                const Text(
+                  'or',
+                  style: TextStyle(fontSize: 20, color: Colors.black54),
+                ),
                 const SizedBox(height: 25),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _handleGoogleSignIn,
+                    child: const Text(
+                      'Continue with Google',
+                      style: TextStyle(fontSize: 16, color: Colors.white),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-
-                      children: const [
-                        Text('G', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
-                        SizedBox(width: 15),
-                        SizedBox(height: 8),
-                        Text('Continue with Google', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                      ],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
                     ),
                   ),
                 ),
@@ -178,10 +247,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('Already have an account? ', style: TextStyle(fontSize: 14)),
+                    const Text(
+                      'Already have an account? ',
+                      style: TextStyle(fontSize: 14),
+                    ),
                     GestureDetector(
                       onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => LoginScreen()));
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => LoginScreen(),
+                          ),
+                        );
                       },
                       child: const Text(
                         'Log in',
