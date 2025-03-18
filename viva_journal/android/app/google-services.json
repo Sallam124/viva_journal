@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "482258690101",
+    "project_id": "vivajournal-729f7",
+    "storage_bucket": "vivajournal-729f7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:482258690101:android:4cdcc98a7523c5e3dbd17c",
+        "android_client_info": {
+          "package_name": "com.example.viva_journal"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "482258690101-lg8sn77jlovstur5n0v1cafo9umq95e7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDPxUB6Z4NR6dXrCjlGGNK0N-VKPF2oeaw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "482258690101-lg8sn77jlovstur5n0v1cafo9umq95e7.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "482258690101-0fll92qlforu2giu2r877l8t3lij4emk.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.vivaJournal"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

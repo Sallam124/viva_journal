@@ -1,14 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart'; // ✅ Firebase Configurations
 import 'package:viva_journal/screens/loading_screen.dart';
 import 'package:viva_journal/screens/login_screen.dart';
 import 'package:viva_journal/screens/sign_up_screen.dart';
 import 'package:viva_journal/screens/home.dart';
 import 'package:viva_journal/screens/background_theme.dart';
+import 'package:viva_journal/screens/reset_password.dart'; // ✅ Import Reset Password Screen
+import 'package:viva_journal/widgets/widgets.dart'; // ✅ Import widgets.dart for `buildWillPopWrapper`
+
+// Global Navigator Key for retrieving context anywhere
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+
+  // ✅ Correct Firebase initialization using firebase_options.dart
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const MyApp());
 }
 
@@ -18,46 +29,49 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey, // ✅ Enables global navigation access
       debugShowCheckedModeBanner: false,
       title: 'Flutter Journal App',
       theme: ThemeData(
         fontFamily: 'SF Pro Display',
         primarySwatch: Colors.grey,
+        pageTransitionsTheme: PageTransitionsTheme( // ✅ Global Page Transition Animation
+          builders: {
+            TargetPlatform.android: FadePageTransition(), // ✅ Custom Fade Transition
+            TargetPlatform.iOS: FadePageTransition(), // ✅ Works for iOS too
+          },
+        ),
       ),
-      home: WillPopScope(
-        onWillPop: () async {
-          return await _onWillPop(context); // Check for back press
-        },
-        child: BackgroundContainer(child: SignUpScreen()), // Wrap with background
+      home: buildWillPopWrapper(
+        child: BackgroundContainer(child: SignUpScreen()), // ✅ Wrapped with WillPopScope for exit confirmation
       ),
       routes: {
-        '/signUp': (context) => BackgroundContainer(child: SignUpScreen()),
-        // '/home': (context) => BackgroundContainer(child: ()),
-        '/loading': (context) => BackgroundContainer(child: LoadingScreen()),
-        '/login': (context) => BackgroundContainer(child: LoginScreen()),
+        '/signUp': (context) => buildWillPopWrapper(
+          child: BackgroundContainer(child: SignUpScreen()),
+        ),
+        '/loading': (context) => buildWillPopWrapper(
+          child: BackgroundContainer(child: LoadingScreen()),
+        ),
+        '/login': (context) => buildWillPopWrapper(
+          child: BackgroundContainer(child: LoginScreen()),
+        ),
+        '/home': (context) => buildWillPopWrapper(
+          child: BackgroundContainer(child: HomeScreen()),
+        ),
+        '/resetPassword': (context) => buildWillPopWrapper(
+          child: BackgroundContainer(child: ForgotPasswordScreen()), // ✅ Added Reset Password Route
+        ),
       },
     );
   }
+}
 
-  Future<bool> _onWillPop(BuildContext context) async {
-    // Show a confirmation dialog when the back button is pressed
-    final shouldExit = await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Are you sure?'),
-        content: const Text('Do you want to exit the app?'),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false), // Don't exit
-            child: const Text('No'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true), // Exit
-            child: const Text('Yes'),
-          ),
-        ],
-      ),
-    );
-    return shouldExit ?? false; // Only exit if the user confirms
+/// ✅ Custom Fade Transition for all Screens
+class FadePageTransition extends PageTransitionsBuilder {
+  @override
+  Widget buildTransitions<T>(
+      PageRoute<T> route, BuildContext context, Animation<double> animation,
+      Animation<double> secondaryAnimation, Widget child) {
+    return FadeTransition(opacity: animation, child: child);
   }
 }

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:viva_journal/screens/background_theme.dart';
 import 'package:viva_journal/screens/home.dart';
-import 'package:viva_journal/widgets/widgets.dart';  // Importing the form_widgets.dart file
+import 'package:viva_journal/screens/reset_password.dart';  // ✅ Import Reset Password Screen
+import 'package:viva_journal/widgets/widgets.dart';
 
 class LoginScreen extends StatefulWidget {
   LoginScreen({super.key});
@@ -85,14 +87,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       const Text(
                         'Log in to your account',
                         style: TextStyle(
-                          fontSize: 18,  // Reduced size and unbolded
+                          fontSize: 18,
                           fontWeight: FontWeight.normal,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 30),  // Reduced space between text and fields
+                const SizedBox(height: 30),
                 buildTextField(
                   _emailController,
                   'Username or email',
@@ -106,7 +108,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 buildPasswordField(
                   _passwordController,
                   'Password',
-                  true,
                   _passwordFocusNode,
                   context,
                       () {
@@ -115,56 +116,82 @@ class _LoginScreenState extends State<LoginScreen> {
                   _obscurePassword,
                   _togglePasswordVisibility,
                 ),
-                const SizedBox(height: 10),  // Reduced space between Password and Log In button
+
+                const SizedBox(height: 20),
+
+                /// ✅ **Forgot Password Button (Black)**
+                Align(
+                  alignment: Alignment.center,
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => ForgotPasswordScreen()),
+                      );
+                    },
+                    child: const Text(
+                      'Forgot your password?',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,  // ✅ Now Black
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
                 SizedBox(
-                  width: 250, // Narrower button width
+                  width: 250,
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pushReplacementNamed(context, '/home');
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black, // Black color for login button
-                      padding: const EdgeInsets.symmetric(vertical: 10), // Smaller button
+                      backgroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30), // Round edges
+                        borderRadius: BorderRadius.circular(30),
                       ),
                     ),
                     child: const Text('Log In', style: TextStyle(fontSize: 16, color: Colors.white)),
                   ),
                 ),
-                const SizedBox(height: 10),  // Reduced space between Log In button and OR text
+
+                const SizedBox(height: 10),
                 if (errorMessage != null)
                   Text(
                     errorMessage!,
                     style: const TextStyle(color: Colors.black, fontSize: 14),
                   ),
-                const SizedBox(height: 10),  // Reduced space after error message
-                // "OR" as bold text
+                const SizedBox(height: 10),
+
                 const Text(
                   'OR',
                   style: TextStyle(
                     color: Colors.black,
                     fontSize: 18,
-                    fontWeight: FontWeight.bold,  // Bold text
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 20),  // Reduced space between OR text and Google button
-                // Google Sign-In Button, pulled towards the bottom
+                const SizedBox(height: 20),
+
                 SizedBox(
-                  width: 250, // Adjusted size for "Continue with Google"
+                  width: 250,
                   child: OutlinedButton.icon(
                     onPressed: _handleGoogleSignIn,
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),  // Reduced vertical padding
+                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30), // Round edges
+                        borderRadius: BorderRadius.circular(30),
                       ),
-                      backgroundColor: Colors.black, // Make Google button black
-                      side: const BorderSide(color: Colors.grey), // Border like input fields
+                      backgroundColor: Colors.black,
+                      side: const BorderSide(color: Colors.black),
                     ),
                     icon: const Text(
                       'G',
-                      style: TextStyle(fontSize: 30, color: Colors.white), // Big white G
+                      style: TextStyle(fontSize: 30, color: Colors.white),
                     ),
                     label: const Text(
                       ' Continue with Google',
@@ -172,7 +199,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),  // Reduced space after Google button
+                const SizedBox(height: 20),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -188,8 +216,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         'Sign Up',
                         style: TextStyle(
                           color: Colors.black,
-                          decoration: TextDecoration.underline, // Underlined and black
-                          fontWeight: FontWeight.bold,  // Bold text for Sign Up
+                          decoration: TextDecoration.underline,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
