@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:viva_journal/widgets/widgets.dart';  // Importing the form_widgets.dart file
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
+import 'package:viva_journal/widgets/widgets.dart';
 import 'package:viva_journal/screens/background_theme.dart';
 import 'package:viva_journal/screens/home.dart';
 import 'package:viva_journal/screens/login_screen.dart';
@@ -13,6 +16,9 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -25,9 +31,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
-
-  String? errorMessage;
 
   @override
   void dispose() {
@@ -38,106 +41,108 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
-  Future<void> _handleGoogleSignIn() async {
+  /// **Hashes a password using SHA-256**
+  String _hashPassword(String password) {
+    final bytes = utf8.encode(password);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
+  /// **Handles email/password sign-up using Firebase**
+  Future<void> _signUp() async {
+    final username = _usernameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
+
+    if (username.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+      _showErrorPopup('Please fill the missing fields');
+      return;
+    }
+
+    if (!RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").hasMatch(email)) {
+      _showErrorPopup('Invalid email format');
+      return;
+    }
+
+    if (password != confirmPassword) {
+      _showErrorPopup('Passwords do not match');
+      return;
+    }
+
+    final hashedPassword = _hashPassword(password);
+
     try {
-      final GoogleSignInAccount? account = await _googleSignIn.signIn();
-      if (account != null) {
-        Navigator.pushReplacementNamed(context, '/home');
-      } else {
-        setState(() {
-          errorMessage = "Google Sign-In failed. Please try again.";
-        });
-      }
+      await _auth.createUserWithEmailAndPassword(email: email, password: password);
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen()));
     } catch (error) {
-      setState(() {
-        errorMessage = "Google Sign-In error: $error";
-      });
+      _showErrorPopup("Sign-up failed: $error");
     }
   }
 
-  void _signUp() {
-    if (_usernameController.text.isEmpty || _emailController.text.isEmpty || _passwordController.text.isEmpty || _confirmPasswordController.text.isEmpty) {
-      setState(() {
-        errorMessage = 'Please fill in all the fields.';
-      });
-    } else if (_passwordController.text != _confirmPasswordController.text) {
-      setState(() {
-        errorMessage = 'Passwords do not match.';
-      });
-    } else {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen()));
+  /// **Handles Google Sign-In and Firebase Authentication**
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        _showErrorPopup("Google Sign-In canceled.");
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      await _auth.signInWithCredential(credential);
+      Navigator.pushReplacementNamed(context, '/home');
+    } catch (error) {
+      _showErrorPopup("Google Sign-In error: $error");
     }
+  }
+
+  /// **Shows a temporary popup message for 2 seconds**
+  void _showErrorPopup(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: true,  // Allow resizing when keyboard is shown
+      resizeToAvoidBottomInset: true,
       body: BackgroundContainer(
-        child: SingleChildScrollView(  // Make the screen scrollable to handle keyboard overlap
+        child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 30),
             child: Column(
               children: [
-                const SizedBox(height: 40),  // Adds space from the top
-                const Text(
-                  'Sign Up',
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Create Your Account',
-                  style: TextStyle(fontSize: 16, color: Colors.black54),
-                ),
                 const SizedBox(height: 40),
-                buildTextField(_usernameController, 'Username', _usernameFocusNode, context, () {
-                  FocusScope.of(context).requestFocus(_usernameFocusNode);
+                const Text('Sign Up', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                const Text('Create Your Account', style: TextStyle(fontSize: 16, color: Colors.black54)),
+                const SizedBox(height: 40),
+                buildTextField(_usernameController, 'Username', _usernameFocusNode, context, () => FocusScope.of(context).requestFocus(_usernameFocusNode)),
+                const SizedBox(height: 15),
+                buildTextField(_emailController, 'Email', _emailFocusNode, context, () => FocusScope.of(context).requestFocus(_emailFocusNode)),
+                const SizedBox(height: 15),
+                buildPasswordField(_passwordController, 'Password', true, _passwordFocusNode, context, () => FocusScope.of(context).requestFocus(_passwordFocusNode), _obscurePassword, () {
+                  setState(() {
+                    _obscurePassword = !_obscurePassword;
+                  });
                 }),
                 const SizedBox(height: 15),
-                buildTextField(_emailController, 'Email', _emailFocusNode, context, () {
-                  FocusScope.of(context).requestFocus(_emailFocusNode);
+                buildPasswordField(_confirmPasswordController, 'Confirm Password', false, _confirmPasswordFocusNode, context, () => FocusScope.of(context).requestFocus(_confirmPasswordFocusNode), _obscureConfirmPassword, () {
+                  setState(() {
+                    _obscureConfirmPassword = !_obscureConfirmPassword;
+                  });
                 }),
-                const SizedBox(height: 15),
-                buildPasswordField(
-                  _passwordController,
-                  'Password',
-                  true,
-                  _passwordFocusNode,
-                  context,
-                      () {
-                    FocusScope.of(context).requestFocus(_passwordFocusNode);
-                  },
-                  _obscurePassword,
-                      () {
-                    setState(() {
-                      _obscurePassword = !_obscurePassword;
-                    });
-                  },
-                ),
-                const SizedBox(height: 15),
-                buildPasswordField(
-                  _confirmPasswordController,
-                  'Confirm Password',
-                  false,
-                  _confirmPasswordFocusNode,
-                  context,
-                      () {
-                    FocusScope.of(context).requestFocus(_confirmPasswordFocusNode);
-                  },
-                  _obscureConfirmPassword,
-                      () {
-                    setState(() {
-                      _obscureConfirmPassword = !_obscureConfirmPassword;
-                    });
-                  },
-                ),
                 const SizedBox(height: 30),
-                if (errorMessage != null)
-                  Text(
-                    errorMessage!,
-                    style: TextStyle(color: Colors.red, fontSize: 14, fontWeight: FontWeight.bold),
-                  ),
-                const SizedBox(height: 15),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -145,9 +150,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                     ),
                     child: const Text('Sign Up', style: TextStyle(fontSize: 16, color: Colors.white)),
                   ),
@@ -159,64 +162,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _handleGoogleSignIn,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Text(
-                          'G',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(width: 10),
-                        Text(
-                          'Continue with Google',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
+                    child: const Text('Continue with Google', style: TextStyle(fontSize: 16, color: Colors.white)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('Already have an account? ', style: TextStyle(fontSize: 14)),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => LoginScreen()));
-                      },
-                      child: const Text(
-                        'Log in',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 112),
-                const Text(
-                  'By creating an account, you agree to the terms and\nConditions and Privacy Policy',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: Colors.black54),
-                ),
-                const SizedBox(height: 2),  // Adjust this space to ensure proper layout
               ],
             ),
           ),
