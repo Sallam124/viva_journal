@@ -7,7 +7,7 @@ import 'package:viva_journal/screens/reset_password.dart';  // ✅ Import Reset 
 import 'package:viva_journal/widgets/widgets.dart';
 
 class LoginScreen extends StatefulWidget {
-  LoginScreen({super.key});
+  const LoginScreen({super.key});
 
   @override
   _LoginScreenState createState() => _LoginScreenState();

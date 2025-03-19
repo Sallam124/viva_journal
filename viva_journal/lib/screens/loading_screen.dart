@@ -4,6 +4,8 @@ import 'dart:math';
 import 'package:flutter/services.dart' show rootBundle;
 
 class LoadingScreen extends StatefulWidget {
+  const LoadingScreen({Key? key}) : super(key: key);
+
   @override
   _LoadingScreenState createState() => _LoadingScreenState();
 }
@@ -31,14 +33,14 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
     _controllers = List.generate(colors.length, (index) {
       return AnimationController(
         vsync: this,
-        duration: Duration(milliseconds: 1200), // Slower animation
+        duration: const Duration(milliseconds: 1200), // Slower animation
       );
     });
 
     _animations = List.generate(colors.length, (index) {
       return Tween<Offset>(
-        begin: Offset(0, 0),
-        end: Offset(0, -1), // Smaller jump height
+        begin: const Offset(0, 0),
+        end: const Offset(0, -1), // Smaller jump height
       ).animate(
         CurvedAnimation(
           parent: _controllers[index],
@@ -65,7 +67,7 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
   }
 
   void _startMessageRotation() {
-    Timer.periodic(Duration(seconds: 8), (timer) {
+    Timer.periodic(const Duration(seconds: 8), (timer) {
       if (mounted) {
         setState(() {
           _pickNewMessage();
@@ -112,20 +114,20 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 5.0),
                   child: CustomPaint(
-                    size: Size(40, 40),
+                    size: const Size(40, 40),
                     painter: ConcaveStarPainter(colors[index]),
                   ),
                 ),
               );
             }),
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: Text(
               currentMessage,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -141,7 +143,9 @@ class ConcaveStarPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()..color = color..style = PaintingStyle.fill;
+    final Paint paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
     final Path path = Path();
 
     path.moveTo(size.width * 0.5, 0);

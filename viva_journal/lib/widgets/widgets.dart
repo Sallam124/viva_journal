@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-/// ✅ Global Navigator Key for retrieving context anywhere
+/// Global Navigator Key for retrieving context anywhere
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-/// ✅ Builds a custom text field with styling
+/// Builds a custom text field with styling. The hint text disappears when the field gains focus.
 Widget buildTextField(
     TextEditingController controller,
     String hint,
@@ -18,23 +18,31 @@ Widget buildTextField(
         borderRadius: BorderRadius.circular(30),
         border: Border.all(color: Colors.black, width: 3),
       ),
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        textAlign: TextAlign.center,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(color: Colors.black54),
-          filled: false,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-        ),
+      // AnimatedBuilder will rebuild the TextField when focusNode changes.
+      child: AnimatedBuilder(
+        animation: focusNode,
+        builder: (context, child) {
+          return TextField(
+            controller: controller,
+            focusNode: focusNode,
+            textAlign: TextAlign.center,
+            decoration: InputDecoration(
+              hintText: focusNode.hasFocus ? '' : hint,
+              hintStyle: const TextStyle(color: Colors.black54),
+              filled: false,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 15, horizontal: 20,
+              ),
+            ),
+          );
+        },
       ),
     ),
   );
 }
 
-/// ✅ Builds a password field with a visibility toggle
+/// Builds a password field with a visibility toggle. The hint text disappears when the field gains focus.
 Widget buildPasswordField(
     TextEditingController controller,
     String hint,
@@ -51,43 +59,49 @@ Widget buildPasswordField(
         borderRadius: BorderRadius.circular(30),
         border: Border.all(color: Colors.black, width: 3),
       ),
-      child: TextField(
-        controller: controller,
-        obscureText: obscurePassword,
-        focusNode: focusNode,
-        textAlign: TextAlign.center,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(color: Colors.black54),
-          filled: false,
-          border: InputBorder.none,
-          suffixIcon: IconButton(
-            icon: Icon(
-              obscurePassword ? Icons.visibility_off : Icons.visibility,
-              color: Colors.black54,
+      // AnimatedBuilder will rebuild the TextField when focusNode changes.
+      child: AnimatedBuilder(
+        animation: focusNode,
+        builder: (context, child) {
+          return TextField(
+            controller: controller,
+            obscureText: obscurePassword,
+            focusNode: focusNode,
+            textAlign: TextAlign.center,
+            decoration: InputDecoration(
+              hintText: focusNode.hasFocus ? '' : hint,
+              hintStyle: const TextStyle(color: Colors.black54),
+              filled: false,
+              border: InputBorder.none,
+              suffixIcon: IconButton(
+                icon: Icon(
+                  obscurePassword ? Icons.visibility_off : Icons.visibility,
+                  color: Colors.black54,
+                ),
+                onPressed: togglePasswordVisibility,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 15, horizontal: 20,
+              ),
             ),
-            onPressed: togglePasswordVisibility,
-          ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-        ),
+          );
+        },
       ),
     ),
   );
 }
 
-/// ✅ Wrapper to show exit confirmation when back button is pressed
+/// Wraps a widget in a WillPopScope that prompts the user before exiting.
 Widget buildWillPopWrapper({required Widget child}) {
   return WillPopScope(
-    onWillPop: _onWillPop, // ✅ Uses the function below
+    onWillPop: _onWillPop,
     child: child,
   );
 }
 
-/// ✅ Function that shows exit confirmation dialog
+/// Displays an exit confirmation dialog.
 Future<bool> _onWillPop() async {
-  // ✅ Get the current context from the global navigation key
   BuildContext? context = navigatorKey.currentContext;
-
   if (context == null) return false; // Fallback if context is not found
 
   final shouldExit = await showDialog<bool>(
@@ -97,15 +111,82 @@ Future<bool> _onWillPop() async {
       content: const Text('Do you really want to exit?'),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(false), // ❌ Don't exit
+          onPressed: () => Navigator.of(context).pop(false),
           child: const Text('No'),
         ),
         TextButton(
-          onPressed: () => Navigator.of(context).pop(true), // ✅ Exit app
+          onPressed: () => Navigator.of(context).pop(true),
           child: const Text('Yes'),
         ),
       ],
     ),
   );
-  return shouldExit ?? false; // ✅ Only exit if confirmed
+  return shouldExit ?? false;
+}
+
+/// Wraps a widget in a GestureDetector that dismisses the keyboard when tapping outside input fields.
+Widget buildDismissKeyboardWrapper({required Widget child}) {
+  return GestureDetector(
+    behavior: HitTestBehavior.translucent,
+    onTap: () {
+      // Dismiss the keyboard by unfocusing the current FocusNode.
+      FocusScopeNode currentFocus = FocusScope.of(navigatorKey.currentContext!);
+      if (!currentFocus.hasPrimaryFocus && currentFocus.focusedChild != null) {
+        currentFocus.unfocus();
+      }
+    },
+    child: child,
+  );
+}
+
+/// A reusable custom text form field widget with styling for form inputs.
+/// This widget is designed to be used inside a Form for built-in validation.
+class CustomTextFormField extends StatelessWidget {
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final String hint;
+  final String? Function(String?)? validator;
+  final bool obscureText;
+  final Widget? suffixIcon;
+  final VoidCallback? onTap;
+
+  const CustomTextFormField({
+    Key? key,
+    required this.controller,
+    required this.focusNode,
+    required this.hint,
+    this.validator,
+    this.obscureText = false,
+    this.suffixIcon,
+    this.onTap,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: Colors.black, width: 3),
+        ),
+        child: TextFormField(
+          controller: controller,
+          focusNode: focusNode,
+          obscureText: obscureText,
+          textAlign: TextAlign.center,
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(color: Colors.black54),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 15, horizontal: 20,
+            ),
+            suffixIcon: suffixIcon,
+          ),
+          validator: validator,
+        ),
+      ),
+    );
+  }
 }
