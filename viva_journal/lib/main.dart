@@ -6,8 +6,12 @@ import 'package:viva_journal/screens/login_screen.dart';
 import 'package:viva_journal/screens/sign_up_screen.dart';
 import 'package:viva_journal/screens/home.dart';
 import 'package:viva_journal/screens/background_theme.dart';
-import 'package:viva_journal/screens/reset_password.dart'; // ✅ Import Reset Password Screen
-import 'package:viva_journal/widgets/widgets.dart'; // ✅ Import widgets.dart for buildWillPopWrapper and buildDismissKeyboardWrapper
+import 'package:viva_journal/screens/reset_password.dart';
+import 'package:viva_journal/screens/dashboard_screen.dart';
+import 'package:viva_journal/screens/calendar_screen.dart';
+import 'package:viva_journal/screens/trackerlog_screen.dart';
+import 'package:viva_journal/screens/settings_screen.dart';
+import 'package:viva_journal/widgets/widgets.dart';
 
 // Global Navigator Key for retrieving context anywhere
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -53,6 +57,10 @@ class MyApp extends StatelessWidget {
         '/login': (context) => _buildRoute(const LoginScreen()),
         '/home': (context) => _buildRoute(const HomeScreen()),
         '/resetPassword': (context) => _buildRoute(const ForgotPasswordScreen()),
+        '/dashboard': (context) => _buildRoute(const DashboardScreen()),
+        '/calendar': (context) => _buildRoute(const CalendarScreen()),
+        '/trackerLog': (context) => _buildRoute(const TrackerLogScreen()),
+        '/settings': (context) => _buildRoute(const SettingsScreen()),
       },
     );
   }
