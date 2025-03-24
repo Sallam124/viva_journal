@@ -25,7 +25,13 @@ class MyApp extends StatelessWidget {
           bodySmall: TextStyle(fontFamily: 'SF Pro Display'),
         ),
       ),
+<<<<<<< Updated upstream
       home: LoginScreen(), // Initial screen (LoginScreen)
+=======
+      // ✅ Global wrapper to dismiss keyboard when tapping outside inputs
+      builder: (context, child) => buildDismissKeyboardWrapper(child: child!),
+      home: _buildRoute(const HomeScreen()), // ✅ Wrapped with exit confirmation and background theme
+>>>>>>> Stashed changes
       routes: {
         '/signUp': (context) => SignUpScreen(),
         '/home': (context) => HomeScreen(),
