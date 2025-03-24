@@ -48,9 +48,19 @@ class MyApp extends StatelessWidget {
           },
         ),
       ),
+<<<<<<< HEAD
       // ✅ Global wrapper to dismiss keyboard when tapping outside inputs
       builder: (context, child) => buildDismissKeyboardWrapper(child: child!),
       home: _buildRoute(const SignUpScreen()), // ✅ Wrapped with exit confirmation and background theme
+=======
+<<<<<<< Updated upstream
+      home: LoginScreen(), // Initial screen (LoginScreen)
+=======
+      // ✅ Global wrapper to dismiss keyboard when tapping outside inputs
+      builder: (context, child) => buildDismissKeyboardWrapper(child: child!),
+      home: _buildRoute(const HomeScreen()), // ✅ Wrapped with exit confirmation and background theme
+>>>>>>> Stashed changes
+>>>>>>> Sallam
       routes: {
         '/signUp': (context) => _buildRoute(const SignUpScreen()),
         '/loading': (context) => _buildRoute(const LoadingScreen()),
