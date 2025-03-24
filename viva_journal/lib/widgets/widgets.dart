@@ -190,7 +190,3 @@ class CustomTextFormField extends StatelessWidget {
     );
   }
 }
-<<<<<<< HEAD
-=======
-
->>>>>>> Sallam
