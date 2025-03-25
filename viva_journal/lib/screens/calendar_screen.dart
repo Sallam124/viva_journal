@@ -1,201 +1,212 @@
+import 'package:intl/intl.dart';
+import 'package:viva_journal/screens/trackerlog_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // For date manipulation
-import 'package:viva_journal/widgets/widgets.dart';
 
-// MonthSelector widget to display the current month and year with navigation buttons
-class MonthSelector extends StatelessWidget {
-  final int selectedMonth;
-  final int selectedYear;
-  final ValueChanged<int> onMonthChanged;
-  final ValueChanged<int> onYearChanged;
-
-  const MonthSelector({
-    Key? key,
-    required this.selectedMonth,
-    required this.selectedYear,
-    required this.onMonthChanged,
-    required this.onYearChanged,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Left Arrow Button to move to the previous month
-        IconButton(
-          icon: const Icon(Icons.arrow_left, size: 40),  // Bigger arrows
-          onPressed: () {
-            // Navigate to the previous month, and adjust the year if needed
-            int newMonth = selectedMonth == 1 ? 12 : selectedMonth - 1;
-            int newYear = selectedMonth == 1 ? selectedYear - 1 : selectedYear;
-            onMonthChanged(newMonth);
-            onYearChanged(newYear);
-          },
-        ),
-        // Month Title with Year in the middle (e.g., "March 2025")
-        Column(
-          children: [
-            Text(
-              "${_getMonthName(selectedMonth - 1)}", // Month in black
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,  // Month text color black
-              ),
-            ),
-            Text(
-              " $selectedYear", // Year in grey
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,  // Year text color grey
-              ),
-            ),
-          ],
-        ),
-        // Right Arrow Button to move to the next month
-        IconButton(
-          icon: const Icon(Icons.arrow_right, size: 40),  // Bigger arrows
-          onPressed: () {
-            // Navigate to the next month, and adjust the year if needed
-            int newMonth = selectedMonth == 12 ? 1 : selectedMonth + 1;
-            int newYear = selectedMonth == 12 ? selectedYear + 1 : selectedYear;
-            onMonthChanged(newMonth);
-            onYearChanged(newYear);
-          },
-        ),
-      ],
-    );
-  }
-
-  String _getMonthName(int monthIndex) {
-    const monthNames = [
-      'January', 'February', 'March', 'April', 'May', 'June', 'July',
-      'August', 'September', 'October', 'November', 'December'
-    ];
-    return monthNames[monthIndex];
-  }
-}
-
-// DayGrid widget to display days in a grid format
-class DayGrid extends StatefulWidget {
-  final int daysInMonth;
-
-  const DayGrid({Key? key, required this.daysInMonth}) : super(key: key);
-
-  @override
-  _DayGridState createState() => _DayGridState();
-}
-
-class _DayGridState extends State<DayGrid> {
-  int? _hoveredDay; // Track which day is hovered
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.builder(
-      shrinkWrap: true,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 7, // 7 days of the week
-        childAspectRatio: 1.3, // Adjust width to make the boxes smaller
-      ),
-      itemCount: widget.daysInMonth,
-      itemBuilder: (context, index) {
-        int day = index + 1; // Day number
-
-        return MouseRegion(
-          onEnter: (_) {
-            setState(() {
-              _hoveredDay = day; // Set hovered day
-            });
-          },
-          onExit: (_) {
-            setState(() {
-              _hoveredDay = null; // Reset hovered day
-            });
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _hoveredDay == day ? Colors.blue.withOpacity(0.5) : Colors.transparent, // Highlight circle when hovered
-            ),
-            child: Center(
-              child: Text(
-                day.toString(), // Display day number
-                style: const TextStyle(
-                  color: Colors.black, // Black text for the day number
-                  fontSize: 18, // Adjust the font size to fit inside the cell
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-// CalendarScreen widget to display the whole calendar view
 class CalendarScreen extends StatefulWidget {
-  const CalendarScreen({super.key});
+  const CalendarScreen({Key? key}) : super(key: key);
 
   @override
   _CalendarScreenState createState() => _CalendarScreenState();
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
-  int _selectedMonth = DateTime.now().month; // Initial selected month
-  int _selectedYear = DateTime.now().year;   // Initial selected year
+  late int selectedMonth;
+  late int selectedYear;
 
-  // Function to get the number of days in the selected month
-  int _getDaysInMonth(int month, int year) {
-    return DateTime(year, month + 1, 0).day; // Get last day of the month
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    selectedMonth = now.month;
+    selectedYear = now.year;
+  }
+
+  /// Helper to get the full month name (e.g., "March").
+  String get monthName {
+    return DateFormat('MMMM').format(DateTime(selectedYear, selectedMonth));
+  }
+
+  /// Go to previous month (handle December -> January).
+  void _goToPreviousMonth() {
+    setState(() {
+      if (selectedMonth == 1) {
+        selectedMonth = 12;
+        selectedYear--;
+      } else {
+        selectedMonth--;
+      }
+    });
+  }
+
+  /// Go to next month (handle December -> January).
+  void _goToNextMonth() {
+    setState(() {
+      if (selectedMonth == 12) {
+        selectedMonth = 1;
+        selectedYear++;
+      } else {
+        selectedMonth++;
+      }
+    });
+  }
+
+  /// Detect swipe direction: left swipe -> next month, right swipe -> previous month.
+  void _onHorizontalDragEnd(DragEndDetails details) {
+    if (details.primaryVelocity == null) return;
+    if (details.primaryVelocity! > 0) {
+      _goToPreviousMonth();
+    } else if (details.primaryVelocity! < 0) {
+      _goToNextMonth();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final daysInMonth = _getDaysInMonth(_selectedMonth, _selectedYear);
+    // Calculate the number of days in the selected month.
+    final daysInMonth = DateTime(selectedYear, selectedMonth + 1, 0).day;
+    // Calculate the first weekday offset (Sun=0, Mon=1, ..., Sat=6).
+    final firstWeekday = DateTime(selectedYear, selectedMonth, 1).weekday % 7;
 
     return Scaffold(
-      body: Stack(
-        children: [
-          // Background image positioned to cover the entire screen
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/Background_Calendar.png', // Your glassy background
+      body: GestureDetector(
+        onHorizontalDragEnd: _onHorizontalDragEnd,
+        child: Container(
+          // Use Background_Calendar.png as the background.
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/images/Background_Calendar.png'),
               fit: BoxFit.cover,
             ),
           ),
-          // Content on top of the background
-          Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(50.0),
-                child: MonthSelector(
-                  selectedMonth: _selectedMonth,
-                  selectedYear: _selectedYear,
-                  onMonthChanged: (month) {
-                    setState(() {
-                      _selectedMonth = month;
-                    });
-                  },
-                  onYearChanged: (year) {
-                    setState(() {
-                      _selectedYear = year;
-                    });
-                  },
+          child: SafeArea(
+            child: Column(
+              children: [
+                const SizedBox(height: 30),
+                // Row with arrow buttons and the month & year display.
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    IconButton(
+                      onPressed: _goToPreviousMonth,
+                      icon: const ImageIcon(
+                        AssetImage('assets/images/Left_arrow.png'),
+                        color: Colors.black,
+                        size: 70,
+                      ),
+                    ),
+                    // Display month and year together.
+                    Column(
+                      children: [
+                        Text(
+                          monthName,
+                          style: const TextStyle(
+                            fontSize: 36,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        Text(
+                          '$selectedYear',
+                          style: const TextStyle(
+                            fontSize: 34,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      onPressed: _goToNextMonth,
+                      icon: const ImageIcon(
+                        AssetImage('assets/images/Right_arrow.png'),
+                        color: Colors.black,
+                        size: 70,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              // Move the grid down inside the box
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 90), // Add padding to move the grid down
-                  child: DayGrid(daysInMonth: daysInMonth), // Display days grid
+                const SizedBox(height: 16),
+                // Layout for day names and day cells.
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    child: Column(
+                      children: [
+                        // Row of day names.
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+                              .map(
+                                (day) => Text(
+                              day,
+                              style: const TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          )
+                              .toList(),
+                        ),
+                        // Grid of day cells.
+                        Expanded(
+                          child: GridView.builder(
+                            padding: const EdgeInsets.only(top: 30),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 7,
+                              childAspectRatio: 1.0,
+                            ),
+                            itemCount: daysInMonth + firstWeekday,
+                            itemBuilder: (context, index) {
+                              // Create blank cells for days before the first weekday.
+                              if (index < firstWeekday) {
+                                return const SizedBox.shrink();
+                              }
+                              // Calculate the actual day number.
+                              final day = index - firstWeekday + 1;
+
+                              return GestureDetector(
+                                onTap: () {
+                                  // Create the selected date.
+                                  final selectedDate = DateTime(selectedYear, selectedMonth, day);
+                                  // Navigate to TrackerLogScreen with the selected date.
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => TrackerLogScreen(
+                                        // date: selectedDate,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  margin: const EdgeInsets.all(4.0),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '$day',
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
