@@ -8,9 +8,9 @@ environment:
   sdk: ^3.7.0
 
 dependencies:
-  firebase_core: ^3.12.1  # Ensure this is added
-  firebase_auth: ^5.5.1  # Only if you're using Firebase for authentication
-  google_sign_in: ^6.3.0  # Only if you're using Firebase for authentication
+  firebase_core: ^3.12.1
+  firebase_auth: ^5.5.1
+  google_sign_in: ^6.3.0
   crypto: ^3.0.3
   flutter:
     sdk: flutter
@@ -25,7 +25,7 @@ dependencies:
   flutter_sound: ^9.2.13
   speech_to_text: 7.0.0
   flutter_tts: ^3.7.0
-  intl: ^0.20.2
+  intl: ^0.20.2  # Keeping the latest version
 
 dev_dependencies:
   flutter_test:
@@ -45,11 +45,13 @@ flutter:
     - assets/images/HBstar.png
     - assets/images/google_logo.png
     - assets/on_screen_messages.txt
+    - assets/images/Background_Calendar.png
     - assets/images/Rotate_Star.png
     - assets/images/Star.svg
     - assets/images/Background_Calendar.png
     - assets/images/Left_arrow.png
     - assets/images/Right_arrow.png
+
 
   fonts:
     - family: SF Pro Display
