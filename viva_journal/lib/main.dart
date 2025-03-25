@@ -11,6 +11,7 @@ import 'package:viva_journal/screens/dashboard_screen.dart';
 import 'package:viva_journal/screens/calendar_screen.dart';
 import 'package:viva_journal/screens/trackerlog_screen.dart';
 import 'package:viva_journal/screens/settings_screen.dart';
+import 'package:viva_journal/screens/journal_screen.dart';
 import 'package:viva_journal/widgets/widgets.dart';
 
 // Global Navigator Key for retrieving context anywhere
@@ -61,6 +62,7 @@ class MyApp extends StatelessWidget {
         '/calendar': (context) => _buildRoute(const CalendarScreen()),
         '/trackerLog': (context) => _buildRoute(const TrackerLogScreen()),
         '/settings': (context) => _buildRoute(const SettingsScreen()),
+        '/journal': (context) => _buildRoute(JournalScreen(mood: 'happy', tags: [])),
       },
     );
   }

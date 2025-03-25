@@ -34,7 +34,7 @@ class _TrackerLogScreenState extends State<TrackerLogScreen> {
 
   List<String> get emotions {
     return List.generate(emotionProgressions.length, (index) {
-      return emotionProgressions[index][emotionLevels[index]];
+      return emotionProgressions[index][emotionLevels[index] - 1]; // Changed to -1 to avoid index out of bounds
     });
   }
 
@@ -50,10 +50,10 @@ class _TrackerLogScreenState extends State<TrackerLogScreen> {
 
   void _increaseEmotionLevel(int index) {
     setState(() {
-      emotionLevels[index] = (emotionLevels[index] % 5) + 1; // Cycle through 1-5
-      if (emotionLevels[index] == 1) {
-        // Reset to base if we looped back to 1
-        emotionLevels[index] = 1;
+      if (emotionLevels[index] < 5) {
+        emotionLevels[index]++; // Increase level up to 5
+      } else {
+        emotionLevels[index] = 1; // Reset to 1 if it reaches 5
       }
     });
   }
@@ -109,16 +109,16 @@ class _TrackerLogScreenState extends State<TrackerLogScreen> {
                 // Big blur circle in the background
                 AnimatedContainer(
                   duration: Duration(milliseconds: 300),
-                  height: 300,
-                  width: 300,
+                  height: 1,
+                  width: 1,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: selectedColor.withOpacity(0.2),
                     boxShadow: [
                       BoxShadow(
                         color: selectedColor.withOpacity(0.4),
-                        blurRadius: 100,
-                        spreadRadius: 20,
+                        blurRadius: 50,
+                        spreadRadius: 120,
                       ),
                     ],
                   ),

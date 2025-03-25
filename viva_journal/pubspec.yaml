@@ -19,6 +19,12 @@ dependencies:
   flutter_svg: ^2.0.9
   carousel_slider: ^5.0.0
   intl: ^0.18.0 #date
+  path_provider: ^2.0.15 #SQLite
+  sqflite: ^2.3.0
+  image_picker: ^1.0.7
+  flutter_sound: ^9.2.13
+  speech_to_text: 7.0.0
+  flutter_tts: ^3.7.0
 
 dev_dependencies:
   flutter_test:
