@@ -329,7 +329,7 @@ class EmotionStar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 10),
       curve: Curves.easeOut,
       width: isSelected ? 180 : 120,
       height: isSelected ? 180 : 120,

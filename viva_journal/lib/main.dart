@@ -12,6 +12,8 @@ import 'package:viva_journal/screens/calendar_screen.dart';
 import 'package:viva_journal/screens/trackerlog_screen.dart';
 import 'package:viva_journal/screens/settings_screen.dart';
 import 'package:viva_journal/screens/journal_screen.dart';
+import 'package:viva_journal/screens/entry_screen.dart';
+import 'package:viva_journal/database/database_helper.dart';
 import 'package:viva_journal/widgets/widgets.dart';
 
 // Global Navigator Key for retrieving context anywhere
@@ -42,16 +44,16 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         fontFamily: 'SF Pro Display',
         primarySwatch: Colors.grey,
-        pageTransitionsTheme: PageTransitionsTheme( // ✅ Global Page Transition Animation
+        pageTransitionsTheme: PageTransitionsTheme(
           builders: {
-            TargetPlatform.android: FadePageTransition(), // ✅ Custom Fade Transition
-            TargetPlatform.iOS: FadePageTransition(), // ✅ Works for iOS too
+            TargetPlatform.android: FadePageTransition(),
+            TargetPlatform.iOS: FadePageTransition(),
           },
         ),
       ),
       // ✅ Global wrapper to dismiss keyboard when tapping outside inputs
       builder: (context, child) => buildDismissKeyboardWrapper(child: child!),
-      home: _buildRoute(const SignUpScreen()), // ✅ Wrapped with exit confirmation and background theme
+      home: _buildRoute(const HomeScreen()),
       routes: {
         '/signUp': (context) => _buildRoute(const SignUpScreen()),
         '/loading': (context) => _buildRoute(const LoadingScreen()),
@@ -63,12 +65,12 @@ class MyApp extends StatelessWidget {
         '/trackerLog': (context) => _buildRoute(const TrackerLogScreen()),
         '/settings': (context) => _buildRoute(const SettingsScreen()),
         '/journal': (context) => _buildRoute(JournalScreen(mood: 'happy', tags: [])),
+        '/entryScreen': (context) => _buildRoute(EntryScreen(date: DateTime.now())),
       },
     );
   }
 }
 
-/// ✅ Custom Fade Transition for all Screens
 class FadePageTransition extends PageTransitionsBuilder {
   @override
   Widget buildTransitions<T>(
