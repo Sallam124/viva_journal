@@ -4,11 +4,13 @@
   <component name="GradleSettings">
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
+        <option name="testRunner" value="CHOOSE_PER_TEST" />
         <option name="externalProjectPath" value="$PROJECT_DIR$/viva_journal_new/android" />
         <option name="gradleJvm" value="#JAVA_HOME" />
         <option name="resolveExternalAnnotations" value="false" />
       </GradleProjectSettings>
       <GradleProjectSettings>
+        <option name="testRunner" value="CHOOSE_PER_TEST" />
         <option name="externalProjectPath" value="$PROJECT_DIR$/viva_journal_new/android/gradle" />
         <option name="gradleJvm" value="#JAVA_HOME" />
         <option name="resolveExternalAnnotations" value="false" />
