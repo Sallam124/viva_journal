@@ -11,10 +11,7 @@ import firebase_core
 import flutter_tts
 import google_sign_in_ios
 import path_provider_foundation
-<<<<<<< Updated upstream
 import speech_to_text
-=======
->>>>>>> Stashed changes
 import sqflite_darwin
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
@@ -24,9 +21,6 @@ func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   FlutterTtsPlugin.register(with: registry.registrar(forPlugin: "FlutterTtsPlugin"))
   FLTGoogleSignInPlugin.register(with: registry.registrar(forPlugin: "FLTGoogleSignInPlugin"))
   PathProviderPlugin.register(with: registry.registrar(forPlugin: "PathProviderPlugin"))
-<<<<<<< Updated upstream
   SpeechToTextPlugin.register(with: registry.registrar(forPlugin: "SpeechToTextPlugin"))
-=======
->>>>>>> Stashed changes
   SqflitePlugin.register(with: registry.registrar(forPlugin: "SqflitePlugin"))
 }

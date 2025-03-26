@@ -18,9 +18,8 @@ dependencies:
   shimmer: ^3.0.0
   flutter_svg: ^2.0.9
   carousel_slider: ^5.0.0
-  path_provider: ^2.0.15 #SQLite
-  sqlite: ^2.3.0
-  sqflite: ^2.0.0+3
+  path_provider: ^2.0.15  # Helps with finding database path
+  sqflite: ^2.3.0  # ✅ Correct SQLite package
   image_picker: ^1.0.7
   flutter_sound: ^9.2.13
   speech_to_text: 7.0.0
@@ -51,7 +50,13 @@ flutter:
     - assets/images/Background_Calendar.png
     - assets/images/Left_arrow.png
     - assets/images/Right_arrow.png
-
+    - assets/images/pencil_1.png
+    - assets/images/pencil_2.png
+    - assets/images/pencil_3.png
+    - assets/images/pencil_4.png
+    - assets/images/pencil_5.png
+    - assets/images/pencil_6.png
+    - assets/images/eraser.png
 
   fonts:
     - family: SF Pro Display
