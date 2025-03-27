@@ -32,7 +32,7 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
   bool _isEraserActive = false;
   double _strokeWidth = 3.0;
   FocusNode _textFocusNode = FocusNode();
-  bool _isTyping = false;
+  bool _isDrawingMode = false;
   late AnimationController _eraserAnimationController;
   late Animation<double> _eraserAnimation;
 
@@ -51,12 +51,11 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
     _recorder = FlutterSoundRecorder();
     _recorder!.openRecorder();
 
-    // Animation controller for eraser bounce
+    // Eraser animation controller
     _eraserAnimationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 200),
     );
-
     _eraserAnimation = Tween<double>(begin: 0, end: 8).animate(
       CurvedAnimation(
         parent: _eraserAnimationController,
@@ -155,10 +154,10 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
     });
   }
 
-  void _toggleTextMode() {
+  void _toggleDrawingMode() {
     setState(() {
-      _isTyping = !_isTyping;
-      if (_isTyping) {
+      _isDrawingMode = !_isDrawingMode;
+      if (!_isDrawingMode) {
         _textFocusNode.requestFocus();
       } else {
         _textFocusNode.unfocus();
@@ -166,57 +165,59 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
     });
   }
 
-  void _handleDrawingStart(Offset position) {
-    if (_isEraserActive) return;
-
+  void _handleDrawingStart(DragStartDetails details) {
+    final position = details.localPosition;
     setState(() {
       _drawingHistory.add(List.from(_points));
-      _points.add(DrawingPoint(
-        position: position,
-        color: _currentColor,
-        isEraser: false,
-        strokeWidth: _strokeWidth,
-      ));
-      _redoHistory.clear();
-    });
-  }
-
-  void _handleDrawingUpdate(Offset position) {
-    if (_isEraserActive) {
-      setState(() {
+      if (_isEraserActive) {
+        // Erase nearby points
         final eraseRadius = 20.0;
         _points = _points.where((point) {
           return (point.position - position).distance > eraseRadius;
         }).toList();
-      });
-    } else {
-      setState(() {
+      } else {
+        // Add new drawing point
         _points.add(DrawingPoint(
           position: position,
           color: _currentColor,
           isEraser: false,
           strokeWidth: _strokeWidth,
         ));
-      });
-    }
+      }
+      _redoHistory.clear();
+    });
   }
 
-  void _handleDrawingEnd() {
-    if (_isEraserActive) {
-      setState(() {
-        _drawingHistory.add(List.from(_points));
-        _redoHistory.clear();
-      });
-    } else {
-      setState(() {
+  void _handleDrawingUpdate(DragUpdateDetails details) {
+    final position = details.localPosition;
+    setState(() {
+      if (_isEraserActive) {
+        // Continue erasing
+        final eraseRadius = 20.0;
+        _points = _points.where((point) {
+          return (point.position - position).distance > eraseRadius;
+        }).toList();
+      } else {
+        // Continue drawing
         _points.add(DrawingPoint(
-          position: Offset.zero,
-          color: Colors.transparent,
+          position: position,
+          color: _currentColor,
           isEraser: false,
-          strokeWidth: 0,
+          strokeWidth: _strokeWidth,
         ));
-      });
-    }
+      }
+    });
+  }
+
+  void _handleDrawingEnd(DragEndDetails details) {
+    setState(() {
+      _points.add(DrawingPoint(
+        position: Offset.zero,
+        color: Colors.transparent,
+        isEraser: false,
+        strokeWidth: 0,
+      ));
+    });
   }
 
   @override
@@ -226,44 +227,46 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
         title: Text('Journal Editor'),
         actions: [
           IconButton(
-            icon: Icon(Icons.text_fields),
-            onPressed: _toggleTextMode,
-            tooltip: 'Toggle Text/Drawing Mode',
+            icon: Icon(_isDrawingMode ? Icons.text_fields : Icons.edit),
+            onPressed: _toggleDrawingMode,
+            tooltip: _isDrawingMode ? 'Switch to Text Mode' : 'Switch to Drawing Mode',
           ),
         ],
       ),
       body: Stack(
         children: [
-          // Text editor (only visible in typing mode)
-          if (_isTyping)
-            Positioned.fill(
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: TextField(
-                  controller: _textController,
-                  focusNode: _textFocusNode,
-                  maxLines: null,
-                  decoration: InputDecoration(
-                    hintText: "Type here...",
-                    border: InputBorder.none,
-                  ),
+          // Text editor (always visible)
+          Positioned.fill(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: TextField(
+                controller: _textController,
+                focusNode: _textFocusNode,
+                maxLines: null,
+                readOnly: _isDrawingMode, // Disable text input when in drawing mode
+                decoration: InputDecoration(
+                  hintText: "Type here...",
+                  border: InputBorder.none,
                 ),
               ),
             ),
+          ),
 
-          // Drawing canvas (only visible in drawing mode)
-          if (!_isTyping)
-            Positioned.fill(
+          // Drawing canvas (always visible but only interactive in drawing mode)
+          Positioned.fill(
+            child: IgnorePointer(
+              ignoring: !_isDrawingMode, // Only allow interaction in drawing mode
               child: GestureDetector(
-                onPanStart: (details) => _handleDrawingStart(details.localPosition),
-                onPanUpdate: (details) => _handleDrawingUpdate(details.localPosition),
-                onPanEnd: (_) => _handleDrawingEnd(),
+                onPanStart: _handleDrawingStart,
+                onPanUpdate: _handleDrawingUpdate,
+                onPanEnd: _handleDrawingEnd,
                 child: CustomPaint(
                   painter: DrawingPainter(_points, _showLines),
                   child: Container(),
                 ),
               ),
             ),
+          ),
 
           // Attachments
           ..._attachments.map((attachment) => Positioned(
@@ -273,8 +276,7 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
           )).toList(),
         ],
       ),
-      // Only show drawing tools when in drawing mode
-      bottomNavigationBar: !_isTyping ? _buildDrawingToolbar() : null,
+      bottomNavigationBar: _isDrawingMode ? _buildDrawingToolbar() : null,
     );
   }
 
