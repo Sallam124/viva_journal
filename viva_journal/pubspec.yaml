@@ -19,8 +19,7 @@ dependencies:
   flutter_svg: ^2.0.9
   carousel_slider: ^5.0.0
   path_provider: ^2.0.15 #SQLite
-  sqlite: ^2.3.0
-  sqflite: ^2.0.0+3
+  sqflite: ^2.3.0
   image_picker: ^1.0.7
   flutter_sound: ^9.2.13
   speech_to_text: 7.0.0
