@@ -4,6 +4,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:path_provider/path_provider.dart';
+import '../widgets/media.dart';
+import 'package:viva_journal/widgets/media.dart';
+import 'package:video_player/video_player.dart';
+import 'dart:ui' as ui;
 
 class JournalScreen extends StatefulWidget {
   final String mood;
@@ -15,13 +19,29 @@ class JournalScreen extends StatefulWidget {
   _JournalScreenState createState() => _JournalScreenState();
 }
 
+class Media {
+  File file;
+  Offset position;
+  double size;
+  double angle;
+  bool isVideo;
+  double? _lastRotation;
+
+  Media({
+    required this.file,
+    this.position = Offset.zero,
+    this.size = 1.0,
+    this.angle = 0.0,
+    this.isVideo = false,
+  });
+}
+
 class _JournalScreenState extends State<JournalScreen> with SingleTickerProviderStateMixin {
-  // State variables and controllers
   TextEditingController _textController = TextEditingController();
   List<DrawingPoint> _points = [];
   List<List<DrawingPoint>> _drawingHistory = [];
   List<List<DrawingPoint>> _redoHistory = [];
-  List<File> _attachments = [];
+  List<InteractiveMedia> _attachments = [];
   FlutterSoundRecorder? _recorder;
   String? _voiceNotePath;
   final FlutterTts _flutterTts = FlutterTts();
@@ -31,10 +51,12 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
   int _pencilIndex = 0;
   bool _isEraserActive = false;
   double _strokeWidth = 3.0;
+  double _eraserWidth = 30.0;
   FocusNode _textFocusNode = FocusNode();
   bool _isDrawingMode = false;
   late AnimationController _eraserAnimationController;
   late Animation<double> _eraserAnimation;
+  InteractiveMedia? _selectedMedia;
 
   List<Color> _pencilColors = [
     Colors.black,
@@ -51,7 +73,6 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
     _recorder = FlutterSoundRecorder();
     _recorder!.openRecorder();
 
-    // Eraser animation controller
     _eraserAnimationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 200),
@@ -73,11 +94,23 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+  Future<void> _pickMedia() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? pickedFile = await picker.pickMedia(
+      requestFullMetadata: false,
+    );
+
     if (pickedFile != null) {
+      bool isVideo = pickedFile.mimeType?.startsWith('video/') ?? false;
+
       setState(() {
-        _attachments.add(File(pickedFile.path));
+        _attachments.add(InteractiveMedia(
+          file: File(pickedFile.path),
+          isVideo: isVideo,
+          position: Offset(100, 100),
+          size: 200.0,
+          angle: 0.0,
+        ));
       });
     }
   }
@@ -126,6 +159,7 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
       _currentColor = _pencilColors[_pencilIndex];
       _isEraserActive = false;
       _eraserAnimationController.reverse();
+      _selectedMedia = null;
     });
   }
 
@@ -137,6 +171,7 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
       } else {
         _eraserAnimationController.reverse();
       }
+      _selectedMedia = null;
     });
   }
 
@@ -145,6 +180,7 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
       _drawingHistory.add(List.from(_points));
       _points = [];
       _redoHistory.clear();
+      _selectedMedia = null;
     });
   }
 
@@ -162,6 +198,7 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
       } else {
         _textFocusNode.unfocus();
       }
+      _selectedMedia = null;
     });
   }
 
@@ -169,36 +206,25 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
     final position = details.localPosition;
     setState(() {
       _drawingHistory.add(List.from(_points));
-      if (_isEraserActive) {
-        // Erase nearby points
-        final eraseRadius = 20.0;
-        _points = _points.where((point) {
-          return (point.position - position).distance > eraseRadius;
-        }).toList();
-      } else {
-        // Add new drawing point
-        _points.add(DrawingPoint(
-          position: position,
-          color: _currentColor,
-          isEraser: false,
-          strokeWidth: _strokeWidth,
-        ));
-      }
+      _points.add(DrawingPoint(
+        position: position,
+        color: _isEraserActive ? Colors.white : _currentColor,
+        isEraser: _isEraserActive,
+        strokeWidth: _isEraserActive ? _eraserWidth : _strokeWidth,
+      ));
       _redoHistory.clear();
     });
   }
 
   void _handleDrawingUpdate(DragUpdateDetails details) {
     final position = details.localPosition;
+
     setState(() {
       if (_isEraserActive) {
-        // Continue erasing
-        final eraseRadius = 20.0;
-        _points = _points.where((point) {
-          return (point.position - position).distance > eraseRadius;
-        }).toList();
+        _points.removeWhere(
+              (point) => (point.position - position).distance <= _eraserWidth / 2,
+        );
       } else {
-        // Continue drawing
         _points.add(DrawingPoint(
           position: position,
           color: _currentColor,
@@ -210,6 +236,8 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
   }
 
   void _handleDrawingEnd(DragEndDetails details) {
+    if (_selectedMedia != null) return;
+
     setState(() {
       _points.add(DrawingPoint(
         position: Offset.zero,
@@ -220,65 +248,164 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
     });
   }
 
+  void _handleMediaTap(InteractiveMedia media) {
+    setState(() {
+      if (_selectedMedia == media) {
+        _selectedMedia = null;
+      } else {
+        _selectedMedia = media;
+      }
+    });
+  }
+
+  void _handleMediaPanUpdate(ScaleUpdateDetails details, Media media) {
+    setState(() {
+      media.position += details.focalPointDelta;
+    });
+  }
+
+  void _handleMediaScaleUpdate(ScaleUpdateDetails details, InteractiveMedia media) {
+    setState(() {
+      double newSize = media.size * details.scale;
+      media.size = newSize.clamp(50.0, 500.0);
+    });
+  }
+
+  void _handleRotateMedia(DragUpdateDetails details) {
+    if (_selectedMedia != null) {
+      setState(() {
+        _selectedMedia!.angle += details.delta.dx * 0.01;
+      });
+    }
+  }
+
+  void _deleteSelectedMedia() {
+    if (_selectedMedia != null) {
+      setState(() {
+        _attachments.remove(_selectedMedia);
+        _selectedMedia = null;
+      });
+    }
+  }
+
+  void _handleScaleUpdate(ScaleUpdateDetails details, InteractiveMedia media) {
+    setState(() {
+      // Handle movement (panning)
+      media.position += details.focalPointDelta;
+
+      // Handle scaling
+      media.size = (media.size * details.scale).clamp(50.0, 500.0);
+
+      // Handle rotation with two fingers
+      if (details.rotation != 0) {
+        // Convert rotation from radians to degrees and snap to 15-degree increments
+        double newAngle = (details.rotation * 180 / 3.14159265359) / 15.0;
+        newAngle = newAngle.round() * 15.0;
+        media.angle = newAngle * 3.14159265359 / 180; // Convert back to radians
+
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Journal Editor'),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pushReplacementNamed(context, '/trackerlog_screen');
+          },
+          tooltip: 'Back',
+        ),
         actions: [
           IconButton(
             icon: Icon(_isDrawingMode ? Icons.text_fields : Icons.edit),
             onPressed: _toggleDrawingMode,
             tooltip: _isDrawingMode ? 'Switch to Text Mode' : 'Switch to Drawing Mode',
           ),
+          if (_selectedMedia != null)
+            IconButton(
+              icon: Icon(Icons.delete),
+              onPressed: _deleteSelectedMedia,
+              tooltip: 'Delete Selected Media',
+            ),
         ],
       ),
       body: Stack(
         children: [
-          // Text editor (always visible)
-          Positioned.fill(
-            child: Padding(
-              padding: EdgeInsets.all(20),
-              child: TextField(
+          ListView(
+            padding: EdgeInsets.all(20),
+            children: [
+              // Text input field
+              TextField(
                 controller: _textController,
                 focusNode: _textFocusNode,
                 maxLines: null,
-                readOnly: _isDrawingMode, // Disable text input when in drawing mode
+                readOnly: _isDrawingMode,
+                style: TextStyle(color: Colors.black),
                 decoration: InputDecoration(
                   hintText: "Type here...",
+                  hintStyle: TextStyle(color: Colors.grey),
                   border: InputBorder.none,
                 ),
               ),
-            ),
+
+              // Display Images & Videos in Scrollable View
+              Column(
+                children: _attachments.map((media) {
+                  return GestureDetector(
+                    onTap: () => _handleMediaTap(media),
+                    onScaleUpdate: (details) => _handleScaleUpdate(details, media),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 10),
+                      child: Transform.rotate(
+                        angle: media.angle,
+                        child: Transform.scale(
+                          scale: media.size / 200.0,
+                          child: Container(
+                            width: 200,
+                            height: 200,
+                            decoration: BoxDecoration(
+                              border: _selectedMedia == media
+                                  ? Border.all(color: Colors.blue, width: 2)
+                                  : null,
+                            ),
+                            child: media.isVideo
+                                ? VideoWidget(file: media.file)
+                                : Image.file(media.file, fit: BoxFit.contain),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
           ),
 
-          // Drawing canvas (always visible but only interactive in drawing mode)
-          Positioned.fill(
-            child: IgnorePointer(
-              ignoring: !_isDrawingMode, // Only allow interaction in drawing mode
-              child: GestureDetector(
-                onPanStart: _handleDrawingStart,
-                onPanUpdate: _handleDrawingUpdate,
-                onPanEnd: _handleDrawingEnd,
-                child: CustomPaint(
-                  painter: DrawingPainter(_points, _showLines),
-                  child: Container(),
+          // Drawing layer above everything
+          IgnorePointer(
+            ignoring: !_isDrawingMode,
+            child: GestureDetector(
+              onPanStart: _handleDrawingStart,
+              onPanUpdate: _handleDrawingUpdate,
+              onPanEnd: _handleDrawingEnd,
+              child: CustomPaint(
+                painter: _SmoothDrawingPainter(
+                  points: _points,
+                  showLines: _showLines,
                 ),
+                child: Container(), // Ensures it covers the whole screen
               ),
             ),
           ),
-
-          // Attachments
-          ..._attachments.map((attachment) => Positioned(
-            left: 50,
-            top: 50,
-            child: Image.file(attachment, width: 100, height: 100),
-          )).toList(),
         ],
       ),
       bottomNavigationBar: _isDrawingMode ? _buildDrawingToolbar() : null,
     );
   }
+
 
   Widget _buildDrawingToolbar() {
     return Container(
@@ -315,7 +442,6 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
                   child: Image.asset(
                     'assets/images/eraser.png',
                     width: 24,
-                    color: Colors.white,
                   ),
                 );
               },
@@ -327,7 +453,7 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
           ),
           IconButton(
             icon: Icon(Icons.image, color: Colors.white),
-            onPressed: _pickImage,
+            onPressed: _pickMedia,
           ),
           IconButton(
             icon: Icon(Icons.grid_on, color: Colors.white),
@@ -336,6 +462,135 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
         ],
       ),
     );
+  }
+}
+
+class VideoWidget extends StatefulWidget {
+  final File file;
+
+  const VideoWidget({Key? key, required this.file}) : super(key: key);
+
+  @override
+  _VideoWidgetState createState() => _VideoWidgetState();
+}
+
+class _VideoWidgetState extends State<VideoWidget> {
+  late VideoPlayerController _controller;
+  bool _isPlaying = false;
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.file(widget.file)
+      ..initialize().then((_) {
+        if (mounted) {
+          setState(() {
+            _isInitialized = true;
+          });
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        if (!_isInitialized) return;
+
+        setState(() {
+          _isPlaying = !_isPlaying;
+          if (_isPlaying) {
+            _controller.play();
+          } else {
+            _controller.pause();
+          }
+        });
+      },
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (_isInitialized)
+            AspectRatio(
+              aspectRatio: _controller.value.aspectRatio,
+              child: VideoPlayer(_controller),
+            )
+          else
+            const CircularProgressIndicator(),
+          if (!_isPlaying && _isInitialized)
+            const Icon(Icons.play_arrow, size: 50, color: Colors.white),
+        ],
+      ),
+    );
+  }
+}
+
+class InteractiveMedia extends Media {
+  InteractiveMedia({
+    required File file,
+    bool isVideo = false,
+    Offset position = Offset.zero,
+    double size = 1.0,
+    double angle = 0.0,
+  }) : super(
+    file: file,
+    isVideo: isVideo,
+    position: position,
+    size: size,
+    angle: angle,
+  );
+}
+
+class _SmoothDrawingPainter extends CustomPainter {
+  final List<DrawingPoint> points;
+  final bool showLines;
+
+  _SmoothDrawingPainter({
+    required this.points,
+    required this.showLines,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Paint()..color = Colors.transparent,
+    );
+
+    Paint paint = Paint()
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    Paint eraserPaint = Paint()
+      ..color = Colors.transparent
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    for (int i = 0; i < points.length - 1; i++) {
+      if (points[i].position == Offset.zero || points[i + 1].position == Offset.zero) {
+        continue;
+      }
+
+      if (points[i].isEraser) {
+        eraserPaint.strokeWidth = points[i].strokeWidth;
+        canvas.drawLine(points[i].position, points[i + 1].position, eraserPaint);
+      } else {
+        paint.color = points[i].color;
+        paint.strokeWidth = points[i].strokeWidth;
+        canvas.drawLine(points[i].position, points[i + 1].position, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return true;
   }
 }
 
@@ -351,45 +606,4 @@ class DrawingPoint {
     required this.isEraser,
     required this.strokeWidth,
   });
-}
-
-class DrawingPainter extends CustomPainter {
-  final List<DrawingPoint> points;
-  final bool showLines;
-
-  DrawingPainter(this.points, this.showLines);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (showLines) {
-      Paint gridPaint = Paint()
-        ..color = Colors.grey.withOpacity(0.3)
-        ..strokeWidth = 0.5;
-
-      for (double i = 0; i < size.width; i += 20) {
-        canvas.drawLine(Offset(i, 0), Offset(i, size.height), gridPaint);
-      }
-      for (double i = 0; i < size.height; i += 20) {
-        canvas.drawLine(Offset(0, i), Offset(size.width, i), gridPaint);
-      }
-    }
-
-    Paint paint = Paint()
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    for (int i = 0; i < points.length - 1; i++) {
-      if (points[i].position != Offset.zero && points[i + 1].position != Offset.zero) {
-        paint
-          ..color = points[i].color
-          ..strokeWidth = points[i].strokeWidth;
-
-        canvas.drawLine(points[i].position, points[i + 1].position, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(DrawingPainter oldDelegate) =>
-      oldDelegate.points != points || oldDelegate.showLines != showLines;
 }

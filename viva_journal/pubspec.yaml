@@ -25,6 +25,7 @@ dependencies:
   speech_to_text: 7.0.0
   flutter_tts: ^3.7.0
   intl: ^0.20.2  # Keeping the latest version
+  video_player: ^2.7.0
 
 dev_dependencies:
   flutter_test:
