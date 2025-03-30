@@ -25,6 +25,7 @@ dependencies:
   speech_to_text: 7.0.0
   flutter_tts: ^3.7.0
   intl: ^0.20.2  # Keeping the latest version
+  video_player: ^2.7.0
 
 dev_dependencies:
   flutter_test:
@@ -50,7 +51,13 @@ flutter:
     - assets/images/Background_Calendar.png
     - assets/images/Left_arrow.png
     - assets/images/Right_arrow.png
-
+    - assets/images/pencil_1.png
+    - assets/images/pencil_2.png
+    - assets/images/pencil_3.png
+    - assets/images/pencil_4.png
+    - assets/images/pencil_5.png
+    - assets/images/pencil_6.png
+    - assets/images/eraser.png
 
   fonts:
     - family: SF Pro Display
