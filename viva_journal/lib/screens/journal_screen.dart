@@ -8,6 +8,7 @@ import '../widgets/media.dart';
 import 'package:viva_journal/widgets/media.dart';
 import 'package:video_player/video_player.dart';
 import 'dart:ui' as ui;
+import 'dart:math';
 
 class JournalScreen extends StatefulWidget {
   final String mood;
@@ -36,7 +37,7 @@ class Media {
   });
 }
 
-class _JournalScreenState extends State<JournalScreen> with SingleTickerProviderStateMixin {
+class _JournalScreenState extends State<JournalScreen> with TickerProviderStateMixin {
   TextEditingController _textController = TextEditingController();
   List<DrawingPoint> _points = [];
   List<List<DrawingPoint>> _drawingHistory = [];
@@ -54,35 +55,54 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
   double _eraserWidth = 30.0;
   FocusNode _textFocusNode = FocusNode();
   bool _isDrawingMode = false;
-  late AnimationController _eraserAnimationController;
-  late Animation<double> _eraserAnimation;
+  AnimationController? _eraserAnimationController;
+  Animation<double>? _eraserAnimation;
   InteractiveMedia? _selectedMedia;
+  bool _isRainbowMode = true;
+  double _rainbowOffset = 0.0;
+  AnimationController? _pencilAnimationController;
+  Animation<double>? _pencilAnimation;
+  bool _isPencilActive = false;
 
   List<Color> _pencilColors = [
-    Colors.black,
-    Color(0xFFFFE100),
-    Color(0xFFFFC917),
-    Color(0xFFF8650C),
-    Color(0xFFF00000),
-    Color(0xFF8C0000)
+    Colors.black,  // Standard black pencil
+    Color(0xFFFFE100),  // Original yellow
+    Color(0xFFFFC917),  // Original yellow-orange
+    Color(0xFFF8650C),  // Original orange
+    Color(0xFFF00000),  // Original red
+    Color(0xFF8C0000),  // Original dark red
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    _recorder = FlutterSoundRecorder();
-    _recorder!.openRecorder();
-
+  void _initializeAnimations() {
     _eraserAnimationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 200),
     );
     _eraserAnimation = Tween<double>(begin: 0, end: 8).animate(
       CurvedAnimation(
-        parent: _eraserAnimationController,
+        parent: _eraserAnimationController!,
         curve: Curves.easeInOut,
       ),
     );
+
+    _pencilAnimationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 200),
+    );
+    _pencilAnimation = Tween<double>(begin: 0, end: 8).animate(
+      CurvedAnimation(
+        parent: _pencilAnimationController!,
+        curve: Curves.easeInOut,
+      ),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _recorder = FlutterSoundRecorder();
+    _recorder!.openRecorder();
+    _initializeAnimations();
   }
 
   @override
@@ -90,7 +110,8 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
     _textController.dispose();
     _textFocusNode.dispose();
     _recorder!.closeRecorder();
-    _eraserAnimationController.dispose();
+    _eraserAnimationController?.dispose();
+    _pencilAnimationController?.dispose();
     super.dispose();
   }
 
@@ -153,12 +174,59 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
     }
   }
 
+  Color _getRainbowColor(Offset position) {
+    // Create a rainbow gradient based on position using the specified colors
+    final List<Color> rainbowColors = [
+      Color(0xFFFFE100),  // Yellow
+      Color(0xFFFFC917),  // Yellow-orange
+      Color(0xFFF8650C),  // Orange
+      Color(0xFFF00000),  // Red
+      Color(0xFF8C0000),  // Dark red
+    ];
+
+    // Calculate dynamic pattern based on position and movement with faster changes
+    final double time = DateTime.now().millisecondsSinceEpoch / 500.0; // Faster time scale
+    final double x = position.dx / 50.0; // Faster position scale
+    final double y = position.dy / 50.0; // Faster position scale
+
+    // Create a dynamic pattern using sine waves with faster changes
+    final double pattern = (sin(x + time) + cos(y + time) + sin(x * y + time)) / 3.0;
+
+    // Map the pattern to color indices
+    final double normalizedPattern = (pattern + 1) / 2; // Convert from [-1,1] to [0,1]
+    final int colorIndex = (normalizedPattern * (rainbowColors.length - 1)).floor();
+    final double t = (normalizedPattern * (rainbowColors.length - 1)) - colorIndex;
+
+    // Interpolate between colors
+    if (colorIndex >= rainbowColors.length - 1) {
+      return rainbowColors.last;
+    }
+
+    return Color.lerp(rainbowColors[colorIndex], rainbowColors[colorIndex + 1], t) ?? rainbowColors[0];
+  }
+
   void _changePencilColor() {
     setState(() {
       _pencilIndex = (_pencilIndex + 1) % _pencilColors.length;
       _currentColor = _pencilColors[_pencilIndex];
       _isEraserActive = false;
-      _eraserAnimationController.reverse();
+      _isRainbowMode = _pencilIndex == 0;
+      _eraserAnimationController?.reverse();
+      _pencilAnimationController?.forward();
+      _selectedMedia = null;
+    });
+  }
+
+  void _togglePencil() {
+    setState(() {
+      _isPencilActive = !_isPencilActive;
+      if (_isPencilActive) {
+        _pencilAnimationController?.forward();
+        _eraserAnimationController?.reverse();
+        _isEraserActive = false;
+      } else {
+        _pencilAnimationController?.reverse();
+      }
       _selectedMedia = null;
     });
   }
@@ -167,9 +235,11 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
     setState(() {
       _isEraserActive = !_isEraserActive;
       if (_isEraserActive) {
-        _eraserAnimationController.forward();
+        _eraserAnimationController?.forward();
+        _pencilAnimationController?.reverse();
+        _isPencilActive = false;
       } else {
-        _eraserAnimationController.reverse();
+        _eraserAnimationController?.reverse();
       }
       _selectedMedia = null;
     });
@@ -203,14 +273,17 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
   }
 
   void _handleDrawingStart(DragStartDetails details) {
+    if (!_isPencilActive && !_isEraserActive) return;
+
     final position = details.localPosition;
     setState(() {
       _drawingHistory.add(List.from(_points));
       _points.add(DrawingPoint(
         position: position,
-        color: _isEraserActive ? Colors.white : _currentColor,
+        color: _isEraserActive ? Colors.white : (_isRainbowMode ? _getRainbowColor(position) : _currentColor),
         isEraser: _isEraserActive,
         strokeWidth: _isEraserActive ? _eraserWidth : _strokeWidth,
+        isRainbow: _isRainbowMode,
       ));
       _redoHistory.clear();
     });
@@ -221,15 +294,54 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
 
     setState(() {
       if (_isEraserActive) {
-        _points.removeWhere(
-              (point) => (point.position - position).distance <= _eraserWidth / 2,
-        );
+        // Find and remove entire strokes that intersect with the eraser
+        List<DrawingPoint> pointsToKeep = [];
+        List<DrawingPoint> currentStroke = [];
+
+        for (int i = 0; i < _points.length; i++) {
+          if (_points[i].position == Offset.zero) {
+            // Check if current stroke intersects with eraser
+            bool strokeIntersects = false;
+            for (var point in currentStroke) {
+              if ((point.position - position).distance <= _eraserWidth / 2) {
+                strokeIntersects = true;
+                break;
+              }
+            }
+
+            // Keep the stroke if it doesn't intersect with eraser
+            if (!strokeIntersects) {
+              pointsToKeep.addAll(currentStroke);
+              pointsToKeep.add(_points[i]); // Add the separator point
+            }
+            currentStroke = [];
+          } else {
+            currentStroke.add(_points[i]);
+          }
+        }
+
+        // Check the last stroke if exists
+        if (currentStroke.isNotEmpty) {
+          bool strokeIntersects = false;
+          for (var point in currentStroke) {
+            if ((point.position - position).distance <= _eraserWidth / 2) {
+              strokeIntersects = true;
+              break;
+            }
+          }
+          if (!strokeIntersects) {
+            pointsToKeep.addAll(currentStroke);
+          }
+        }
+
+        _points = pointsToKeep;
       } else {
         _points.add(DrawingPoint(
           position: position,
-          color: _currentColor,
+          color: _isRainbowMode ? _getRainbowColor(position) : _currentColor,
           isEraser: false,
           strokeWidth: _strokeWidth,
+          isRainbow: _isRainbowMode,
         ));
       }
     });
@@ -332,10 +444,11 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
             ),
         ],
       ),
-      body: Stack(
+      body: ListView(
+        padding: EdgeInsets.all(20),
         children: [
-          ListView(
-            padding: EdgeInsets.all(20),
+          // Text input field with drawing layer
+          Stack(
             children: [
               // Text input field
               TextField(
@@ -349,56 +462,76 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
                   hintStyle: TextStyle(color: Colors.grey),
                   border: InputBorder.none,
                 ),
+                onChanged: (text) {
+                  // Force rebuild to update drawing layer size
+                  setState(() {});
+                },
               ),
 
-              // Display Images & Videos in Scrollable View
-              Column(
-                children: _attachments.map((media) {
+              // Drawing layer above text
+              LayoutBuilder(
+                builder: (context, constraints) {
                   return GestureDetector(
-                    onTap: () => _handleMediaTap(media),
-                    onScaleUpdate: (details) => _handleScaleUpdate(details, media),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 10),
-                      child: Transform.rotate(
-                        angle: media.angle,
-                        child: Transform.scale(
-                          scale: media.size / 200.0,
-                          child: Container(
-                            width: 200,
-                            height: 200,
-                            decoration: BoxDecoration(
-                              border: _selectedMedia == media
-                                  ? Border.all(color: Colors.blue, width: 2)
-                                  : null,
-                            ),
-                            child: media.isVideo
-                                ? VideoWidget(file: media.file)
-                                : Image.file(media.file, fit: BoxFit.contain),
-                          ),
-                        ),
+                    onPanStart: (details) {
+                      if (_isPencilActive || _isEraserActive) {
+                        _handleDrawingStart(details);
+                      }
+                    },
+                    onPanUpdate: (details) {
+                      if (_isPencilActive || _isEraserActive) {
+                        _handleDrawingUpdate(details);
+                      }
+                    },
+                    onPanEnd: (details) {
+                      if (_isPencilActive || _isEraserActive) {
+                        _handleDrawingEnd(details);
+                      }
+                    },
+                    child: CustomPaint(
+                      painter: _SmoothDrawingPainter(
+                        points: _points,
+                        showLines: _showLines,
+                      ),
+                      size: Size(constraints.maxWidth, constraints.maxHeight),
+                      child: Container(
+                        color: Colors.transparent,
                       ),
                     ),
                   );
-                }).toList(),
+                },
               ),
             ],
           ),
 
-          // Drawing layer above everything
-          IgnorePointer(
-            ignoring: !_isDrawingMode,
-            child: GestureDetector(
-              onPanStart: _handleDrawingStart,
-              onPanUpdate: _handleDrawingUpdate,
-              onPanEnd: _handleDrawingEnd,
-              child: CustomPaint(
-                painter: _SmoothDrawingPainter(
-                  points: _points,
-                  showLines: _showLines,
+          // Display Images & Videos in Scrollable View
+          Column(
+            children: _attachments.map((media) {
+              return GestureDetector(
+                onTap: () => _handleMediaTap(media),
+                onScaleUpdate: (details) => _handleScaleUpdate(details, media),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: Transform.rotate(
+                    angle: media.angle,
+                    child: Transform.scale(
+                      scale: media.size / 200.0,
+                      child: Container(
+                        width: 200,
+                        height: 200,
+                        decoration: BoxDecoration(
+                          border: _selectedMedia == media
+                              ? Border.all(color: Colors.blue, width: 2)
+                              : null,
+                        ),
+                        child: media.isVideo
+                            ? VideoWidget(file: media.file)
+                            : Image.file(media.file, fit: BoxFit.contain),
+                      ),
+                    ),
+                  ),
                 ),
-                child: Container(), // Ensures it covers the whole screen
-              ),
-            ),
+              );
+            }).toList(),
           ),
         ],
       ),
@@ -415,17 +548,48 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
-            icon: Icon(Icons.undo, color: Colors.white),
-            onPressed: _undo,
+            icon: Icon(
+              Icons.undo,
+              color: _drawingHistory.isEmpty ? Colors.grey : Colors.white,
+            ),
+            onPressed: _drawingHistory.isEmpty ? null : _undo,
           ),
           IconButton(
-            icon: Icon(Icons.redo, color: Colors.white),
-            onPressed: _redo,
+            icon: Icon(
+              Icons.redo,
+              color: _redoHistory.isEmpty ? Colors.grey : Colors.white,
+            ),
+            onPressed: _redoHistory.isEmpty ? null : _redo,
           ),
           GestureDetector(
-            onTap: _changePencilColor,
-            child: Container(
+            onTap: _togglePencil,
+            onDoubleTap: _changePencilColor,
+            child: _pencilAnimation != null
+                ? AnimatedBuilder(
+              animation: _pencilAnimation!,
+              builder: (context, child) {
+                return Transform.translate(
+                  offset: Offset(0, -_pencilAnimation!.value),
+                  child: Container(
+                    padding: EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: _isPencilActive ? Colors.white.withOpacity(0.2) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Image.asset(
+                      'assets/images/pencil_${_pencilIndex + 1}.png',
+                      width: 24,
+                    ),
+                  ),
+                );
+              },
+            )
+                : Container(
               padding: EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: _isPencilActive ? Colors.white.withOpacity(0.2) : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
               child: Image.asset(
                 'assets/images/pencil_${_pencilIndex + 1}.png',
                 width: 24,
@@ -434,17 +598,36 @@ class _JournalScreenState extends State<JournalScreen> with SingleTickerProvider
           ),
           GestureDetector(
             onTap: _toggleEraser,
-            child: AnimatedBuilder(
-              animation: _eraserAnimation,
+            child: _eraserAnimation != null
+                ? AnimatedBuilder(
+              animation: _eraserAnimation!,
               builder: (context, child) {
                 return Transform.translate(
-                  offset: Offset(0, -_eraserAnimation.value),
-                  child: Image.asset(
-                    'assets/images/eraser.png',
-                    width: 24,
+                  offset: Offset(0, -_eraserAnimation!.value),
+                  child: Container(
+                    padding: EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: _isEraserActive ? Colors.white.withOpacity(0.2) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Image.asset(
+                      'assets/images/eraser.png',
+                      width: 24,
+                    ),
                   ),
                 );
               },
+            )
+                : Container(
+              padding: EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: _isEraserActive ? Colors.white.withOpacity(0.2) : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Image.asset(
+                'assets/images/eraser.png',
+                width: 24,
+              ),
             ),
           ),
           IconButton(
@@ -595,15 +778,17 @@ class _SmoothDrawingPainter extends CustomPainter {
 }
 
 class DrawingPoint {
-  final Offset position;
+  Offset position;
   final Color color;
   final bool isEraser;
   final double strokeWidth;
+  final bool isRainbow;
 
   DrawingPoint({
     required this.position,
     required this.color,
     required this.isEraser,
     required this.strokeWidth,
+    this.isRainbow = false,
   });
 }
