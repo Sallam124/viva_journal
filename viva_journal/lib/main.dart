@@ -51,7 +51,11 @@ class MyApp extends StatelessWidget {
       ),
       // ✅ Global wrapper to dismiss keyboard when tapping outside inputs
       builder: (context, child) => buildDismissKeyboardWrapper(child: child!),
-      home: _buildRoute(JournalScreen(mood: 'happy', tags: [])), // ✅ Wrapped with exit confirmation and background theme
+      home: _buildRoute(JournalScreen(
+        mood: 'happy',
+        tags: [],
+        date: DateTime.now(),
+      )), // Changed to JournalScreen
       routes: {
         '/signUp': (context) => _buildRoute(const SignUpScreen()),
         '/loading': (context) => _buildRoute(const LoadingScreen()),
@@ -60,9 +64,13 @@ class MyApp extends StatelessWidget {
         '/resetPassword': (context) => _buildRoute(const ForgotPasswordScreen()),
         '/dashboard': (context) => _buildRoute(const DashboardScreen()),
         '/calendar': (context) => _buildRoute(const CalendarScreen()),
-        '/trackerLog': (context) => _buildRoute(const TrackerLogScreen()),
+        '/trackerLog': (context) => _buildRoute(TrackerLogScreen(date: DateTime.now())),
         '/settings': (context) => _buildRoute(const SettingsScreen()),
-        '/journal': (context) => _buildRoute(JournalScreen(mood: 'happy', tags: [])),
+        '/journal': (context) => _buildRoute(JournalScreen(
+          mood: 'happy',
+          tags: [],
+          date: DateTime.now(),
+        )),
       },
     );
   }

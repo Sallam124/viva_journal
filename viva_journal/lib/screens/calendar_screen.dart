@@ -174,7 +174,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => TrackerLogScreen(
-                                        // date: selectedDate,
+                                        date: selectedDate,
                                       ),
                                     ),
                                   );

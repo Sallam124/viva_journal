@@ -3,9 +3,15 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'calendar_screen.dart';
+import 'journal_screen.dart';
 
 class TrackerLogScreen extends StatefulWidget {
-  const TrackerLogScreen({super.key});
+  final DateTime? date;
+
+  const TrackerLogScreen({
+    Key? key,
+    this.date,
+  }) : super(key: key);
 
   @override
   _TrackerLogScreenState createState() => _TrackerLogScreenState();
@@ -15,6 +21,7 @@ class _TrackerLogScreenState extends State<TrackerLogScreen> {
   int _currentIndex = 0;
   String? selectedTag;
   List<int> emotionLevels = [1, 1, 1, 1, 1]; // Track intensity levels for each emotion
+  late DateTime _currentDate;
 
   final List<List<String>> emotionProgressions = [
     ["Ecstatic", "Cheerful", "Excited", "Thrilled", "Overjoyed"],
@@ -59,8 +66,14 @@ class _TrackerLogScreenState extends State<TrackerLogScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _currentDate = widget.date ?? DateTime.now();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    String formattedDate = DateFormat("d MMM, yy | E").format(DateTime.now());
+    String formattedDate = DateFormat("d MMM, yy | E").format(_currentDate);
     Color selectedColor = colors[_currentIndex];
 
     return Scaffold(
@@ -264,7 +277,18 @@ class _TrackerLogScreenState extends State<TrackerLogScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => JournalScreen(
+                        mood: emotions[_currentIndex],
+                        tags: selectedTag != null ? [selectedTag!] : [],
+                        date: _currentDate,
+                      ),
+                    ),
+                  );
+                },
                 child: const Text("Submit", style: TextStyle(color: Colors.white, fontSize: 18)),
               ),
             ),

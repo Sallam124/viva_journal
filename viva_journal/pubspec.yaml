@@ -58,6 +58,7 @@ flutter:
     - assets/images/pencil_5.png
     - assets/images/pencil_6.png
     - assets/images/eraser.png
+    - assets/images/StarBar.png
 
   fonts:
     - family: SF Pro Display
