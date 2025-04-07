@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:viva_journal/screens/background_theme.dart';
 import 'package:viva_journal/screens/home.dart';
-import 'package:viva_journal/screens/reset_password.dart';  // ✅ Import Reset Password Screen
+import 'package:viva_journal/screens/reset_password.dart'; // ✅ Import Reset Password Screen
 import 'package:viva_journal/widgets/widgets.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -14,14 +14,12 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
-
-  String? userName;
-  String? userEmail;
-  String? userProfilePicture;
   String? errorMessage;
 
   bool _obscurePassword = true;
@@ -32,14 +30,16 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final GoogleSignInAccount? account = await _googleSignIn.signIn();
       if (account != null) {
-        userName = account.displayName;
-        userEmail = account.email;
-        userProfilePicture = account.photoUrl;
+        // Fetch Google user details
+        String? userName = account.displayName;
+        String? userEmail = account.email;
+        String? userProfilePicture = account.photoUrl;
 
         print('User name: $userName');
         print('User email: $userEmail');
         print('User profile picture: $userProfilePicture');
 
+        // Redirect to home screen
         Navigator.pushReplacementNamed(context, '/home');
       } else {
         setState(() {
@@ -51,6 +51,32 @@ class _LoginScreenState extends State<LoginScreen> {
         errorMessage = "Google Sign-In error: $error";
       });
       print('Google Sign-In Error: $error');
+    }
+  }
+
+  Future<void> _loginWithEmailPassword() async {
+    try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+
+      final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // Check if the user's email is verified
+      if (userCredential.user != null && !userCredential.user!.emailVerified) {
+        setState(() {
+          errorMessage = "Please verify your email before logging in.";
+        });
+      } else {
+        // Successfully logged in and email is verified
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+    } catch (error) {
+      setState(() {
+        errorMessage = "Login failed: $error";
+      });
     }
   }
 
@@ -140,9 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   SizedBox(
                     width: 250,
                     child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pushReplacementNamed(context, '/home');
-                      },
+                      onPressed: _loginWithEmailPassword,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 10),
@@ -151,15 +175,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       child: const Text(
-                          'Log In', style: TextStyle(fontSize: 16, color: Colors
-                          .white)),
+                          'Log In', style: TextStyle(fontSize: 16, color: Colors.white)),
                     ),
                   ),
                   const SizedBox(height: 10),
                   if (errorMessage != null)
                     Text(
                       errorMessage!,
-                      style: const TextStyle(color: Colors.black, fontSize: 14),
+                      style: const TextStyle(color: Colors.red, fontSize: 14),
                     ),
                   const SizedBox(height: 10),
                   const Text(
@@ -183,8 +206,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         side: const BorderSide(color: Colors.black),
                       ),
                       icon: const Text(
-                          'G', style: TextStyle(fontSize: 30, color: Colors
-                          .white)),
+                          'G', style: TextStyle(fontSize: 30, color: Colors.white)),
                       label: const Text(
                         ' Continue with Google',
                         style: TextStyle(fontSize: 16, color: Colors.white),
