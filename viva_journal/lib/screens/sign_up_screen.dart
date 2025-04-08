@@ -59,19 +59,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
   void _startCooldownTimer() {
     setState(() {
       _canResendEmail = false;
-      _resendCooldown = 30;
+      _resendCooldown = 30; // Reset cooldown to 30 seconds
     });
 
+    // Start a periodic timer to count down the cooldown
     _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_resendCooldown == 1) {
         timer.cancel();
         setState(() {
-          _canResendEmail = true;
-          _resendCooldown = 0;
+          _canResendEmail = true; // Enable resend after cooldown
+          _resendCooldown = 0; // Reset cooldown
         });
       } else {
         setState(() {
-          _resendCooldown--;
+          _resendCooldown--; // Decrease the cooldown
         });
       }
     });
@@ -141,7 +142,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       try {
         await _newlyCreatedUser!.sendEmailVerification();
         _showInfoPopup("Verification email resent.");
-        _startCooldownTimer();
+        _startCooldownTimer(); // Start cooldown after resending email
       } catch (e) {
         _showErrorPopup("Failed to resend email: $e");
       }
@@ -328,8 +329,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       const Text('Already have an account? ', style: TextStyle(fontSize: 16)),
                       GestureDetector(
                         onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
-                        },
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen()));                        },
                         child: const Text(
                           'Login',
                           style: TextStyle(fontSize: 16, color: Colors.black, decoration: TextDecoration.underline),

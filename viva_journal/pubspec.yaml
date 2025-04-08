@@ -27,6 +27,7 @@ dependencies:
   intl: ^0.20.2  # Keeping the latest version
   video_player: ^2.7.0
   cloud_firestore: ^5.6.5
+  email_validator: ^2.0.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -43,7 +44,6 @@ flutter:
     - assets/images/HomeBarBG.png
     - assets/images/float_button.png
     - assets/images/HBstar.png
-    - assets/images/google_logo.png
     - assets/on_screen_messages.txt
     - assets/images/Background_Calendar.png
     - assets/images/Rotate_Star.png
@@ -58,6 +58,15 @@ flutter:
     - assets/images/pencil_5.png
     - assets/images/pencil_6.png
     - assets/images/eraser.png
+    - assets/images/small_left_arrow.png
+    - assets/images/small_right_arrow.png
+    - assets/images/Star0.png
+    - assets/images/Star1.png
+    - assets/images/Star2.png
+    - assets/images/Star3.png
+    - assets/images/Star4.png
+    - assets/images/Star5.png
+
 
   fonts:
     - family: SF Pro Display
