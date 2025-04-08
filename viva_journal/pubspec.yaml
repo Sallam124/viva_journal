@@ -39,9 +39,33 @@ flutter:
     - assets/images/google_logo.png
     - assets/on_screen_messages.txt
     - assets/images/Background_Calendar.png
+<<<<<<< Updated upstream
 
 >>>>>>> Stashed changes
 
+=======
+    - assets/images/Rotate_Star.png
+    - assets/images/Star.svg
+    - assets/images/Background_Calendar.png
+    - assets/images/Left_arrow.png
+    - assets/images/Right_arrow.png
+    - assets/images/pencil_1.png
+    - assets/images/pencil_2.png
+    - assets/images/pencil_3.png
+    - assets/images/pencil_4.png
+    - assets/images/pencil_5.png
+    - assets/images/pencil_6.png
+    - assets/images/eraser.png
+    - assets/images/Google.png
+    - assets/images/small_left_arrow.png
+    - assets/images/small_right_arrow.png
+    - assets/images/empty_star.png
+    - assets/images/yellow_star.png
+    - assets/images/yellow_star1.png
+    - assets/images/mid_star.png
+    - assets/images/red_star.png
+    - assets/images/red_star1.png
+>>>>>>> Stashed changes
   fonts:
     - family: SF Pro Display
       fonts:

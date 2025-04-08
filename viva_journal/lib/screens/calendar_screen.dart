@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+<<<<<<< Updated upstream
 import 'package:intl/intl.dart'; // For date manipulation
 import 'package:viva_journal/widgets/widgets.dart';
+=======
+import 'package:viva_journal/database/database.dart';
+>>>>>>> Stashed changes
 
 // MonthSelector widget to display the current month and year with navigation buttons
 class MonthSelector extends StatelessWidget {
@@ -147,16 +151,115 @@ class _CalendarScreenState extends State<CalendarScreen> {
   int _selectedMonth = DateTime.now().month; // Initial selected month
   int _selectedYear = DateTime.now().year;   // Initial selected year
 
+<<<<<<< Updated upstream
   // Function to get the number of days in the selected month
   int _getDaysInMonth(int month, int year) {
     return DateTime(year, month + 1, 0).day; // Get last day of the month
+=======
+  final List<List<String>> emotionProgressions = [
+    ["Ecstatic", "Cheerful", "Excited", "Thrilled", "Overjoyed"], // Yellow Star
+    ["Happy", "Content", "Pleasant", "Cheerful", "Delighted"],    // Yellow Star 1
+    ["Neutral", "Fine", "Satisfied", "Meh", "Indifferent"],        // Mid Star
+    ["Angry", "Irritated", "Stressed", "Frustrated", "Fuming"],    // Red Star
+    ["Down", "Distressed", "Anxious", "Defeated", "Exhausted"],    // Red Star 1
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    selectedMonth = now.month;
+    selectedYear = now.year;
+    print("Initialized Calendar: selectedMonth=$selectedMonth, selectedYear=$selectedYear");
+  }
+
+  String get monthName {
+    return DateFormat('MMMM').format(DateTime(selectedYear, selectedMonth));
+  }
+
+  void _goToPreviousMonth() {
+    setState(() {
+      if (selectedMonth == 1) {
+        selectedMonth = 12;
+        selectedYear--;
+      } else {
+        selectedMonth--;
+      }
+      print("Navigated to Previous Month: selectedMonth=$selectedMonth, selectedYear=$selectedYear");
+    });
+  }
+
+  void _goToNextMonth() {
+    setState(() {
+      if (selectedMonth == 12) {
+        selectedMonth = 1;
+        selectedYear++;
+      } else {
+        selectedMonth++;
+      }
+      print("Navigated to Next Month: selectedMonth=$selectedMonth, selectedYear=$selectedYear");
+    });
+  }
+
+  void _onHorizontalDragEnd(DragEndDetails details) {
+    if (details.primaryVelocity == null) return;
+    if (details.primaryVelocity! > 0) {
+      _goToPreviousMonth();
+    } else if (details.primaryVelocity! < 0) {
+      _goToNextMonth();
+    }
+>>>>>>> Stashed changes
+  }
+
+  Future<String> getMoodForDayFromDb(int day) async {
+    final dateStr = DateFormat('d-M-yyyy').format(DateTime(selectedYear, selectedMonth, day));
+    print("Fetching mood for date: $dateStr");
+
+    // Ensure that the date format matches the format used in the database
+    final moodEntry = await DatabaseHelper().getMoodForDay(dateStr);
+
+    if (moodEntry != null) {
+      print("Mood entry found: ${moodEntry.mood}");
+      return moodEntry.mood;
+    }
+    print("No mood entry found for $dateStr");
+    return 'NoMood';  // Return 'NoMood' if not found
+  }
+
+  String getMoodForDay(String mood) {
+    print("Evaluating mood for: $mood");
+    if (mood == 'NoMood') {
+      return 'assets/images/empty_star.png';  // Empty star for no mood entry
+    }
+
+    // Check mood and map it to the appropriate star image
+    if (emotionProgressions[0].contains(mood)) {
+      return 'assets/images/yellow_star.png';
+    } else if (emotionProgressions[1].contains(mood)) {
+      return 'assets/images/yellow_star1.png';
+    } else if (emotionProgressions[2].contains(mood)) {
+      return 'assets/images/mid_star.png';
+    } else if (emotionProgressions[3].contains(mood)) {
+      return 'assets/images/red_star.png';
+    } else if (emotionProgressions[4].contains(mood)) {
+      return 'assets/images/red_star1.png';
+    }
+    return 'assets/images/empty_star.png';  // Default to empty star if mood doesn't match any category
   }
 
   @override
   Widget build(BuildContext context) {
+<<<<<<< Updated upstream
     final daysInMonth = _getDaysInMonth(_selectedMonth, _selectedYear);
+=======
+    final daysInMonth = DateTime(selectedYear, selectedMonth + 1, 0).day;
+    final firstWeekday = DateTime(selectedYear, selectedMonth, 1).weekday % 7;
+>>>>>>> Stashed changes
+
+    print("Building Calendar for $monthName $selectedYear with $daysInMonth days");
 
     return Scaffold(
+<<<<<<< Updated upstream
       body: Stack(
         children: [
           // Background image positioned to cover the entire screen
@@ -191,6 +294,177 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 child: Padding(
                   padding: const EdgeInsets.only(top: 90), // Add padding to move the grid down
                   child: DayGrid(daysInMonth: daysInMonth), // Display days grid
+=======
+      body: GestureDetector(
+        onHorizontalDragEnd: _onHorizontalDragEnd,
+        child: Container(
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/images/Background_Calendar.png'),
+              fit: BoxFit.cover,
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                const SizedBox(height: 29),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      onPressed: _goToPreviousMonth,
+                      icon: const ImageIcon(
+                        AssetImage('assets/images/Left_arrow.png'),
+                        color: Colors.white,
+                        size: 70,
+                      ),
+                    ),
+                    Column(
+                      children: [
+                        Text(
+                          monthName,
+                          style: const TextStyle(
+                            fontSize: 36,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        Text(
+                          '$selectedYear',
+                          style: const TextStyle(
+                            fontSize: 34,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      onPressed: _goToNextMonth,
+                      icon: const ImageIcon(
+                        AssetImage('assets/images/Right_arrow.png'),
+                        color: Colors.white,
+                        size: 70,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 15),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      onPressed: _goToPreviousMonth,
+                      icon: const ImageIcon(
+                        AssetImage('assets/images/small_left_arrow.png'),
+                        color: Colors.black,
+                        size: 40,
+                      ),
+                    ),
+                    Text(
+                      monthName,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _goToNextMonth,
+                      icon: const ImageIcon(
+                        AssetImage('assets/images/small_right_arrow.png'),
+                        color: Colors.black,
+                        size: 40,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 10),
+
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+                                .map(
+                                  (day) => Text(
+                                day,
+                                style: const TextStyle(
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            )
+                                .toList(),
+                          ),
+                          SizedBox(
+                            height: 300,
+                            child: GridView.builder(
+                              padding: const EdgeInsets.only(top: 30),
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 7,
+                                childAspectRatio: 1.0,
+                              ),
+                              itemCount: daysInMonth + firstWeekday,
+                              itemBuilder: (context, index) {
+                                if (index < firstWeekday) {
+                                  return const SizedBox.shrink();
+                                }
+                                final day = index - firstWeekday + 1;
+
+                                return FutureBuilder<String>(
+                                  future: getMoodForDayFromDb(day),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.connectionState == ConnectionState.waiting) {
+                                      return const Center(child: CircularProgressIndicator());
+                                    }
+                                    if (snapshot.hasData) {
+                                      final moodOfDay = snapshot.data!;
+                                      final moodStar = getMoodForDay(moodOfDay);
+
+                                      return GestureDetector(
+                                        onTap: () {
+                                          final selectedDate = DateTime(selectedYear, selectedMonth, day);
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => TrackerLogScreen(),
+                                            ),
+                                          );
+                                        },
+                                        child: Column(
+                                          children: [
+                                            Text(
+                                              '$day',
+                                              style: const TextStyle(
+                                                fontSize: 18,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                            Image.asset(moodStar),
+                                          ],
+                                        ),
+                                      );
+                                    }
+                                    return const SizedBox.shrink();
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+>>>>>>> Stashed changes
                 ),
               ),
             ],

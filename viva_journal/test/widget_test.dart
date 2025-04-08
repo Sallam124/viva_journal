@@ -1,30 +1,23 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:viva_journal/main.dart';
+import 'package:viva_journal/services/auth_services.dart'; // Import AuthService
+import 'package:viva_journal/screens/sign_up_screen.dart';
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    // Create a mock or real instance of AuthService (you can also mock it if necessary)
+    AuthService authService = AuthService();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Build our app and trigger a frame. Pass the authService here
+    await tester.pumpWidget(MyApp(authService: authService));
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    // You can perform tests on specific parts of the widget now.
+    // For example, verify if the app initializes correctly.
+    expect(find.byType(MyApp), findsOneWidget);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Test logic can go here, e.g., testing buttons or states
+    // Verify that the initial screen (SignUpScreen) is shown
+    expect(find.byType(SignUpScreen), findsOneWidget);
   });
 }

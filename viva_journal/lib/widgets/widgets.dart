@@ -18,7 +18,6 @@ Widget buildTextField(
         borderRadius: BorderRadius.circular(30),
         border: Border.all(color: Colors.black, width: 3),
       ),
-      // AnimatedBuilder will rebuild the TextField when focusNode changes.
       child: AnimatedBuilder(
         animation: focusNode,
         builder: (context, child) {
@@ -59,7 +58,6 @@ Widget buildPasswordField(
         borderRadius: BorderRadius.circular(30),
         border: Border.all(color: Colors.black, width: 3),
       ),
-      // AnimatedBuilder will rebuild the TextField when focusNode changes.
       child: AnimatedBuilder(
         animation: focusNode,
         builder: (context, child) {
@@ -140,7 +138,6 @@ Widget buildDismissKeyboardWrapper({required Widget child}) {
 }
 
 /// A reusable custom text form field widget with styling for form inputs.
-/// This widget is designed to be used inside a Form for built-in validation.
 class CustomTextFormField extends StatelessWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -191,3 +188,35 @@ class CustomTextFormField extends StatelessWidget {
   }
 }
 
+<<<<<<< Updated upstream
+=======
+/// A reusable custom elevated button widget with styling.
+class CustomElevatedButton extends StatelessWidget {
+  final String text;
+  final VoidCallback onPressed;
+
+  const CustomElevatedButton({
+    Key? key,
+    required this.text,
+    required this.onPressed,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.black,
+        padding: const EdgeInsets.symmetric(vertical: 15),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
+        ),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 16, color: Colors.white),
+      ),
+    );
+  }
+}
+>>>>>>> Stashed changes
