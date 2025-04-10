@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "482258690101-dasreuml65tcavofu63l4om70hc4qq38.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.viva_journal",
+            "certificate_hash": "2e95e4e283dea879ba026bc26157f026cef3cbca"
+          }
+        },
+        {
           "client_id": "482258690101-lg8sn77jlovstur5n0v1cafo9umq95e7.apps.googleusercontent.com",
           "client_type": 3
         }

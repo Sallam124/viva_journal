@@ -18,7 +18,6 @@ Widget buildTextField(
         borderRadius: BorderRadius.circular(30),
         border: Border.all(color: Colors.black, width: 3),
       ),
-      // AnimatedBuilder will rebuild the TextField when focusNode changes.
       child: AnimatedBuilder(
         animation: focusNode,
         builder: (context, child) {
@@ -31,9 +30,7 @@ Widget buildTextField(
               hintStyle: const TextStyle(color: Colors.black54),
               filled: false,
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(
-                vertical: 15, horizontal: 20,
-              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
             ),
           );
         },
@@ -59,7 +56,6 @@ Widget buildPasswordField(
         borderRadius: BorderRadius.circular(30),
         border: Border.all(color: Colors.black, width: 3),
       ),
-      // AnimatedBuilder will rebuild the TextField when focusNode changes.
       child: AnimatedBuilder(
         animation: focusNode,
         builder: (context, child) {
@@ -74,15 +70,10 @@ Widget buildPasswordField(
               filled: false,
               border: InputBorder.none,
               suffixIcon: IconButton(
-                icon: Icon(
-                  obscurePassword ? Icons.visibility_off : Icons.visibility,
-                  color: Colors.black54,
-                ),
+                icon: Icon(obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.black54),
                 onPressed: togglePasswordVisibility,
               ),
-              contentPadding: const EdgeInsets.symmetric(
-                vertical: 15, horizontal: 20,
-              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
             ),
           );
         },
@@ -140,7 +131,6 @@ Widget buildDismissKeyboardWrapper({required Widget child}) {
 }
 
 /// A reusable custom text form field widget with styling for form inputs.
-/// This widget is designed to be used inside a Form for built-in validation.
 class CustomTextFormField extends StatelessWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -179,12 +169,58 @@ class CustomTextFormField extends StatelessWidget {
             hintText: hint,
             hintStyle: const TextStyle(color: Colors.black54),
             border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(
-              vertical: 15, horizontal: 20,
-            ),
+            contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
             suffixIcon: suffixIcon,
           ),
           validator: validator,
+        ),
+      ),
+    );
+  }
+}
+
+/// A reusable custom elevated button widget with styling.
+class CustomElevatedButton extends StatelessWidget {
+  final String text;
+  final VoidCallback onPressed;
+
+  const CustomElevatedButton({
+    Key? key,
+    required this.text,
+    required this.onPressed,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.black,
+        padding: const EdgeInsets.symmetric(vertical: 15),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
+        ),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 16, color: Colors.white),
+      ),
+    );
+  }
+}
+
+/// A reusable background widget that can be used across different screens.
+class BackgroundWidget extends StatelessWidget {
+  const BackgroundWidget({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blue, Colors.purple],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
       ),
     );
