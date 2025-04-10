@@ -4,24 +4,16 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:intl/intl.dart';
 import '../widgets/media.dart';
 import 'package:viva_journal/widgets/media.dart';
 import 'package:video_player/video_player.dart';
 import 'dart:ui' as ui;
-import 'dart:math';
 
 class JournalScreen extends StatefulWidget {
   final String mood;
   final List<String> tags;
-  final DateTime date;
 
-  const JournalScreen({
-    Key? key,
-    required this.mood,
-    required this.tags,
-    required this.date,
-  }) : super(key: key);
+  const JournalScreen({Key? key, required this.mood, required this.tags}) : super(key: key);
 
   @override
   _JournalScreenState createState() => _JournalScreenState();
@@ -44,7 +36,7 @@ class Media {
   });
 }
 
-class _JournalScreenState extends State<JournalScreen> with TickerProviderStateMixin {
+class _JournalScreenState extends State<JournalScreen> with SingleTickerProviderStateMixin {
   TextEditingController _textController = TextEditingController();
   List<DrawingPoint> _points = [];
   List<List<DrawingPoint>> _drawingHistory = [];
@@ -62,54 +54,35 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
   double _eraserWidth = 30.0;
   FocusNode _textFocusNode = FocusNode();
   bool _isDrawingMode = false;
-  AnimationController? _eraserAnimationController;
-  Animation<double>? _eraserAnimation;
+  late AnimationController _eraserAnimationController;
+  late Animation<double> _eraserAnimation;
   InteractiveMedia? _selectedMedia;
-  bool _isRainbowMode = true;
-  double _rainbowOffset = 0.0;
-  AnimationController? _pencilAnimationController;
-  Animation<double>? _pencilAnimation;
-  bool _isPencilActive = false;
 
   List<Color> _pencilColors = [
-    Colors.black,  // Standard black pencil
-    Color(0xFFFFE100),  // Original yellow
-    Color(0xFFFFC917),  // Original yellow-orange
-    Color(0xFFF8650C),  // Original orange
-    Color(0xFFF00000),  // Original red
-    Color(0xFF8C0000),  // Original dark red
+    Colors.black,
+    Color(0xFFFFE100),
+    Color(0xFFFFC917),
+    Color(0xFFF8650C),
+    Color(0xFFF00000),
+    Color(0xFF8C0000)
   ];
-
-  void _initializeAnimations() {
-    _eraserAnimationController = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 200),
-    );
-    _eraserAnimation = Tween<double>(begin: 0, end: 8).animate(
-      CurvedAnimation(
-        parent: _eraserAnimationController!,
-        curve: Curves.easeInOut,
-      ),
-    );
-
-    _pencilAnimationController = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 200),
-    );
-    _pencilAnimation = Tween<double>(begin: 0, end: 8).animate(
-      CurvedAnimation(
-        parent: _pencilAnimationController!,
-        curve: Curves.easeInOut,
-      ),
-    );
-  }
 
   @override
   void initState() {
     super.initState();
     _recorder = FlutterSoundRecorder();
     _recorder!.openRecorder();
-    _initializeAnimations();
+
+    _eraserAnimationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 200),
+    );
+    _eraserAnimation = Tween<double>(begin: 0, end: 8).animate(
+      CurvedAnimation(
+        parent: _eraserAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
   }
 
   @override
@@ -117,8 +90,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
     _textController.dispose();
     _textFocusNode.dispose();
     _recorder!.closeRecorder();
-    _eraserAnimationController?.dispose();
-    _pencilAnimationController?.dispose();
+    _eraserAnimationController.dispose();
     super.dispose();
   }
 
@@ -181,53 +153,12 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
     }
   }
 
-  Color _getRainbowColor(Offset position) {
-    final List<Color> rainbowColors = [
-      Color(0xFFFFE100),  // Yellow
-      Color(0xFFFFC917),  // Yellow-orange
-      Color(0xFFF8650C),  // Orange
-      Color(0xFFF00000),  // Red
-      Color(0xFF8C0000),  // Dark red
-    ];
-
-    final double time = DateTime.now().millisecondsSinceEpoch / 500.0;
-    final double x = position.dx / 50.0;
-    final double y = position.dy / 50.0;
-
-    final double pattern = (sin(x + time) + cos(y + time) + sin(x * y + time)) / 3.0;
-    final double normalizedPattern = (pattern + 1) / 2;
-    final int colorIndex = (normalizedPattern * (rainbowColors.length - 1)).floor();
-    final double t = (normalizedPattern * (rainbowColors.length - 1)) - colorIndex;
-
-    if (colorIndex >= rainbowColors.length - 1) {
-      return rainbowColors.last;
-    }
-
-    return Color.lerp(rainbowColors[colorIndex], rainbowColors[colorIndex + 1], t) ?? rainbowColors[0];
-  }
-
   void _changePencilColor() {
     setState(() {
       _pencilIndex = (_pencilIndex + 1) % _pencilColors.length;
       _currentColor = _pencilColors[_pencilIndex];
       _isEraserActive = false;
-      _isRainbowMode = _pencilIndex == 0;
-      _eraserAnimationController?.reverse();
-      _pencilAnimationController?.forward();
-      _selectedMedia = null;
-    });
-  }
-
-  void _togglePencil() {
-    setState(() {
-      _isPencilActive = !_isPencilActive;
-      if (_isPencilActive) {
-        _pencilAnimationController?.forward();
-        _eraserAnimationController?.reverse();
-        _isEraserActive = false;
-      } else {
-        _pencilAnimationController?.reverse();
-      }
+      _eraserAnimationController.reverse();
       _selectedMedia = null;
     });
   }
@@ -236,11 +167,9 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
     setState(() {
       _isEraserActive = !_isEraserActive;
       if (_isEraserActive) {
-        _eraserAnimationController?.forward();
-        _pencilAnimationController?.reverse();
-        _isPencilActive = false;
+        _eraserAnimationController.forward();
       } else {
-        _eraserAnimationController?.reverse();
+        _eraserAnimationController.reverse();
       }
       _selectedMedia = null;
     });
@@ -268,23 +197,20 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
         _textFocusNode.requestFocus();
       } else {
         _textFocusNode.unfocus();
-        _selectedMedia = null;
       }
+      _selectedMedia = null;
     });
   }
 
   void _handleDrawingStart(DragStartDetails details) {
-    if (!_isPencilActive && !_isEraserActive) return;
-
     final position = details.localPosition;
     setState(() {
       _drawingHistory.add(List.from(_points));
       _points.add(DrawingPoint(
         position: position,
-        color: _isEraserActive ? Colors.white : (_isRainbowMode ? _getRainbowColor(position) : _currentColor),
+        color: _isEraserActive ? Colors.white : _currentColor,
         isEraser: _isEraserActive,
         strokeWidth: _isEraserActive ? _eraserWidth : _strokeWidth,
-        isRainbow: _isRainbowMode,
       ));
       _redoHistory.clear();
     });
@@ -295,50 +221,15 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
 
     setState(() {
       if (_isEraserActive) {
-        List<DrawingPoint> pointsToKeep = [];
-        List<DrawingPoint> currentStroke = [];
-
-        for (int i = 0; i < _points.length; i++) {
-          if (_points[i].position == Offset.zero) {
-            bool strokeIntersects = false;
-            for (var point in currentStroke) {
-              if ((point.position - position).distance <= _eraserWidth / 2) {
-                strokeIntersects = true;
-                break;
-              }
-            }
-
-            if (!strokeIntersects) {
-              pointsToKeep.addAll(currentStroke);
-              pointsToKeep.add(_points[i]);
-            }
-            currentStroke = [];
-          } else {
-            currentStroke.add(_points[i]);
-          }
-        }
-
-        if (currentStroke.isNotEmpty) {
-          bool strokeIntersects = false;
-          for (var point in currentStroke) {
-            if ((point.position - position).distance <= _eraserWidth / 2) {
-              strokeIntersects = true;
-              break;
-            }
-          }
-          if (!strokeIntersects) {
-            pointsToKeep.addAll(currentStroke);
-          }
-        }
-
-        _points = pointsToKeep;
+        _points.removeWhere(
+              (point) => (point.position - position).distance <= _eraserWidth / 2,
+        );
       } else {
         _points.add(DrawingPoint(
           position: position,
-          color: _isRainbowMode ? _getRainbowColor(position) : _currentColor,
+          color: _currentColor,
           isEraser: false,
           strokeWidth: _strokeWidth,
-          isRainbow: _isRainbowMode,
         ));
       }
     });
@@ -367,6 +258,27 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
     });
   }
 
+  void _handleMediaPanUpdate(ScaleUpdateDetails details, Media media) {
+    setState(() {
+      media.position += details.focalPointDelta;
+    });
+  }
+
+  void _handleMediaScaleUpdate(ScaleUpdateDetails details, InteractiveMedia media) {
+    setState(() {
+      double newSize = media.size * details.scale;
+      media.size = newSize.clamp(50.0, 500.0);
+    });
+  }
+
+  void _handleRotateMedia(DragUpdateDetails details) {
+    if (_selectedMedia != null) {
+      setState(() {
+        _selectedMedia!.angle += details.delta.dx * 0.01;
+      });
+    }
+  }
+
   void _deleteSelectedMedia() {
     if (_selectedMedia != null) {
       setState(() {
@@ -376,268 +288,179 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
     }
   }
 
+  void _handleScaleUpdate(ScaleUpdateDetails details, InteractiveMedia media) {
+    setState(() {
+      // Handle movement (panning)
+      media.position += details.focalPointDelta;
+
+      // Handle scaling
+      media.size = (media.size * details.scale).clamp(50.0, 500.0);
+
+      // Handle rotation with two fingers
+      if (details.rotation != 0) {
+        // Convert rotation from radians to degrees and snap to 15-degree increments
+        double newAngle = (details.rotation * 180 / 3.14159265359) / 15.0;
+        newAngle = newAngle.round() * 15.0;
+        media.angle = newAngle * 3.14159265359 / 180; // Convert back to radians
+
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        centerTitle: true,
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pushReplacementNamed(context, '/trackerlog_screen'),
-        ),
-        title: Text(
-          DateFormat("d MMM, yy | E").format(widget.date),
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-            color: Colors.black,
-          ),
-          textAlign: TextAlign.center,
+          onPressed: () {
+            Navigator.pushReplacementNamed(context, '/trackerlog_screen');
+          },
+          tooltip: 'Back',
         ),
         actions: [
           IconButton(
             icon: Icon(_isDrawingMode ? Icons.text_fields : Icons.edit),
             onPressed: _toggleDrawingMode,
+            tooltip: _isDrawingMode ? 'Switch to Text Mode' : 'Switch to Drawing Mode',
           ),
           if (_selectedMedia != null)
             IconButton(
               icon: Icon(Icons.delete),
               onPressed: _deleteSelectedMedia,
+              tooltip: 'Delete Selected Media',
             ),
         ],
       ),
       body: Stack(
         children: [
-          Column(
+          ListView(
+            padding: EdgeInsets.all(20),
             children: [
-              Expanded(
-                child: ListView(
-                  padding: EdgeInsets.all(20),
-                  children: [
-                    Container(
-                      height: MediaQuery.of(context).size.height - 100, // Full height minus padding and app bar
-                      child: Stack(
-                        children: [
-                          // Text field that covers the whole area
-                          Container(
-                            height: double.infinity,
-                            child: TextField(
-                              controller: _textController,
-                              focusNode: _textFocusNode,
-                              maxLines: null,
-                              expands: true,
-                              textAlignVertical: TextAlignVertical.top,
-                              readOnly: _isDrawingMode,
-                              decoration: InputDecoration(
-                                hintText: "Type here...",
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.all(0),
-                              ),
-                            ),
-                          ),
+              // Text input field
+              TextField(
+                controller: _textController,
+                focusNode: _textFocusNode,
+                maxLines: null,
+                readOnly: _isDrawingMode,
+                style: TextStyle(color: Colors.black),
+                decoration: InputDecoration(
+                  hintText: "Type here...",
+                  hintStyle: TextStyle(color: Colors.grey),
+                  border: InputBorder.none,
+                ),
+              ),
 
-                          // Drawing overlay (always visible)
-                          Positioned.fill(
-                            child: GestureDetector(
-                              onPanStart: _isDrawingMode ? (details) {
-                                if (_isPencilActive || _isEraserActive) {
-                                  _handleDrawingStart(details);
-                                }
-                              } : null,
-                              onPanUpdate: _isDrawingMode ? (details) {
-                                if (_isPencilActive || _isEraserActive) {
-                                  _handleDrawingUpdate(details);
-                                }
-                              } : null,
-                              onPanEnd: _isDrawingMode ? (details) {
-                                if (_isPencilActive || _isEraserActive) {
-                                  _handleDrawingEnd(details);
-                                }
-                              } : null,
-                              child: CustomPaint(
-                                painter: _SmoothDrawingPainter(
-                                  points: _points,
-                                  showLines: _showLines,
-                                ),
-                                child: Container(color: Colors.transparent),
-                              ),
+              // Display Images & Videos in Scrollable View
+              Column(
+                children: _attachments.map((media) {
+                  return GestureDetector(
+                    onTap: () => _handleMediaTap(media),
+                    onScaleUpdate: (details) => _handleScaleUpdate(details, media),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 10),
+                      child: Transform.rotate(
+                        angle: media.angle,
+                        child: Transform.scale(
+                          scale: media.size / 200.0,
+                          child: Container(
+                            width: 200,
+                            height: 200,
+                            decoration: BoxDecoration(
+                              border: _selectedMedia == media
+                                  ? Border.all(color: Colors.blue, width: 2)
+                                  : null,
                             ),
+                            child: media.isVideo
+                                ? VideoWidget(file: media.file)
+                                : Image.file(media.file, fit: BoxFit.contain),
                           ),
-
-                          // Media attachments
-                          ..._attachments.map((media) => MediaWidget(
-                            media: media,
-                            isSelected: _selectedMedia == media,
-                            onTap: () => _handleMediaTap(media),
-                            onUpdate: (updatedMedia) {
-                              setState(() {
-                                final index = _attachments.indexOf(media);
-                                if (index != -1) {
-                                  _attachments[index] = updatedMedia;
-                                  if (_selectedMedia == media) {
-                                    _selectedMedia = updatedMedia;
-                                  }
-                                }
-                              });
-                            },
-                            isEditingMode: !_isDrawingMode,
-                          )).toList(),
-                        ],
+                        ),
                       ),
                     ),
-                  ],
-                ),
+                  );
+                }).toList(),
               ),
             ],
           ),
 
-          // Drawing toolbar fixed at bottom
-          if (_isDrawingMode)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _buildDrawingToolbar(),
+          // Drawing layer above everything
+          IgnorePointer(
+            ignoring: !_isDrawingMode,
+            child: GestureDetector(
+              onPanStart: _handleDrawingStart,
+              onPanUpdate: _handleDrawingUpdate,
+              onPanEnd: _handleDrawingEnd,
+              child: CustomPaint(
+                painter: _SmoothDrawingPainter(
+                  points: _points,
+                  showLines: _showLines,
+                ),
+                child: Container(), // Ensures it covers the whole screen
+              ),
             ),
+          ),
         ],
       ),
+      bottomNavigationBar: _isDrawingMode ? _buildDrawingToolbar() : null,
     );
   }
 
-  Widget _buildDrawingToolbar() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        double screenWidth = MediaQuery.of(context).size.width;
-        double toolbarHeight = screenWidth * 0.2;
 
-        return Container(
-          width: screenWidth,
-          height: toolbarHeight,
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/images/StarBar.png'),
-              fit: BoxFit.fill,
+  Widget _buildDrawingToolbar() {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      color: Colors.black,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            icon: Icon(Icons.undo, color: Colors.white),
+            onPressed: _undo,
+          ),
+          IconButton(
+            icon: Icon(Icons.redo, color: Colors.white),
+            onPressed: _redo,
+          ),
+          GestureDetector(
+            onTap: _changePencilColor,
+            child: Container(
+              padding: EdgeInsets.all(5),
+              child: Image.asset(
+                'assets/images/pencil_${_pencilIndex + 1}.png',
+                width: 24,
+              ),
             ),
           ),
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    Icons.undo,
-                    color: _drawingHistory.isEmpty ? Colors.grey : Colors.white,
-                    size: toolbarHeight * 0.3,
+          GestureDetector(
+            onTap: _toggleEraser,
+            child: AnimatedBuilder(
+              animation: _eraserAnimation,
+              builder: (context, child) {
+                return Transform.translate(
+                  offset: Offset(0, -_eraserAnimation.value),
+                  child: Image.asset(
+                    'assets/images/eraser.png',
+                    width: 24,
                   ),
-                  onPressed: _drawingHistory.isEmpty ? null : _undo,
-                ),
-                IconButton(
-                  icon: Icon(
-                    Icons.redo,
-                    color: _redoHistory.isEmpty ? Colors.grey : Colors.white,
-                    size: toolbarHeight * 0.3,
-                  ),
-                  onPressed: _redoHistory.isEmpty ? null : _redo,
-                ),
-                GestureDetector(
-                  onTap: _togglePencil,
-                  onDoubleTap: _changePencilColor,
-                  child: _pencilAnimation != null
-                      ? AnimatedBuilder(
-                    animation: _pencilAnimation!,
-                    builder: (context, child) {
-                      return Transform.translate(
-                        offset: Offset(0, -_pencilAnimation!.value),
-                        child: Container(
-                          padding: EdgeInsets.all(toolbarHeight * 0.05),
-                          decoration: BoxDecoration(
-                            color: _isPencilActive ? Colors.white.withOpacity(0.2) : Colors.transparent,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Image.asset(
-                            'assets/images/pencil_${_pencilIndex + 1}.png',
-                            width: toolbarHeight * 0.4,
-                          ),
-                        ),
-                      );
-                    },
-                  )
-                      : Container(
-                    padding: EdgeInsets.all(toolbarHeight * 0.05),
-                    decoration: BoxDecoration(
-                      color: _isPencilActive ? Colors.white.withOpacity(0.2) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Image.asset(
-                      'assets/images/pencil_${_pencilIndex + 1}.png',
-                      width: toolbarHeight * 0.4,
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: _toggleEraser,
-                  child: _eraserAnimation != null
-                      ? AnimatedBuilder(
-                    animation: _eraserAnimation!,
-                    builder: (context, child) {
-                      return Transform.translate(
-                        offset: Offset(0, -_eraserAnimation!.value),
-                        child: Container(
-                          padding: EdgeInsets.all(toolbarHeight * 0.05),
-                          decoration: BoxDecoration(
-                            color: _isEraserActive ? Colors.white.withOpacity(0.2) : Colors.transparent,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Image.asset(
-                            'assets/images/eraser.png',
-                            width: toolbarHeight * 0.4,
-                          ),
-                        ),
-                      );
-                    },
-                  )
-                      : Container(
-                    padding: EdgeInsets.all(toolbarHeight * 0.05),
-                    decoration: BoxDecoration(
-                      color: _isEraserActive ? Colors.white.withOpacity(0.2) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Image.asset(
-                      'assets/images/eraser.png',
-                      width: toolbarHeight * 0.4,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(
-                    _isRecording ? Icons.mic_off : Icons.mic,
-                    color: Colors.white,
-                    size: toolbarHeight * 0.3,
-                  ),
-                  onPressed: _isRecording ? _stopRecording : _startRecording,
-                ),
-                IconButton(
-                  icon: Icon(
-                    Icons.image,
-                    color: Colors.white,
-                    size: toolbarHeight * 0.3,
-                  ),
-                  onPressed: _pickMedia,
-                ),
-                IconButton(
-                  icon: Icon(
-                    Icons.grid_on,
-                    color: Colors.white,
-                    size: toolbarHeight * 0.3,
-                  ),
-                  onPressed: _toggleLines,
-                ),
-              ],
+                );
+              },
             ),
           ),
-        );
-      },
+          IconButton(
+            icon: Icon(_isRecording ? Icons.mic_off : Icons.mic, color: Colors.white),
+            onPressed: _isRecording ? _stopRecording : _startRecording,
+          ),
+          IconButton(
+            icon: Icon(Icons.image, color: Colors.white),
+            onPressed: _pickMedia,
+          ),
+          IconButton(
+            icon: Icon(Icons.grid_on, color: Colors.white),
+            onPressed: _toggleLines,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -772,106 +595,15 @@ class _SmoothDrawingPainter extends CustomPainter {
 }
 
 class DrawingPoint {
-  Offset position;
+  final Offset position;
   final Color color;
   final bool isEraser;
   final double strokeWidth;
-  final bool isRainbow;
 
   DrawingPoint({
     required this.position,
     required this.color,
     required this.isEraser,
     required this.strokeWidth,
-    this.isRainbow = false,
   });
-}
-
-class MediaWidget extends StatefulWidget {
-  final InteractiveMedia media;
-  final bool isSelected;
-  final VoidCallback onTap;
-  final Function(InteractiveMedia) onUpdate;
-  final bool isEditingMode;
-
-  const MediaWidget({
-    required this.media,
-    required this.isSelected,
-    required this.onTap,
-    required this.onUpdate,
-    required this.isEditingMode,
-    Key? key,
-  }) : super(key: key);
-
-  @override
-  _MediaWidgetState createState() => _MediaWidgetState();
-}
-
-class _MediaWidgetState extends State<MediaWidget> {
-  bool _isInEditMode = false;
-  double _initialAngle = 0;
-  double _initialScale = 1.0;
-  Offset _initialPosition = Offset.zero;
-  Offset _dragStartPosition = Offset.zero;
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      left: widget.media.position.dx,
-      top: widget.media.position.dy,
-      child: GestureDetector(
-        onTap: widget.onTap,
-        onDoubleTap: () {
-          setState(() {
-            _isInEditMode = !_isInEditMode;
-          });
-        },
-        onScaleStart: _isInEditMode
-            ? (details) {
-          _initialAngle = widget.media.angle;
-          _initialScale = widget.media.size / 200.0;
-          _initialPosition = widget.media.position;
-          _dragStartPosition = details.focalPoint;
-        }
-            : null,
-        onScaleUpdate: _isInEditMode
-            ? (details) {
-          final offsetDelta = details.focalPoint - _dragStartPosition;
-          final newPosition = _initialPosition + offsetDelta;
-
-          final newAngle = _initialAngle + details.rotation;
-          final newScale = (_initialScale * details.scale).clamp(0.25, 4.0);
-
-          widget.onUpdate(InteractiveMedia(
-            file: widget.media.file,
-            isVideo: widget.media.isVideo,
-            position: newPosition,
-            size: newScale * 200.0,
-            angle: newAngle,
-          ));
-        }
-            : null,
-        child: Transform.rotate(
-          angle: widget.media.angle,
-          child: Transform.scale(
-            scale: widget.media.size / 200.0,
-            child: Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                border: widget.isSelected || _isInEditMode
-                    ? Border.all(
-                    color: _isInEditMode ? Colors.green : Colors.blue,
-                    width: 2)
-                    : null,
-              ),
-              child: widget.media.isVideo
-                  ? VideoWidget(file: widget.media.file)
-                  : Image.file(widget.media.file, fit: BoxFit.contain),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
