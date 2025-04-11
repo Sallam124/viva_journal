@@ -51,7 +51,7 @@ class MyApp extends StatelessWidget {
       ),
       // ✅ Global wrapper to dismiss keyboard when tapping outside inputs
       builder: (context, child) => buildDismissKeyboardWrapper(child: child!),
-      home: _buildRoute(SignUpScreen()), // ✅ Wrapped with exit confirmation and background theme
+      home: _buildRoute(JournalScreen(mood: 'happy', tags: [])), // Changed from SignUpScreen to JournalScreen
       routes: {
         '/signUp': (context) => _buildRoute(const SignUpScreen()),
         '/loading': (context) => _buildRoute(const LoadingScreen()),
