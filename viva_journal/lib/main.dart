@@ -77,7 +77,7 @@ class MyApp extends StatelessWidget {
         '/home': (context) => _buildRoute(const HomeScreen()),
         '/resetPassword': (context) => _buildRoute(const ForgotPasswordScreen()),
         '/dashboard': (context) => _buildRoute(const DashboardScreen()),
-        '/calendar': (context) => _buildRoute(const CalendarScreen()),
+        '/calendar': (context) => _buildRoute(CalendarScreen()),
         '/trackerLog': (context) => _buildRoute(const TrackerLogScreen()),
         '/settings': (context) => _buildRoute(const SettingsScreen()),
         '/journal': (context) => _buildRoute(JournalScreen(mood: 'happy', tags: [])),
