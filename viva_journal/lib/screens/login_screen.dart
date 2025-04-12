@@ -198,13 +198,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         onPressed: _loginWithEmailPassword,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30),
                           ),
                         ),
                         child: const Text(
-                            'Log In', style: TextStyle(fontSize: 16, color: Colors.white)),
+                            'Log In', style: TextStyle(fontSize: 20, color: Colors.white)),
                       ),
                     ),
                     const SizedBox(height: 10),

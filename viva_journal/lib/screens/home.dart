@@ -40,10 +40,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   /// Handles navigation bar item selection.
+  /// Minimal change here: when index 1 (Calendar) is tapped, navigate via pushReplacement
+  /// so that CalendarScreen becomes the main screen.
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    if (index == 1) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const CalendarScreen()),
+      );
+    } else {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
   }
 
   /// Triggers animation and navigates to the tracker log screen.
@@ -84,7 +93,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           bottomNavigationBar: BottomAppBar(
             color: Colors.transparent,
             shape: const CircularNotchedRectangle(),
-            notchMargin: 10,
+            notchMargin: 20,
             child: SizedBox(
               height: homeBarHeight * 0.9,
               child: Row(

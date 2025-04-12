@@ -208,8 +208,47 @@ class CustomElevatedButton extends StatelessWidget {
     );
   }
 }
+class HoverableIconButton extends StatefulWidget {
+  final Widget icon;
+  final VoidCallback onPressed;
+  final double hoverScale;
+  final EdgeInsets padding;
 
-/// A reusable background widget that can be used across different screens.
+  const HoverableIconButton({
+    Key? key,
+    required this.icon,
+    required this.onPressed,
+    this.hoverScale = 1.2,
+    this.padding = const EdgeInsets.all(0),
+  }) : super(key: key);
+
+  @override
+  State<HoverableIconButton> createState() => _HoverableIconButtonState();
+}
+
+class _HoverableIconButtonState extends State<HoverableIconButton> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: GestureDetector(
+        onTap: widget.onPressed,
+        child: AnimatedScale(
+          scale: _hovering ? widget.hoverScale : 1.0,
+          duration: const Duration(milliseconds: 200),
+          child: Padding(
+            padding: widget.padding,
+            child: widget.icon,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class BackgroundWidget extends StatelessWidget {
   const BackgroundWidget({super.key});
 
