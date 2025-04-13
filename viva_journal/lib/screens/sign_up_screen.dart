@@ -282,26 +282,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           onPressed: _signUp,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            padding: const EdgeInsets.symmetric(vertical:15),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
                           ),
-                          child: const Text('Sign Up', style: TextStyle(fontSize: 16, color: Colors.white)),
+                          child: const Text('Sign Up', style: TextStyle(fontSize: 20, color: Colors.white)),
                         ),
                       ),
-                      const SizedBox(height: 27),
-                      const Text('or', style: TextStyle(fontSize: 25, color: Colors.black54)),
-                      const SizedBox(height: 27),
+                      const SizedBox(height: 20),
+                      const Text('OR', style: TextStyle(fontSize: 25, color: Colors.black54,fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 20),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: _handleGoogleSignIn,
-                          icon: const Text('G', style: TextStyle(fontSize: 20, color: Colors.white)),
+                          icon: const Text('G', style: TextStyle(fontSize: 30, color: Colors.white)),
                           label: const Text('Continue with Google', style: TextStyle(fontSize: 18, color: Colors.white)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            padding: const EdgeInsets.symmetric(vertical: 13),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
@@ -335,6 +335,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           style: TextStyle(fontSize: 16, color: Colors.black, decoration: TextDecoration.underline),
                         ),
                       ),
+
                     ],
                   ),
                 ],

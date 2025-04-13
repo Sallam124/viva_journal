@@ -19,7 +19,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   /// List of screens corresponding to navigation items.
   final List<Widget> _pages = [
     Center(child: Text('Welcome to Home!', style: TextStyle(color: Colors.black, fontSize: 24))),
-    const CalendarScreen(),
+     CalendarScreen(),
     const DashboardScreen(),
     const SettingsScreen(),
   ];

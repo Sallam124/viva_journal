@@ -6,7 +6,7 @@ import 'package:path_provider/path_provider.dart';
 class MoodEntry {
   int? id;
   String mood;
-  String date; // Format: 'day-month-year'
+  String date; // ISO 8601 format for better date handling
   String input; // Text or Path to image/audio
 
   MoodEntry({
@@ -54,16 +54,17 @@ class DatabaseHelper {
   // Initialize the database
   Future<Database> _initDatabase() async {
     final directory = await getApplicationDocumentsDirectory();
-    final path = '${directory.path}/mood_tracker.db';
+    final path = '${directory.path}/journal.db';
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2, // Increased version for schema migration
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade, // Handle schema upgrades
     );
   }
 
-  // Create the mood table if it doesn't exist
+  // Create the moods table if it doesn't exist
   Future<void> _onCreate(Database db, int version) async {
     await db.execute('''
       CREATE TABLE moods(
@@ -75,53 +76,95 @@ class DatabaseHelper {
     ''');
   }
 
+  // Handle schema upgrades (e.g., when you add new columns or tables)
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Example: Adding a new column (if needed)
+      await db.execute(''' 
+        ALTER TABLE moods ADD COLUMN newColumn TEXT
+      ''');
+    }
+  }
+
   // Insert a new mood entry
   Future<int> insertMood(MoodEntry moodEntry) async {
-    final db = await database;
-    return await db.insert('moods', moodEntry.toMap());
-  }
-
-  // Get all mood entries
-  Future<List<MoodEntry>> getAllMoods() async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query('moods');
-    return List.generate(maps.length, (i) {
-      return MoodEntry.fromMap(maps[i]);
-    });
-  }
-
-  // Get mood for a specific day
-  Future<MoodEntry?> getMoodForDay(String date) async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'moods',
-      where: 'date = ?',
-      whereArgs: [date],
-    );
-    if (maps.isNotEmpty) {
-      return MoodEntry.fromMap(maps.first);
+    try {
+      final db = await database;
+      return await db.insert('moods', moodEntry.toMap());
+    } catch (e) {
+      print('Error inserting mood: $e');
+      rethrow; // Rethrow the error or return a custom error code
     }
-    return null;
+  }
+
+  // Get all mood entries with pagination (limit and offset)
+  Future<List<MoodEntry>> getMoodsPage(int offset, int limit) async {
+    try {
+      final db = await database;
+      final List<Map<String, dynamic>> maps = await db.query(
+        'moods',
+        limit: limit,
+        offset: offset,
+      );
+      return List.generate(maps.length, (i) => MoodEntry.fromMap(maps[i]));
+    } catch (e) {
+      print('Error fetching moods: $e');
+      return []; // Return an empty list in case of error
+    }
+  }
+
+  // Get mood for a specific day (by date)
+  Future<MoodEntry?> getMoodForDay(String date) async {
+    try {
+      final db = await database;
+      final List<Map<String, dynamic>> maps = await db.query(
+        'moods',
+        where: 'date = ?',
+        whereArgs: [date],
+      );
+      if (maps.isNotEmpty) {
+        return MoodEntry.fromMap(maps.first);
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching mood for day: $e');
+      return null;
+    }
   }
 
   // Update mood for a specific day
   Future<int> updateMood(MoodEntry moodEntry) async {
-    final db = await database;
-    return await db.update(
-      'moods',
-      moodEntry.toMap(),
-      where: 'date = ?',
-      whereArgs: [moodEntry.date],
-    );
+    try {
+      final db = await database;
+      return await db.update(
+        'moods',
+        moodEntry.toMap(),
+        where: 'date = ?',
+        whereArgs: [moodEntry.date],
+      );
+    } catch (e) {
+      print('Error updating mood: $e');
+      return 0; // Return 0 if no rows were updated
+    }
   }
 
   // Delete mood entry for a specific day
   Future<int> deleteMood(String date) async {
-    final db = await database;
-    return await db.delete(
-      'moods',
-      where: 'date = ?',
-      whereArgs: [date],
-    );
+    try {
+      final db = await database;
+      return await db.delete(
+        'moods',
+        where: 'date = ?',
+        whereArgs: [date],
+      );
+    } catch (e) {
+      print('Error deleting mood: $e');
+      return 0; // Return 0 if no rows were deleted
+    }
+  }
+
+  // Convert DateTime to ISO 8601 format (for consistent date storage)
+  String formatDate(DateTime dateTime) {
+    return dateTime.toIso8601String();
   }
 }
