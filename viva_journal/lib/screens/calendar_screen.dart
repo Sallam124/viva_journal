@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:viva_journal/database/database.dart';
 import 'package:viva_journal/screens/trackerlog_screen.dart';
 import 'package:viva_journal/widgets/widgets.dart';
-import 'package:viva_journal/screens/home.dart';
+import 'package:viva_journal/screens/home_screen.dart';
 import 'package:viva_journal/screens/settings_screen.dart';
 import 'package:viva_journal/screens/dashboard_screen.dart';
 

@@ -1,3 +1,5 @@
+export '../screens/home_bar.dart';
+
 import 'package:flutter/material.dart';
 
 /// Global Navigator Key for retrieving context anywhere
