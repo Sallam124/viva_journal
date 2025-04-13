@@ -12,11 +12,15 @@ class HomeScreen extends StatefulWidget {
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _selectedIndex = 0;
-  late AnimationController _controller;
+  late AnimationController _glowController;
+  late AnimationController _splashController;
   late Animation<double> _glowAnimation;
+  late Animation<double> _splashAnimation;
   late double homeBarHeight;
+  bool _isSplashAnimating = false;
+  Offset? _splashPosition;
 
   final List<Color> _glowColors = [
     const Color(0xFFFFE100), // Yellow
@@ -37,22 +41,45 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
+    _glowController = AnimationController(
       duration: const Duration(milliseconds: 3000), // Slower animation for smoother flow
       vsync: this,
     );
 
+    _splashController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
     _glowAnimation = CurvedAnimation(
-      parent: _controller,
+      parent: _glowController,
       curve: Curves.easeInOut,
     );
 
-    _controller.repeat();
+    _splashAnimation = CurvedAnimation(
+      parent: _splashController,
+      curve: Curves.easeInOut,
+    );
+
+    _glowController.repeat();
+
+    _splashController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        setState(() {
+          _isSplashAnimating = false;
+        });
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const TrackerLogScreen()),
+        );
+      }
+    });
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _glowController.dispose();
+    _splashController.dispose();
     super.dispose();
   }
 
@@ -64,12 +91,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   /// Triggers animation and navigates to the tracker log screen.
-  void _onFloatingButtonPressed() {
-    _controller.forward(from: 0).then((_) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const TrackerLogScreen()),
-      );
+  void _onFloatingButtonPressed(TapDownDetails details) {
+    setState(() {
+      _isSplashAnimating = true;
+      _splashPosition = details.globalPosition;
+      _splashController.forward(from: 0);
     });
   }
 
@@ -95,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     homeBarHeight = screenWidth * 0.2;  // Slightly smaller for better proportions
     double floatingButtonSize = screenWidth * 0.20;  // Proportional to screen width
     double horizontalPadding = screenWidth * 0.05;
-    double floatingButtonBottomPadding = homeBarHeight * 0.2;
+    double floatingButtonBottomPadding = homeBarHeight * 0.4;
     double bottomPadding = screenHeight * 0.01;
 
     // Calculate icon sizes based on screen width
@@ -108,6 +134,22 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         children: [
           // Main content
           _pages[_selectedIndex],
+
+          if (_isSplashAnimating && _splashPosition != null)
+            Positioned.fill(
+              child: AnimatedBuilder(
+                animation: _splashAnimation,
+                builder: (context, child) {
+                  return CustomPaint(
+                    painter: SplashPainter(
+                      position: _splashPosition!,
+                      progress: _splashAnimation.value,
+                      color: _getGlowColor(_glowController.value),
+                    ),
+                  );
+                },
+              ),
+            ),
 
           // Bottom Navigation Bar
           Positioned(
@@ -186,52 +228,50 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildFloatingButton(double size) {
-    return AnimatedBuilder(
-      animation: _glowAnimation,
-      builder: (context, child) {
-        final glowColor = _getGlowColor(_controller.value);
+    return GestureDetector(
+      onTapDown: _onFloatingButtonPressed,
+      child: AnimatedBuilder(
+        animation: _glowAnimation,
+        builder: (context, child) {
+          final glowColor = _getGlowColor(_glowController.value);
 
-        return Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: SweepGradient(
-              colors: [
-                glowColor.withAlpha(76),
-                glowColor.withAlpha(153),
-                glowColor.withAlpha(255),
-                glowColor.withAlpha(153),
-                glowColor.withAlpha(76),
-              ],
-              stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
-              transform: GradientRotation(_controller.value * 2 * 3.14159),
-            ),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(size * 0.05),
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.black,
-                boxShadow: [
-                  BoxShadow(
-                    color: glowColor.withAlpha(153),
-                    blurRadius: size * 0.25,  // Responsive blur
-                    spreadRadius: size * 0.04,  // Responsive spread
-                  ),
-                  BoxShadow(
-                    color: glowColor.withAlpha(102),
-                    blurRadius: size * 0.3,  // Responsive blur
-                    spreadRadius: size * 0.06,  // Responsive spread
-                  ),
+          return Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: SweepGradient(
+                colors: [
+                  glowColor.withAlpha(76),
+                  glowColor.withAlpha(153),
+                  glowColor.withAlpha(255),
+                  glowColor.withAlpha(153),
+                  glowColor.withAlpha(76),
                 ],
+                stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+                transform: GradientRotation(_glowController.value * 2 * 3.14159),
               ),
-              child: Center(
-                child: FloatingActionButton(
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  onPressed: _onFloatingButtonPressed,
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(size * 0.05),
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.black,
+                  boxShadow: [
+                    BoxShadow(
+                      color: glowColor.withAlpha(153),
+                      blurRadius: size * 0.25,  // Responsive blur
+                      spreadRadius: size * 0.04,  // Responsive spread
+                    ),
+                    BoxShadow(
+                      color: glowColor.withAlpha(102),
+                      blurRadius: size * 0.3,  // Responsive blur
+                      spreadRadius: size * 0.06,  // Responsive spread
+                    ),
+                  ],
+                ),
+                child: Center(
                   child: Image.asset(
                     'assets/images/float_button.png',
                     width: size * 0.7,
@@ -239,9 +279,37 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
+  }
+}
+
+class SplashPainter extends CustomPainter {
+  final Offset position;
+  final double progress;
+  final Color color;
+
+  SplashPainter({
+    required this.position,
+    required this.progress,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.fill;
+
+    final radius = size.width * 2 * progress;
+    canvas.drawCircle(position, radius, paint);
+  }
+
+  @override
+  bool shouldRepaint(SplashPainter oldDelegate) {
+    return oldDelegate.position != position ||
+        oldDelegate.progress != progress;
   }
 }
