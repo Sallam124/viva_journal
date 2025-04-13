@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:viva_journal/database/database.dart';
@@ -7,7 +8,6 @@ import 'package:viva_journal/screens/home_screen.dart';
 import 'package:viva_journal/screens/settings_screen.dart';
 import 'package:viva_journal/screens/dashboard_screen.dart';
 
-/// MonthSelector widget: Displays navigation arrows and current month/year.
 class MonthSelector extends StatelessWidget {
   final int selectedMonth;
   final int selectedYear;
@@ -27,7 +27,6 @@ class MonthSelector extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // Left arrow button to navigate to the previous month.
         IconButton(
           icon: const Icon(Icons.arrow_left, size: 40),
           onPressed: () {
@@ -37,7 +36,6 @@ class MonthSelector extends StatelessWidget {
             onYearChanged(newYear);
           },
         ),
-        // Displays the current month name and year.
         Column(
           children: [
             Text(
@@ -49,7 +47,7 @@ class MonthSelector extends StatelessWidget {
               ),
             ),
             Text(
-              " $selectedYear",
+              "$selectedYear",
               style: const TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
@@ -58,7 +56,6 @@ class MonthSelector extends StatelessWidget {
             ),
           ],
         ),
-        // Right arrow button to navigate to the next month.
         IconButton(
           icon: const Icon(Icons.arrow_right, size: 40),
           onPressed: () {
@@ -72,17 +69,16 @@ class MonthSelector extends StatelessWidget {
     );
   }
 
-  // Helper function: Returns month name based on the index.
   String _getMonthName(int monthIndex) {
     const List<String> monthNames = [
       'January', 'February', 'March', 'April', 'May', 'June', 'July',
       'August', 'September', 'October', 'November', 'December'
     ];
+    if (monthIndex < 0 || monthIndex > 11) return '';
     return monthNames[monthIndex];
   }
 }
 
-/// DayCell widget: Displays a single day with its number, a highlight if today, and a mood star.
 class DayCell extends StatelessWidget {
   final int day;
   final bool isToday;
@@ -109,31 +105,26 @@ class DayCell extends StatelessWidget {
             decoration: isToday
                 ? BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.grey.withOpacity(0.6),
+              color: Colors.grey.withOpacity(0.8),
             )
                 : null,
             child: Text(
               '$day',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
-                color: Colors.white,
+                color: isToday ? Colors.white : Colors.white,
               ),
             ),
           ),
           const SizedBox(height: 1),
-          Image.asset(moodAsset),
+          Image.asset(moodAsset, height: 22, width: 22),
         ],
       ),
     );
   }
 }
 
-/// CalendarScreen widget: Displays the full calendar (month navigation and day grid)
-/// with per-day loading indicators, cached mood data, and prefetching for adjacent months.
-/// The bottom navigation buttons and floating action button use the same measurements as in HomeScreen;
-/// the Scaffold extends the body so content is not cut off, and pressing Home takes you fully to HomeScreen.
 class CalendarScreen extends StatefulWidget {
-  // Note: Constructor is non-const to allow proper initialization.
   CalendarScreen({Key? key}) : super(key: key);
 
   @override
@@ -303,107 +294,14 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
     super.dispose();
   }
 
-  Widget _buildNavButton(IconData icon,
-      {required int index, required VoidCallback onTap, bool isActive = false}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Icon(
-        icon,
-        size: 32,
-        color: isActive ? Colors.white : const Color(0xFF3C3C3C),
-      ),
-    );
-  }
-
-  void _onFloatingButtonPressed() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => TrackerLogScreen()),
-    ).then((result) async {
-      if (result == true) {
-        await _fetchMoods();
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final int daysInMonth = _getDaysInMonth(_selectedMonth, _selectedYear);
     final int firstWeekday = DateTime(_selectedYear, _selectedMonth, 1).weekday % 7;
     final DateTime now = DateTime.now();
 
-    // Measurements from HomeScreen.
-    double screenWidth = MediaQuery.of(context).size.width;
-    double homeBarHeight = screenWidth * 0.25;
-    double floatingButtonSize = homeBarHeight * 0.8;
-
     return Scaffold(
       backgroundColor: Colors.white,
-      extendBody: true, // Ensure that the body extends fully.
-      bottomNavigationBar: BottomAppBar(
-        color: Colors.transparent,
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 20,
-        child: SizedBox(
-          height: homeBarHeight * 0.9,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  _buildNavButton(Icons.home, index: 0, onTap: () {
-                    // Navigate fully to HomeScreen.
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(builder: (_) => HomeScreen()),
-                          (route) => false,
-                    );
-                  }),
-                  SizedBox(width: homeBarHeight * 0.4),
-                  _buildNavButton(Icons.calendar_today, index: 1, onTap: () {
-                    // Already on CalendarScreen.
-                  }, isActive: true),
-                ],
-              ),
-              SizedBox(width: homeBarHeight * 0.5),
-              Row(
-                children: [
-                  _buildNavButton(Icons.bar_chart, index: 2, onTap: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => DashboardScreen()),
-                    );
-                  }),
-                  SizedBox(width: homeBarHeight * 0.4),
-                  _buildNavButton(Icons.settings, index: 3, onTap: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => SettingsScreen()),
-                    );
-                  }),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-      floatingActionButton: SizedBox(
-        width: floatingButtonSize,
-        height: floatingButtonSize,
-        child: FloatingActionButton(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          onPressed: _onFloatingButtonPressed,
-          child: RotationTransition(
-            turns: _controller,
-            child: Image.asset(
-              'assets/images/float_button.png',
-              width: floatingButtonSize,
-            ),
-          ),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       body: GestureDetector(
         onHorizontalDragEnd: (details) {
           if (details.primaryVelocity == null) return;
@@ -417,7 +315,7 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
           decoration: const BoxDecoration(
             color: Colors.white,
             image: DecorationImage(
-              image: AssetImage('assets/images/Background_Calendar.png'),
+              image: AssetImage('assets/images/Background_2.png'),
               fit: BoxFit.cover,
             ),
           ),
@@ -425,7 +323,6 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
             child: Column(
               children: [
                 const SizedBox(height: 0),
-                // Top row: large arrows and month/year display.
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -467,133 +364,171 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
                     ),
                   ],
                 ),
-                const SizedBox(height: 7.9),
-                // Second row: small navigation arrows and month name.
-                Padding(
-                  padding: const EdgeInsets.only(right: 1.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      IconButton(
-                        icon: const ImageIcon(
-                          AssetImage('assets/images/small_left_arrow.png'),
-                          size: 30,
+                const SizedBox(height: 60),
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Glassmorphic Blur Background (centered behind both widgets)
+                    Center(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                          child: Container(
+                            width: MediaQuery.of(context).size.width ,
+                            height: MediaQuery.of(context).size.height * 0.56,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(24),
+                              gradient: const LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Color.fromARGB(100, 255, 255, 255),
+                                  Color.fromARGB(20, 0, 0, 0),
+                                ],
+                              ),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.6),
+                                width: 2.5,
+                              ),
+                            ),
+                          ),
                         ),
-                        onPressed: _goToPreviousMonth,
                       ),
-                      Text(
-                        monthName,
-                        style: const TextStyle(
-                          fontSize: 23,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const ImageIcon(
-                          AssetImage('assets/images/small_right_arrow.png'),
-                          size: 30,
-                        ),
-                        onPressed: _goToNextMonth,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 3),
-                // Weekday labels.
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-                      .map((day) => Text(
-                    day,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
                     ),
-                  ))
-                      .toList(),
-                ),
-                // Calendar grid.
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 1),
-                      child: GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        padding: const EdgeInsets.only(top: 10),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 7,
-                          childAspectRatio: 1.0,
-                          mainAxisSpacing: 12.0,
-                          crossAxisSpacing: 2.0,
+
+                    // Actual Month Traversal + Calendar Days
+                    Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(right: 1.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              IconButton(
+                                icon: const ImageIcon(
+                                  AssetImage('assets/images/small_left_arrow.png'),
+                                  size: 30,
+                                ),
+                                onPressed: _goToPreviousMonth,
+                              ),
+                              Text(
+                                monthName,
+                                style: const TextStyle(
+                                  fontSize: 23,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              IconButton(
+                                icon: const ImageIcon(
+                                  AssetImage('assets/images/small_right_arrow.png'),
+                                  size: 30,
+                                ),
+                                onPressed: _goToNextMonth,
+                              ),
+                            ],
+                          ),
                         ),
-                        itemCount: daysInMonth + firstWeekday,
-                        itemBuilder: (context, index) {
-                          if (index < firstWeekday) {
-                            return const SizedBox.shrink();
-                          }
-                          final int day = index - firstWeekday + 1;
-                          if (_cachedMoodData[currentKey]?.containsKey(day) ?? false) {
-                            final String mood = _cachedMoodData[currentKey]![day]!;
-                            final String moodAsset = getMoodForDay(mood);
-                            final bool isToday = (_selectedYear == now.year &&
-                                _selectedMonth == now.month &&
-                                day == now.day);
-                            return DayCell(
-                              day: day,
-                              isToday: isToday,
-                              moodAsset: moodAsset,
-                              onTap: () async {
-                                final result = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => TrackerLogScreen()),
-                                );
-                                if (result == true) {
-                                  await _fetchMoods();
-                                }
-                              },
-                            );
-                          } else {
-                            return FutureBuilder<String>(
-                              future: getMoodForDayFromDb(day, month: _selectedMonth, year: _selectedYear),
-                              builder: (context, snapshot) {
-                                if (snapshot.connectionState == ConnectionState.waiting) {
-                                  return const Center(child: CircularProgressIndicator(strokeWidth: 2.0));
-                                } else if (snapshot.hasError) {
-                                  return const Center(child: Icon(Icons.error, color: Colors.red));
-                                } else if (snapshot.hasData) {
-                                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                                    _updateCacheForDay(day, snapshot.data!);
-                                  });
-                                  final String moodAsset = getMoodForDay(snapshot.data!);
-                                  final bool isToday = (_selectedYear == now.year &&
-                                      _selectedMonth == now.month &&
-                                      day == now.day);
-                                  return DayCell(
-                                    day: day,
-                                    isToday: isToday,
-                                    moodAsset: moodAsset,
-                                    onTap: () async {
-                                      final result = await Navigator.push(
-                                        context,
-                                        MaterialPageRoute(builder: (_) => TrackerLogScreen()),
-                                      );
-                                      if (result == true) {
-                                        await _fetchMoods();
-                                      }
-                                    },
-                                  );
-                                }
+                        const SizedBox(height: 5),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+                              .map((day) => Text(
+                            day,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ))
+                              .toList(),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 1),
+                          child: GridView.builder(
+
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            padding: const EdgeInsets.only(top: 10),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 7,
+                              childAspectRatio: 1.0,
+                              mainAxisSpacing: 12.0,
+                              crossAxisSpacing: 2.0,
+                            ),
+                            itemCount: daysInMonth + firstWeekday,
+                            itemBuilder: (context, index) {
+                              if (index < firstWeekday) {
                                 return const SizedBox.shrink();
-                              },
-                            );
-                          }
-                        },
-                      ),
+                              }
+                              final int day = index - firstWeekday + 1;
+                              if (_cachedMoodData[currentKey]?.containsKey(day) ?? false) {
+                                final String mood = _cachedMoodData[currentKey]![day]!;
+                                final String moodAsset = getMoodForDay(mood);
+                                final bool isToday = (_selectedYear == now.year &&
+                                    _selectedMonth == now.month &&
+                                    day == now.day);
+                                return DayCell(
+                                  day: day,
+                                  isToday: isToday,
+                                  moodAsset: moodAsset,
+                                  onTap: () async {
+                                    final result = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => TrackerLogScreen()),
+                                    );
+                                    if (result == true) {
+                                      await _fetchMoods();
+                                    }
+                                  },
+                                );
+                              } else {
+                                return FutureBuilder<String>(
+                                  future: getMoodForDayFromDb(day,
+                                      month: _selectedMonth, year: _selectedYear),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.connectionState == ConnectionState.waiting) {
+                                      return const Center(
+                                          child: CircularProgressIndicator(strokeWidth: 2.0));
+                                    } else if (snapshot.hasError) {
+                                      return const Center(
+                                          child: Icon(Icons.error, color: Colors.red));
+                                    } else if (snapshot.hasData) {
+                                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                                        _updateCacheForDay(day, snapshot.data!);
+                                      });
+                                      final String moodAsset =
+                                      getMoodForDay(snapshot.data!);
+                                      final bool isToday = (_selectedYear == now.year &&
+                                          _selectedMonth == now.month &&
+                                          day == now.day);
+                                      return DayCell(
+                                        day: day,
+                                        isToday: isToday,
+                                        moodAsset: moodAsset,
+                                        onTap: () async {
+                                          final result = await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (_) => TrackerLogScreen()),
+                                          );
+                                          if (result == true) {
+                                            await _fetchMoods();
+                                          }
+                                        },
+                                      );
+                                    }
+                                    return const SizedBox.shrink();
+                                  },
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),

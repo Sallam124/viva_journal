@@ -95,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     homeBarHeight = screenWidth * 0.2;  // Slightly smaller for better proportions
     double floatingButtonSize = screenWidth * 0.20;  // Proportional to screen width
     double horizontalPadding = screenWidth * 0.05;
-    double floatingButtonBottomPadding = homeBarHeight * 0.4;
+    double floatingButtonBottomPadding = homeBarHeight * 0.2;
     double bottomPadding = screenHeight * 0.01;
 
     // Calculate icon sizes based on screen width
