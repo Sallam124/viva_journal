@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:viva_journal/screens/background_theme.dart';
-import 'package:viva_journal/screens/home_screen.dart';
+import 'package:viva_journal/screens/home.dart';
 import 'package:viva_journal/screens/reset_password.dart';
 import 'package:viva_journal/widgets/widgets.dart';
 import 'package:email_validator/email_validator.dart';

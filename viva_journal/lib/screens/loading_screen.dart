@@ -54,24 +54,29 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
 
   Future<void> _loadMessages() async {
     final String fileContent = await rootBundle.loadString('assets/on_screen_messages.txt');
-    setState(() {
-      messages = fileContent
-          .split('\n')
-          .map((msg) => msg.replaceAll(RegExp(r'[",]|on_screen_messages'), '').trim())
-          .where((msg) => msg.isNotEmpty)
-          .toList();
-      unseenMessages = List.from(messages);
-      _pickNewMessage();
-      _startMessageRotation();
-    });
+    if (mounted) {
+      setState(() {
+        messages = fileContent
+            .split('\n')
+            .map((msg) => msg.replaceAll(RegExp(r'[",]|on_screen_messages'), '').trim())
+            .where((msg) => msg.isNotEmpty)
+            .toList();
+        unseenMessages = List.from(messages);
+        _pickNewMessage();
+        _startMessageRotation();
+      });
+    }
   }
 
   void _startMessageRotation() {
-    Timer.periodic(const Duration(seconds: 8), (timer) {
+    Timer? messageTimer;
+    messageTimer = Timer.periodic(const Duration(seconds: 8), (timer) {
       if (mounted) {
         setState(() {
           _pickNewMessage();
         });
+      } else {
+        messageTimer?.cancel();
       }
     });
   }
@@ -85,8 +90,10 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
 
   void _startSequentialPattern() {
     for (int i = 0; i < _controllers.length; i++) {
-      Future.delayed(Duration(milliseconds: i * 400), () { // Slower, consecutive movement
-        _controllers[i].repeat(reverse: true);
+      Future.delayed(Duration(milliseconds: i * 400), () {
+        if (mounted && !_controllers[i].isDismissed) {
+          _controllers[i].repeat(reverse: true);
+        }
       });
     }
   }
