@@ -27,55 +27,37 @@ class MonthSelector extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
+        // Button to go to the previous year
         IconButton(
           icon: const Icon(Icons.arrow_left, size: 40),
           onPressed: () {
-            int newMonth = selectedMonth == 1 ? 12 : selectedMonth - 1;
-            int newYear = selectedMonth == 1 ? selectedYear - 1 : selectedYear;
-            onMonthChanged(newMonth);
+            int newYear = selectedYear - 1; // Decrease the year
             onYearChanged(newYear);
           },
         ),
         Column(
           children: [
+            // Display the selected year and month
             Text(
-              _getMonthName(selectedMonth - 1),
+              "$selectedMonth - $selectedYear", // Display both month and year
               style: const TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
                 color: Colors.black,
               ),
             ),
-            Text(
-              "$selectedYear",
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
-              ),
-            ),
           ],
         ),
+        // Button to go to the next year
         IconButton(
           icon: const Icon(Icons.arrow_right, size: 40),
           onPressed: () {
-            int newMonth = selectedMonth == 12 ? 1 : selectedMonth + 1;
-            int newYear = selectedMonth == 12 ? selectedYear + 1 : selectedYear;
-            onMonthChanged(newMonth);
+            int newYear = selectedYear + 1; // Increase the year
             onYearChanged(newYear);
           },
         ),
       ],
     );
-  }
-
-  String _getMonthName(int monthIndex) {
-    const List<String> monthNames = [
-      'January', 'February', 'March', 'April', 'May', 'June', 'July',
-      'August', 'September', 'October', 'November', 'December'
-    ];
-    if (monthIndex < 0 || monthIndex > 11) return '';
-    return monthNames[monthIndex];
   }
 }
 
@@ -84,6 +66,7 @@ class DayCell extends StatelessWidget {
   final bool isToday;
   final String moodAsset;
   final VoidCallback onTap;
+  final bool isWeekend; // Added flag to highlight weekends
 
   const DayCell({
     Key? key,
@@ -91,6 +74,7 @@ class DayCell extends StatelessWidget {
     required this.isToday,
     required this.moodAsset,
     required this.onTap,
+    this.isWeekend = false, // Default is false
   }) : super(key: key);
 
   @override
@@ -100,24 +84,32 @@ class DayCell extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          // Circle for the day number with fixed size
           Container(
-            padding: const EdgeInsets.all(2.5),
+            width: 30,  // Smaller width for the circle around the day (changed)
+            height: 30, // Smaller height for the circle (changed)
+            alignment: Alignment.center,
             decoration: isToday
                 ? BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.grey.withOpacity(0.8),
+              color: Colors.grey.withOpacity(0.8), // Highlight today
+            )
+                : isWeekend // Highlight weekends with a different color
+                ? BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withOpacity(0.5), // Highlight weekends
             )
                 : null,
             child: Text(
-              '$day',
+              '$day', // Display the day number
               style: TextStyle(
-                fontSize: 18,
-                color: isToday ? Colors.white : Colors.white,
+                fontSize: 16, // Adjusted size to fit better in smaller circle (changed)
+                color: isToday ? Colors.white : Colors.black,
               ),
             ),
           ),
-          const SizedBox(height: 1),
-          Image.asset(moodAsset, height: 22, width: 22),
+          const SizedBox(height: 2),
+          Image.asset(moodAsset, height: 22, width: 22), // Display mood icon (slightly smaller)
         ],
       ),
     );
@@ -158,6 +150,7 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
 
   String _cacheKey(int month, int year) => '$year-$month';
 
+  // Function to navigate to the previous month
   void _goToPreviousMonth() {
     setState(() {
       if (_selectedMonth == 1) {
@@ -170,6 +163,7 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
     _fetchAndPrefetch();
   }
 
+  // Function to navigate to the next month
   void _goToNextMonth() {
     setState(() {
       if (_selectedMonth == 12) {
@@ -182,6 +176,7 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
     _fetchAndPrefetch();
   }
 
+  // Fetch mood for the day from the database
   Future<String> getMoodForDayFromDb(int day, {required int month, required int year}) async {
     final String dateStr = DateFormat('d-M-yyyy').format(DateTime(year, month, day));
     final moodEntry = await DatabaseHelper().getMoodForDay(dateStr);
@@ -191,6 +186,7 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
     return 'NoMood';
   }
 
+  // Determine mood icon based on the stored mood
   String getMoodForDay(String mood) {
     if (mood == 'NoMood') {
       return 'assets/images/Star0.png';
@@ -209,6 +205,7 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
     return 'assets/images/Star0.png';
   }
 
+  // Get mood data for all days in a month from the database
   Future<Map<int, String>> _getMoodsForMonthData({required int month, required int year}) async {
     final int days = _getDaysInMonth(month, year);
     List<Future<MapEntry<int, String>>> futures = [];
@@ -220,6 +217,7 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
     return Map.fromEntries(entries);
   }
 
+  // Fetch moods and store them in the cache
   Future<void> _fetchMoods() async {
     final data = await _getMoodsForMonthData(month: _selectedMonth, year: _selectedYear);
     setState(() {
@@ -227,12 +225,7 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
     });
   }
 
-  Future<void> _fetchMoodsForCurrentMonthIfNeeded() async {
-    if (!_cachedMoodData.containsKey(currentKey)) {
-      await _fetchMoods();
-    }
-  }
-
+  // Prefetch mood data for adjacent months
   Future<void> _prefetchAdjacentMonths() async {
     int prevMonth, prevYear, nextMonth, nextYear;
     if (_selectedMonth == 1) {
@@ -267,17 +260,27 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
     }
   }
 
+  // Fetch moods and prefetch adjacent months
   Future<void> _fetchAndPrefetch() async {
     await _fetchMoodsForCurrentMonthIfNeeded();
     await _prefetchAdjacentMonths();
   }
 
+  // Update the cache with the mood for the selected day
   void _updateCacheForDay(int day, String mood) {
     setState(() {
       _cachedMoodData.putIfAbsent(currentKey, () => {})[day] = mood;
     });
   }
 
+  // Check if the current month's mood data is already fetched, if not, fetch it
+  Future<void> _fetchMoodsForCurrentMonthIfNeeded() async {
+    if (!_cachedMoodData.containsKey(currentKey)) {
+      await _fetchMoods();
+    }
+  }
+
+  // Initialize the controller and fetch data
   @override
   void initState() {
     super.initState();
@@ -294,6 +297,16 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
     super.dispose();
   }
 
+  // Bring the user back to the current month and year
+  void _goHome() {
+    setState(() {
+      _selectedMonth = DateTime.now().month;
+      _selectedYear = DateTime.now().year;
+    });
+    _fetchAndPrefetch();
+  }
+
+  // Build the UI
   @override
   Widget build(BuildContext context) {
     final int daysInMonth = _getDaysInMonth(_selectedMonth, _selectedYear);
@@ -303,26 +316,41 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
     return Scaffold(
       backgroundColor: Colors.white,
       body: GestureDetector(
-        onHorizontalDragEnd: (details) {
+        onVerticalDragEnd: (details) {
+          // Handle vertical drag for year navigation (up for next year, down for previous year)
           if (details.primaryVelocity == null) return;
           if (details.primaryVelocity! > 0) {
-            _goToPreviousMonth();
+            setState(() {
+              _selectedYear++; // Swipe up to go to next year
+            });
+            _fetchAndPrefetch();
           } else if (details.primaryVelocity! < 0) {
-            _goToNextMonth();
+            setState(() {
+              _selectedYear--; // Swipe down to go to previous year
+            });
+            _fetchAndPrefetch();
+          }
+        },
+        onHorizontalDragEnd: (details) {
+          // Handle horizontal drag for month navigation (left for next month, right for previous month)
+          if (details.primaryVelocity == null) return;
+          if (details.primaryVelocity! > 0) {
+            _goToPreviousMonth(); // Swipe left to go to previous month
+          } else if (details.primaryVelocity! < 0) {
+            _goToNextMonth(); // Swipe right to go to next month
           }
         },
         child: Container(
           decoration: const BoxDecoration(
             color: Colors.white,
             image: DecorationImage(
-              image: AssetImage('assets/images/Background_2.png'),
+              image: AssetImage('assets/images/Background_Calendar.png'),
               fit: BoxFit.cover,
             ),
           ),
           child: SafeArea(
             child: Column(
               children: [
-                const SizedBox(height: 0),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -334,25 +362,19 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
                         size: 70,
                       ),
                     ),
-                    Column(
-                      children: [
-                        Text(
-                          monthName,
-                          style: const TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                    Center(
+                      child: Column(
+                        children: [
+                          Text(
+                            monthName, // Display the month name
+                            style: const TextStyle(
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
                           ),
-                        ),
-                        Text(
-                          '$_selectedYear',
-                          style: const TextStyle(
-                            fontSize: 34,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     IconButton(
                       onPressed: _goToNextMonth,
@@ -364,177 +386,127 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
                     ),
                   ],
                 ),
-                const SizedBox(height: 60),
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Glassmorphic Blur Background (centered behind both widgets)
-                    Center(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(24),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                          child: Container(
-                            width: MediaQuery.of(context).size.width ,
-                            height: MediaQuery.of(context).size.height * 0.56,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(24),
-                              gradient: const LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Color.fromARGB(100, 255, 255, 255),
-                                  Color.fromARGB(20, 0, 0, 0),
-                                ],
-                              ),
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.6),
-                                width: 2.5,
-                              ),
-                            ),
-                          ),
+                const SizedBox(height: 5),
+
+ Padding(
+   padding: const EdgeInsets.only(left: 13),
+   child: Row(
+     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+     children: [
+       // FloatingActionButton on the left
+       SizedBox(
+         width: 36,
+         height: 36,
+         child: FloatingActionButton(
+           onPressed: _goHome,
+           mini: true,
+           backgroundColor: Colors.blue,
+           child: const Icon(Icons.home, size: 20),
+         ),
+       ),
+       Row(
+         children: [
+           IconButton(
+             icon: const ImageIcon(
+               AssetImage('assets/images/small_left_arrow.png'),
+               size: 34,
+             ),
+             onPressed: () {
+               setState(() {
+                 _selectedYear--;
+               });
+             },
+           ),
+           Text(
+             "$_selectedYear",
+             style: const TextStyle(
+               fontSize: 24,
+               fontWeight: FontWeight.bold,
+               color: Colors.black,
+             ),
+           ),
+           IconButton(
+             icon: const ImageIcon(
+               AssetImage('assets/images/small_right_arrow.png'),
+               size: 34,
+             ),
+             onPressed: () {
+               setState(() {
+                 _selectedYear++;
+               });
+             },
+           ),
+         ],
+       ),
+     ],
+   ),
+ ),
+
+                const SizedBox(height: 15),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+                          .map((day) => Text(
+                        day,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
                         ),
-                      ),
+                      ))
+                          .toList(),
                     ),
-
-                    // Actual Month Traversal + Calendar Days
-                    Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(right: 1.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              IconButton(
-                                icon: const ImageIcon(
-                                  AssetImage('assets/images/small_left_arrow.png'),
-                                  size: 30,
-                                ),
-                                onPressed: _goToPreviousMonth,
-                              ),
-                              Text(
-                                monthName,
-                                style: const TextStyle(
-                                  fontSize: 23,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              IconButton(
-                                icon: const ImageIcon(
-                                  AssetImage('assets/images/small_right_arrow.png'),
-                                  size: 30,
-                                ),
-                                onPressed: _goToNextMonth,
-                              ),
-                            ],
-                          ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 0),
+                      child: GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: const EdgeInsets.only(top: 10),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 7,
+                          childAspectRatio: 1.0,
+                          mainAxisSpacing: 14.0,
+                          crossAxisSpacing: 0,
                         ),
-                        const SizedBox(height: 5),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-                              .map((day) => Text(
-                            day,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                          ))
-                              .toList(),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 1),
-                          child: GridView.builder(
+                        itemCount: daysInMonth + firstWeekday,
+                        itemBuilder: (context, index) {
+                          if (index < firstWeekday) {
+                            return const SizedBox.shrink();
+                          }
+                          final int day = index - firstWeekday + 1;
+                          bool isWeekend = false;
 
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            padding: const EdgeInsets.only(top: 10),
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 7,
-                              childAspectRatio: 1.0,
-                              mainAxisSpacing: 12.0,
-                              crossAxisSpacing: 2.0,
-                            ),
-                            itemCount: daysInMonth + firstWeekday,
-                            itemBuilder: (context, index) {
-                              if (index < firstWeekday) {
-                                return const SizedBox.shrink();
-                              }
-                              final int day = index - firstWeekday + 1;
-                              if (_cachedMoodData[currentKey]?.containsKey(day) ?? false) {
-                                final String mood = _cachedMoodData[currentKey]![day]!;
-                                final String moodAsset = getMoodForDay(mood);
-                                final bool isToday = (_selectedYear == now.year &&
-                                    _selectedMonth == now.month &&
-                                    day == now.day);
-                                return DayCell(
-                                  day: day,
-                                  isToday: isToday,
-                                  moodAsset: moodAsset,
-                                  onTap: () async {
-                                    final result = await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (_) => TrackerLogScreen()),
-                                    );
-                                    if (result == true) {
-                                      await _fetchMoods();
-                                    }
-                                  },
-                                );
-                              } else {
-                                return FutureBuilder<String>(
-                                  future: getMoodForDayFromDb(day,
-                                      month: _selectedMonth, year: _selectedYear),
-                                  builder: (context, snapshot) {
-                                    if (snapshot.connectionState == ConnectionState.waiting) {
-                                      return const Center(
-                                          child: CircularProgressIndicator(strokeWidth: 2.0));
-                                    } else if (snapshot.hasError) {
-                                      return const Center(
-                                          child: Icon(Icons.error, color: Colors.red));
-                                    } else if (snapshot.hasData) {
-                                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                                        _updateCacheForDay(day, snapshot.data!);
-                                      });
-                                      final String moodAsset =
-                                      getMoodForDay(snapshot.data!);
-                                      final bool isToday = (_selectedYear == now.year &&
-                                          _selectedMonth == now.month &&
-                                          day == now.day);
-                                      return DayCell(
-                                        day: day,
-                                        isToday: isToday,
-                                        moodAsset: moodAsset,
-                                        onTap: () async {
-                                          final result = await Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (_) => TrackerLogScreen()),
-                                          );
-                                          if (result == true) {
-                                            await _fetchMoods();
-                                          }
-                                        },
-                                      );
-                                    }
-                                    return const SizedBox.shrink();
-                                  },
-                                );
+                          // Highlight Friday and Saturday
+                          if (DateTime(_selectedYear, _selectedMonth, day).weekday == DateTime.friday ||
+                              DateTime(_selectedYear, _selectedMonth, day).weekday == DateTime.saturday) {
+                            isWeekend = true;
+                          }
+
+                          bool isToday = (_selectedYear == now.year && _selectedMonth == now.month && day == now.day);
+                          return DayCell(
+                            day: day,
+                            isToday: isToday,
+                            moodAsset: getMoodForDay(_cachedMoodData[currentKey]?[day] ?? 'NoMood'),
+                            onTap: () async {
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => TrackerLogScreen()),
+                              );
+                              if (result == true) {
+                                await _fetchMoods();
                               }
                             },
-                          ),
-                        ),
-                      ],
+                            isWeekend: isWeekend,
+                          );
+                        },
+                      ),
                     ),
                   ],
                 ),
-              ],
+
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 }
