@@ -28,11 +28,13 @@ dependencies:
   video_player: ^2.7.0
   cloud_firestore: ^5.6.5
   email_validator: ^3.0.0
+  fl_chart: ^0.66.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
   dotted_border: ^2.0.0
+
 
 flutter:
   uses-material-design: true

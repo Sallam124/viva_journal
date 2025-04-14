@@ -293,7 +293,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           // Main content
           _selectedIndex == 0 ? _buildHomeContent() :
           _selectedIndex == 1 ? CalendarScreen() :
-          _selectedIndex == 2 ? const DashboardScreen() :
+          _selectedIndex == 2 ? DashboardScreen() :
           const SettingsScreen(),
 
           if (_isSplashAnimating && _splashPosition != null)
