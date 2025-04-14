@@ -117,16 +117,18 @@ Future<bool> _onWillPop() async {
 
 /// Wraps a widget in a GestureDetector that dismisses the keyboard when tapping outside input fields.
 Widget buildDismissKeyboardWrapper({required Widget child}) {
-  return GestureDetector(
-    behavior: HitTestBehavior.translucent,
-    onTap: () {
-      // Dismiss the keyboard by unfocusing the current FocusNode.
-      FocusScopeNode currentFocus = FocusScope.of(navigatorKey.currentContext!);
-      if (!currentFocus.hasPrimaryFocus && currentFocus.focusedChild != null) {
-        currentFocus.unfocus();
-      }
-    },
-    child: child,
+  return Builder(
+    builder: (context) => GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () {
+        // Dismiss the keyboard by unfocusing the current FocusNode.
+        FocusScopeNode currentFocus = FocusScope.of(context);
+        if (!currentFocus.hasPrimaryFocus && currentFocus.focusedChild != null) {
+          currentFocus.unfocus();
+        }
+      },
+      child: child,
+    ),
   );
 }
 
