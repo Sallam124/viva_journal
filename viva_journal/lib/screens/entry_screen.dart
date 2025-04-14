@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../database/database_helper.dart';
+import '../database/database.dart'; // Import DatabaseHelper
 
 class EntryScreen extends StatefulWidget {
   final DateTime date;
@@ -14,14 +14,25 @@ class _EntryScreenState extends State<EntryScreen> {
   final TextEditingController _contentController = TextEditingController();
   String _selectedMood = "Happy"; // Default mood
 
+  // Method to save the mood entry to the database
   void _saveEntry() async {
-    await DatabaseHelper.instance.insertEntry({
-      'date': "${widget.date.year}-${widget.date.month}-${widget.date.day}",
-      'mood': _selectedMood,
-      'content': _contentController.text,
-    });
+    // Create a MoodEntry object from the user's input
+    final moodEntry = MoodEntry(
+      date: "${widget.date.year}-${widget.date.month}-${widget.date.day}", // Date in 'yyyy-MM-dd' format
+      mood: _selectedMood,
+      input: _contentController.text, // Text content entered by the user
+    );
 
-    Navigator.pop(context); // Return to the previous screen
+    try {
+      // Insert the new mood entry into the database using insertMood from DatabaseHelper
+      await DatabaseHelper().insertMood(moodEntry);
+
+      // Once saved, pop the screen (return to the previous screen)
+      Navigator.pop(context);
+    } catch (e) {
+      print('Error saving mood entry: $e');
+      // Handle any errors here, like showing a toast or dialog
+    }
   }
 
   @override
@@ -61,7 +72,7 @@ class _EntryScreenState extends State<EntryScreen> {
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: _saveEntry,
+              onPressed: _saveEntry, // Calls the _saveEntry method to save to DB
               child: Text("Save Entry"),
             ),
           ],

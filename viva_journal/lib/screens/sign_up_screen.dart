@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_sign_in/google_sign_in.dart'; // Import Google Sign-In package
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:viva_journal/widgets/widgets.dart';
 import 'package:viva_journal/screens/background_theme.dart';
 import 'package:viva_journal/screens/login_screen.dart';
@@ -17,7 +17,7 @@ class SignUpScreen extends StatefulWidget {
 class _SignUpScreenState extends State<SignUpScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn(); // Google Sign-In instance
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
@@ -39,6 +39,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _canResendEmail = true;
   int _resendCooldown = 0;
   Timer? _resendTimer;
+  Timer? _verificationTimer;
 
   @override
   void dispose() {
@@ -53,29 +54,47 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _confirmPasswordFocusNode.dispose();
 
     _resendTimer?.cancel();
+    _verificationTimer?.cancel();
     super.dispose();
   }
 
   void _startCooldownTimer() {
     setState(() {
       _canResendEmail = false;
-      _resendCooldown = 30; // Reset cooldown to 30 seconds
+      _resendCooldown = 30;
     });
 
-    // Start a periodic timer to count down the cooldown
     _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_resendCooldown == 1) {
         timer.cancel();
         setState(() {
-          _canResendEmail = true; // Enable resend after cooldown
-          _resendCooldown = 0; // Reset cooldown
+          _canResendEmail = true;
+          _resendCooldown = 0;
         });
       } else {
         setState(() {
-          _resendCooldown--; // Decrease the cooldown
+          _resendCooldown--;
         });
       }
     });
+  }
+
+  void _showErrorPopup(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+      ),
+    );
+  }
+
+  void _showInfoPopup(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(color: Colors.black)),
+        backgroundColor: Colors.green[100],
+      ),
+    );
   }
 
   Future<void> _signUp() async {
@@ -84,6 +103,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final username = _usernameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
+    final cleanUsername = username.replaceAll(RegExp(r'^\s+|\s+$'), '');
 
     setState(() {
       _isLoading = true;
@@ -92,8 +112,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
     try {
       final existingMethods = await _auth.fetchSignInMethodsForEmail(email);
       if (existingMethods.isNotEmpty) {
-        _showErrorPopup("An account already exists with this email.");
         setState(() => _isLoading = false);
+        _showErrorPopup("An account already exists with this email.");
         return;
       }
 
@@ -104,13 +124,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
       _newlyCreatedUser = userCredential.user;
 
-      // Send verification email but don't store user in Firebase yet
       await _newlyCreatedUser!.sendEmailVerification();
       _showInfoPopup("Verification email sent. Please check your inbox.");
 
-      // Start periodic check for email verification
       _startCooldownTimer();
-      _checkEmailVerification();
+      _startVerificationCheck();
     } catch (error) {
       _showErrorPopup("Sign-up failed: $error");
       setState(() {
@@ -119,30 +137,45 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
-  Future<void> _checkEmailVerification() async {
-    Timer.periodic(const Duration(seconds: 3), (timer) async {
-      if (_newlyCreatedUser != null && _newlyCreatedUser!.emailVerified) {
-        // Once the email is verified, store the user details in Firestore
-        await _firestore.collection('users').doc(_newlyCreatedUser!.uid).set({
+  void _startVerificationCheck() {
+    if (_newlyCreatedUser == null) return;
+
+    _verificationTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+      await _newlyCreatedUser!.reload();
+      final refreshedUser = _auth.currentUser;
+
+      if (refreshedUser != null && refreshedUser.emailVerified) {
+        timer.cancel();
+        _verificationTimer?.cancel();
+
+        await _firestore.collection('users').doc(refreshedUser.uid).set({
           'username': _usernameController.text.trim(),
           'email': _emailController.text.trim(),
           'password': _passwordController.text.trim(),
           'createdAt': Timestamp.now(),
         });
 
-        Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (context) => const LoginScreen()));
-        timer.cancel();
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+          );
+        }
       }
     });
   }
 
   Future<void> _resendVerificationEmail() async {
-    if (_newlyCreatedUser != null && _canResendEmail) {
+    if (_newlyCreatedUser == null) {
+      _showErrorPopup("No user available to resend verification email.");
+      return;
+    }
+
+    if (_canResendEmail) {
       try {
         await _newlyCreatedUser!.sendEmailVerification();
         _showInfoPopup("Verification email resent.");
-        _startCooldownTimer(); // Start cooldown after resending email
+        _startCooldownTimer();
       } catch (e) {
         _showErrorPopup("Failed to resend email: $e");
       }
@@ -159,38 +192,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
           idToken: googleAuth.idToken,
         );
 
-        // Sign in with Google credentials
         final UserCredential userCredential = await _auth.signInWithCredential(credential);
         final User? user = userCredential.user;
 
-        if (user != null) {
-          // Check if the user is new, and if so, store them in Firestore
-          if (userCredential.additionalUserInfo?.isNewUser == true) {
-            await _firestore.collection('users').doc(user.uid).set({
-              'username': account.displayName,
-              'email': account.email,
-              'createdAt': Timestamp.now(),
-            });
-          }
-          // Redirect to the home screen
+        if (user != null && userCredential.additionalUserInfo?.isNewUser == true) {
+          await _firestore.collection('users').doc(user.uid).set({
+            'username': account.displayName,
+            'email': account.email,
+            'createdAt': Timestamp.now(),
+          });
+        }
+
+        if (mounted) {
           Navigator.pushReplacementNamed(context, '/home');
         }
       }
     } catch (error) {
       _showErrorPopup("Google Sign-In error: $error");
     }
-  }
-
-  void _showErrorPopup(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
-    );
-  }
-
-  void _showInfoPopup(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
-    );
   }
 
   @override
@@ -215,8 +234,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     focusNode: _usernameFocusNode,
                     hint: 'Username',
                     validator: (value) {
-                      if (value == null || value.trim().isEmpty) return 'Username required';
-                      if (value.trim().length < 4) return 'Username must be at least 4 characters';
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Username required';
+                      }
+                      if (value.trim().length < 4) {
+                        return 'Username must be at least 4 characters';
+                      }
+                      const specialCharPattern = r'[!@#$%^&*(),.?":{}|<>]';
+                      if (RegExp(specialCharPattern).hasMatch(value)) {
+                        return 'Username cannot contain special characters';
+                      }
+                      if (value.trim().length > 30) {
+                        return 'Username cannot exceed 30 characters';
+
+                      }
                       return null;
                     },
                     onTap: () => FocusScope.of(context).requestFocus(_usernameFocusNode),
@@ -227,9 +258,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     focusNode: _emailFocusNode,
                     hint: 'Email',
                     validator: (value) {
-                      if (value == null || value.trim().isEmpty) return 'Email required';
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Email required';
+                      }
                       const pattern = r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$';
-                      if (!RegExp(pattern).hasMatch(value.trim())) return 'Invalid email format';
+                      if (!RegExp(pattern).hasMatch(value.trim())) {
+                        return 'Invalid email format';
+                      }
                       return null;
                     },
                     onTap: () => FocusScope.of(context).requestFocus(_emailFocusNode),
@@ -241,11 +276,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     hint: 'Password',
                     obscureText: _obscurePassword,
                     validator: (value) {
-                      if (value == null || value.trim().isEmpty) return 'Password required';
-                      if (value.length < 8) return 'Password must be at least 8 characters';
-                      if (!RegExp(r'[A-Z]').hasMatch(value)) return 'Password must include at least one uppercase letter';
-                      if (!RegExp(r'[a-z]').hasMatch(value)) return 'Password must include at least one lowercase letter';
-                      if (!RegExp(r'[0-9]').hasMatch(value)) return 'Password must include a number';
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Password required';
+                      }
+                      if (value.length < 8) {
+                        return 'Password must be at least 8 characters';
+                      }
+                      if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                        return 'Password must include at least one uppercase letter';
+                      }
+                      if (!RegExp(r'[a-z]').hasMatch(value)) {
+                        return 'Password must include at least one lowercase letter';
+                      }
+                      if (!RegExp(r'[0-9]').hasMatch(value)) {
+                        return 'Password must include a number';
+                      }
                       return null;
                     },
                     onTap: () => FocusScope.of(context).requestFocus(_passwordFocusNode),
@@ -261,8 +306,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     hint: 'Confirm Password',
                     obscureText: _obscureConfirmPassword,
                     validator: (value) {
-                      if (value == null || value.trim().isEmpty) return 'Confirm password required';
-                      if (value.trim() != _passwordController.text.trim()) return 'Passwords do not match';
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Confirm password required';
+                      }
+                      if (value.trim() != _passwordController.text.trim()) {
+                        return 'Passwords do not match';
+                      }
                       return null;
                     },
                     onTap: () => FocusScope.of(context).requestFocus(_confirmPasswordFocusNode),
@@ -287,21 +336,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               borderRadius: BorderRadius.circular(30),
                             ),
                           ),
-                          child: const Text('Sign Up', style: TextStyle(fontSize: 16, color: Colors.white)),
+                          child: const Text('Sign Up', style: TextStyle(fontSize: 20, color: Colors.white)),
                         ),
                       ),
-                      const SizedBox(height: 27),
-                      const Text('or', style: TextStyle(fontSize: 25, color: Colors.black54)),
-                      const SizedBox(height: 27),
+                      const SizedBox(height: 20),
+                      const Text('OR', style: TextStyle(fontSize: 25, color: Colors.black54, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 20),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: _handleGoogleSignIn,
-                          icon: const Text('G', style: TextStyle(fontSize: 20, color: Colors.white)),
+                          icon: const Text('G', style: TextStyle(fontSize: 30, color: Colors.white)),
                           label: const Text('Continue with Google', style: TextStyle(fontSize: 18, color: Colors.white)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            padding: const EdgeInsets.symmetric(vertical: 13),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
@@ -329,10 +378,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       const Text('Already have an account? ', style: TextStyle(fontSize: 16)),
                       GestureDetector(
                         onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen()));                        },
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
+                        },
                         child: const Text(
                           'Login',
-                          style: TextStyle(fontSize: 16, color: Colors.black, decoration: TextDecoration.underline),
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],

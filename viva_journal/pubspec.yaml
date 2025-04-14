@@ -1,6 +1,6 @@
 name: viva_journal
 description: "A new Flutter project."
-publish_to: 'none'
+publish_to: "none"
 
 version: 1.0.0+1
 
@@ -23,15 +23,18 @@ dependencies:
   image_picker: ^1.0.7
   flutter_sound: ^9.2.13
   speech_to_text: 7.0.0
-  flutter_tts: ^3.7.0
-  intl: ^0.20.2  # Keeping the latest version
+  flutter_tts: ^4.2.2
+  intl: ^0.20.2 # Keeping the latest version
   video_player: ^2.7.0
   cloud_firestore: ^5.6.5
-  email_validator: ^2.0.1
+  email_validator: ^3.0.0
+  fl_chart: ^0.66.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  dotted_border: ^2.0.0
+
 
 flutter:
   uses-material-design: true
@@ -48,7 +51,6 @@ flutter:
     - assets/images/Background_Calendar.png
     - assets/images/Rotate_Star.png
     - assets/images/Star.svg
-    - assets/images/Background_Calendar.png
     - assets/images/Left_arrow.png
     - assets/images/Right_arrow.png
     - assets/images/pencil_1.png
@@ -58,6 +60,7 @@ flutter:
     - assets/images/pencil_5.png
     - assets/images/pencil_6.png
     - assets/images/eraser.png
+    - assets/images/StarBar.png
     - assets/images/small_left_arrow.png
     - assets/images/small_right_arrow.png
     - assets/images/Star0.png
@@ -66,7 +69,9 @@ flutter:
     - assets/images/Star3.png
     - assets/images/Star4.png
     - assets/images/Star5.png
-
+    - assets/images/Background_2.png
+    - assets/images/Add_tag.png
+    - assets/images/pfp.png
 
   fonts:
     - family: SF Pro Display

@@ -71,109 +71,129 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     }
   }
 
+  /// ✅ Custom Back Button Handler using WillPopScope
+  Future<bool> _onWillPop() async {
+    // Unfocus the text field (dismiss the keyboard)
+    FocusScope.of(context).unfocus();
+
+    // Adding a small delay to ensure the keyboard dismisses before navigation
+    await Future.delayed(const Duration(milliseconds: 200));
+
+    // Now navigate to the LoginScreen after the delay
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginScreen()),
+    );
+
+    return false;  // Prevents the default back behavior (popping the current screen)
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: GestureDetector(
-        onTap: () {
-          FocusScope.of(context).unfocus(); // Dismiss keyboard when tapping outside
-        },
-        child: BackgroundContainer(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Forgot Password',
-                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Enter your email to reset your password.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16, color: Colors.black54),
-                  ),
-                  const SizedBox(height: 30),
-
-                  /// ✅ Input Field for Email
-                  buildTextField(
-                    _emailController,
-                    'Enter your email',
-                    _emailFocusNode,
-                    context,
-                        () {},
-                  ),
-
-                  const SizedBox(height: 15),
-
-                  /// ✅ Show confirmation or error message
-                  if (errorMessage != null)
-                    Text(
-                      errorMessage!,
-                      style: const TextStyle(
-                        color: Colors.red,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  if (emailSent)
+    return WillPopScope(
+      onWillPop: _onWillPop,  // Attach the custom back button behavior here
+      child: Scaffold(
+        body: GestureDetector(
+          onTap: () {
+            FocusScope.of(context).unfocus(); // Dismiss keyboard when tapping outside
+          },
+          child: BackgroundContainer(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 30),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     const Text(
-                      "Password reset email sent! Check your inbox.",
-                      style: TextStyle(
-                        color: Colors.green,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      'Forgot Password',
+                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Enter your email to reset your password.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16, color: Colors.black54),
+                    ),
+                    const SizedBox(height: 30),
+
+                    /// ✅ Input Field for Email
+                    buildTextField(
+                      _emailController,
+                      'Enter your email',
+                      _emailFocusNode,
+                      context,
+                          () {},
                     ),
 
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 15),
 
-                  /// ✅ Send Reset Link Button
-                  if (isLoading)
-                    const CircularProgressIndicator()
-                  else
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _resetPassword,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
+                    /// ✅ Show confirmation or error message
+                    if (errorMessage != null)
+                      Text(
+                        errorMessage!,
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    if (emailSent)
+                      const Text(
+                        "Password reset email sent! Check your inbox.",
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                    const SizedBox(height: 20),
+
+                    /// ✅ Send Reset Link Button
+                    if (isLoading)
+                      const CircularProgressIndicator()
+                    else
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _resetPassword,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                          ),
+                          child: const Text(
+                            'Send Reset Link',
+                            style: TextStyle(fontSize: 16, color: Colors.white),
                           ),
                         ),
-                        child: const Text(
-                          'Send Reset Link',
-                          style: TextStyle(fontSize: 16, color: Colors.white),
+                      ),
+
+                    const SizedBox(height: 20),
+
+                    /// ✅ Back to Login Button
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => LoginScreen()),
+                        );
+                      },
+                      child: const Text(
+                        'Back to Login',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.underline,
                         ),
                       ),
                     ),
 
-                  const SizedBox(height: 20),
-
-                  /// ✅ Back to Login Button
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => LoginScreen()),
-                      );
-                    },
-                    child: const Text(
-                      'Back to Login',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 50),
-                ],
+                    const SizedBox(height: 50),
+                  ],
+                ),
               ),
             ),
           ),
