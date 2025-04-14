@@ -3,10 +3,11 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'calendar_screen.dart';
-import 'package:viva_journal/screens/home_bar.dart';  // Add import for HomeScreen
+import 'package:viva_journal/screens/home.dart';  // Update import for HomeScreen
 
 class TrackerLogScreen extends StatefulWidget {
-  const TrackerLogScreen({super.key});
+  final DateTime date;
+  TrackerLogScreen({super.key, DateTime? date}) : date = date ?? DateTime.now();
 
   @override
   _TrackerLogScreenState createState() => _TrackerLogScreenState();
@@ -41,9 +42,15 @@ class _TrackerLogScreenState extends State<TrackerLogScreen> {
 
   List<Color> get colors {
     return baseColors.asMap().map((index, color) {
-      // Darken the color based on the intensity level
-      double factor = 0.15 * (emotionLevels[index] - 1);
-      return MapEntry(index, Color.lerp(color, Colors.black, factor)!);
+      // For yellow and light yellow, make it brighter instead of darker
+      if (index == 0 || index == 1) {
+        double factor = 0.15 * (emotionLevels[index] - 1);
+        return MapEntry(index, Color.lerp(color, Colors.white, factor)!);
+      } else {
+        // For other colors, keep the darkening effect
+        double factor = 0.15 * (emotionLevels[index] - 1);
+        return MapEntry(index, Color.lerp(color, Colors.black, factor)!);
+      }
     }).values.toList();
   }
 
@@ -61,7 +68,7 @@ class _TrackerLogScreenState extends State<TrackerLogScreen> {
 
   @override
   Widget build(BuildContext context) {
-    String formattedDate = DateFormat("d MMM, yy | E").format(DateTime.now());
+    String formattedDate = DateFormat("d MMM, yy | E").format(widget.date);
     Color selectedColor = colors[_currentIndex];
 
     return Scaffold(

@@ -1,4 +1,4 @@
-export '../screens/home_bar.dart';
+export '../screens/home.dart';
 
 import 'package:flutter/material.dart';
 

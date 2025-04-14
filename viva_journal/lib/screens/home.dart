@@ -3,6 +3,7 @@ import 'package:viva_journal/screens/settings_screen.dart';
 import 'package:viva_journal/screens/dashboard_screen.dart';
 import 'package:viva_journal/screens/calendar_screen.dart';
 import 'package:viva_journal/screens/trackerlog_screen.dart'; // Tracker log screen import
+import 'package:viva_journal/widgets/mini_calendar.dart';  // Add import for MiniCalendar
 
 /// Home screen with a bottom navigation bar and a floating action button.
 class HomeScreen extends StatefulWidget {
@@ -35,11 +36,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   /// List of screens corresponding to navigation items.
   final List<Widget> _pages = [
-    Center(child: Text('Welcome to Home!', style: TextStyle(color: Colors.black, fontSize: 24))),
+    _buildHomeContent(),  // Replace the placeholder with actual home content
     CalendarScreen(),
     const DashboardScreen(),
     const SettingsScreen(),
   ];
+
+  // Add this static method to build home content
+  static Widget _buildHomeContent() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 60),  // Space for status bar
+          const Text(
+            'This Week',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 16),
+          const MiniCalendar(),  // Add the mini calendar here
+          // Add more content below as needed
+        ],
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -75,7 +100,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             Navigator.push(
               context,
               PageRouteBuilder(
-                pageBuilder: (context, animation, secondaryAnimation) => const TrackerLogScreen(),
+                pageBuilder: (context, animation, secondaryAnimation) => TrackerLogScreen(date: DateTime.now()),
                 transitionDuration: Duration.zero,
                 reverseTransitionDuration: Duration.zero,
               ),
