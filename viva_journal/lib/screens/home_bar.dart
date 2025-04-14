@@ -6,7 +6,8 @@ import 'package:viva_journal/screens/trackerlog_screen.dart'; // Tracker log scr
 
 /// Home screen with a bottom navigation bar and a floating action button.
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final int initialIndex;  // Add initialIndex parameter
+  const HomeScreen({super.key, this.initialIndex = 0});  // Default to 0 if not provided
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -21,6 +22,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late double homeBarHeight;
   bool _isSplashAnimating = false;
   Offset? _splashPosition;
+  double _homeBarOpacity = 1.0;  // Add opacity control
+  double _floatingButtonOpacity = 1.0;  // Add opacity control
 
   final List<Color> _glowColors = [
     const Color(0xFFFFE100), // Yellow
@@ -41,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialIndex;  // Set initial index from parameter
     _glowController = AnimationController(
       duration: const Duration(milliseconds: 3000), // Slower animation for smoother flow
       vsync: this,
@@ -65,13 +69,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     _splashController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
-        setState(() {
-          _isSplashAnimating = false;
+        // Delay the navigation slightly to ensure smooth transition
+        Future.delayed(const Duration(milliseconds: 50), () {
+          if (mounted) {
+            Navigator.push(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) => const TrackerLogScreen(),
+                transitionDuration: Duration.zero,
+                reverseTransitionDuration: Duration.zero,
+              ),
+            ).then((_) {
+              if (mounted) {
+                setState(() {
+                  _isSplashAnimating = false;
+                  _homeBarOpacity = 1.0;
+                  _floatingButtonOpacity = 1.0;
+                });
+              }
+            });
+          }
         });
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const TrackerLogScreen()),
-        );
       }
     });
   }
@@ -95,6 +113,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     setState(() {
       _isSplashAnimating = true;
       _splashPosition = details.globalPosition;
+      _homeBarOpacity = 0.0;  // Start fade out
+      _floatingButtonOpacity = 0.0;  // Start fade out
       _splashController.forward(from: 0);
     });
   }
@@ -156,30 +176,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             bottom: bottomPadding,
             left: horizontalPadding,
             right: horizontalPadding,
-            child: Container(
-              height: homeBarHeight,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(screenWidth * 0.05),  // Responsive border radius
-                image: DecorationImage(
-                  image: AssetImage('assets/images/HomeBarBG.png'),
-                  fit: BoxFit.cover,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 300),
+              opacity: _homeBarOpacity,
+              child: Container(
+                height: homeBarHeight,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(screenWidth * 0.05),  // Responsive border radius
+                  image: DecorationImage(
+                    image: AssetImage('assets/images/HomeBarBG.png'),
+                    fit: BoxFit.cover,
+                  ),
                 ),
-              ),
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                    horizontal: horizontalPadding,
-                    vertical: homeBarHeight * 0.1
-                ),
-                child: Row(
-                  children: [
-                    _buildNavItem(Icons.home, 0, iconSize, starSize, iconTopPadding),
-                    const Spacer(),
-                    _buildNavItem(Icons.calendar_today, 1, iconSize, starSize, iconTopPadding),
-                    const Spacer(flex: 4),
-                    _buildNavItem(Icons.bar_chart, 2, iconSize, starSize, iconTopPadding),
-                    const Spacer(),
-                    _buildNavItem(Icons.settings, 3, iconSize, starSize, iconTopPadding),
-                  ],
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: horizontalPadding,
+                      vertical: homeBarHeight * 0.1
+                  ),
+                  child: Row(
+                    children: [
+                      _buildNavItem(Icons.home, 0, iconSize, starSize, iconTopPadding),
+                      const Spacer(),
+                      _buildNavItem(Icons.calendar_today, 1, iconSize, starSize, iconTopPadding),
+                      const Spacer(flex: 4),
+                      _buildNavItem(Icons.bar_chart, 2, iconSize, starSize, iconTopPadding),
+                      const Spacer(),
+                      _buildNavItem(Icons.settings, 3, iconSize, starSize, iconTopPadding),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -188,7 +212,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
       floatingActionButton: Padding(
         padding: EdgeInsets.only(bottom: floatingButtonBottomPadding),
-        child: _buildFloatingButton(floatingButtonSize),
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 300),
+          opacity: _floatingButtonOpacity,
+          child: _buildFloatingButton(floatingButtonSize),
+        ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );

@@ -1,6 +1,6 @@
 name: viva_journal
 description: "A new Flutter project."
-publish_to: 'none'
+publish_to: "none"
 
 version: 1.0.0+1
 
@@ -24,7 +24,7 @@ dependencies:
   flutter_sound: ^9.2.13
   speech_to_text: 7.0.0
   flutter_tts: ^4.2.2
-  intl: ^0.20.2  # Keeping the latest version
+  intl: ^0.20.2 # Keeping the latest version
   video_player: ^2.7.0
   cloud_firestore: ^5.6.5
   email_validator: ^3.0.0
@@ -67,8 +67,7 @@ flutter:
     - assets/images/Star4.png
     - assets/images/Star5.png
     - assets/images/Background_2.png
-
-
+    - assets/images/Add_tag.png
 
   fonts:
     - family: SF Pro Display
