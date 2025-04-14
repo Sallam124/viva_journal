@@ -62,14 +62,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (email.isEmpty || password.isEmpty) {
         setState(() {
-          errorMessage = "Please enter both email and password.";
+          errorMessage = "Please enter both email and password!";
         });
         return;
       }
 
       if (!EmailValidator.validate(email)) {
         setState(() {
-          errorMessage = "Please enter a valid email address.";
+          errorMessage = "Please enter a valid email address!";
         });
         return;
       }
@@ -82,7 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // Check if the user's email is verified
       if (userCredential.user != null && !userCredential.user!.emailVerified) {
         setState(() {
-          errorMessage = "Please verify your email before logging in.";
+          errorMessage = "Please verify your email before logging in!";
         });
       } else {
         // Successfully logged in and email is verified
@@ -91,9 +91,9 @@ class _LoginScreenState extends State<LoginScreen> {
     } on FirebaseAuthException catch (e) {
       setState(() {
         if (e.code == 'user-not-found') {
-          errorMessage = "No user found for this email.";
+          errorMessage = "No user found for this email!";
         } else if (e.code == 'wrong-password') {
-          errorMessage = "Incorrect password. Please try again.";
+          errorMessage = "Incorrect password. Please try again!";
         } else {
           errorMessage = "Login failed: ${e.message}";
         }
@@ -211,7 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (errorMessage != null)
                       Text(
                         errorMessage!,
-                        style: const TextStyle(color: Colors.red, fontSize: 14),
+                        style: const TextStyle(color: Colors.black, fontSize: 14), // Color changed to black
                       ),
                     const SizedBox(height: 10),
                     const Text(

@@ -173,6 +173,7 @@ class CustomTextFormField extends StatelessWidget {
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
             suffixIcon: suffixIcon,
+            errorStyle: const TextStyle(color: Colors.black),  // Set error message text color to black
           ),
           validator: validator,
         ),
@@ -180,6 +181,7 @@ class CustomTextFormField extends StatelessWidget {
     );
   }
 }
+
 
 /// A reusable custom elevated button widget with styling.
 class CustomElevatedButton extends StatelessWidget {
