@@ -1,5 +1,3 @@
-export '../screens/home.dart';
-
 import 'package:flutter/material.dart';
 
 /// Global Navigator Key for retrieving context anywhere
@@ -119,16 +117,18 @@ Future<bool> _onWillPop() async {
 
 /// Wraps a widget in a GestureDetector that dismisses the keyboard when tapping outside input fields.
 Widget buildDismissKeyboardWrapper({required Widget child}) {
-  return GestureDetector(
-    behavior: HitTestBehavior.translucent,
-    onTap: () {
-      // Dismiss the keyboard by unfocusing the current FocusNode.
-      FocusScopeNode currentFocus = FocusScope.of(navigatorKey.currentContext!);
-      if (!currentFocus.hasPrimaryFocus && currentFocus.focusedChild != null) {
-        currentFocus.unfocus();
-      }
-    },
-    child: child,
+  return Builder(
+    builder: (context) => GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () {
+        // Dismiss the keyboard by unfocusing the current FocusNode.
+        FocusScopeNode currentFocus = FocusScope.of(context);
+        if (!currentFocus.hasPrimaryFocus && currentFocus.focusedChild != null) {
+          currentFocus.unfocus();
+        }
+      },
+      child: child,
+    ),
   );
 }
 
@@ -173,7 +173,6 @@ class CustomTextFormField extends StatelessWidget {
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
             suffixIcon: suffixIcon,
-            errorStyle: const TextStyle(color: Colors.black),  // Set error message text color to black
           ),
           validator: validator,
         ),
@@ -181,7 +180,6 @@ class CustomTextFormField extends StatelessWidget {
     );
   }
 }
-
 
 /// A reusable custom elevated button widget with styling.
 class CustomElevatedButton extends StatelessWidget {

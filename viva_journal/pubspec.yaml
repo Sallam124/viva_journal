@@ -69,6 +69,7 @@ flutter:
     - assets/images/Star5.png
     - assets/images/Background_2.png
     - assets/images/Add_tag.png
+    - assets/images/pfp.png
 
   fonts:
     - family: SF Pro Display

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:viva_journal/screens/settings_screen.dart';
 import 'package:viva_journal/screens/dashboard_screen.dart';
 import 'package:viva_journal/screens/calendar_screen.dart';
-import 'package:viva_journal/screens/trackerlog_screen.dart'; // Tracker log screen import
-import 'package:viva_journal/widgets/mini_calendar.dart';  // Add import for MiniCalendar
+import 'package:viva_journal/screens/trackerlog_screen.dart';
+import 'package:viva_journal/widgets/mini_calendar.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Home screen with a bottom navigation bar and a floating action button.
 class HomeScreen extends StatefulWidget {
@@ -25,6 +27,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Offset? _splashPosition;
   double _homeBarOpacity = 1.0;  // Add opacity control
   double _floatingButtonOpacity = 1.0;  // Add opacity control
+  String? _username;
+  String? _profilePictureUrl;  // Add profile picture URL
+  bool _hasNotifications = false;  // Add notification state
 
   final List<Color> _glowColors = [
     const Color(0xFFFFE100), // Yellow
@@ -34,32 +39,138 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     const Color(0xFF8C0000), // Dark Red
   ];
 
-  /// List of screens corresponding to navigation items.
-  final List<Widget> _pages = [
-    _buildHomeContent(),  // Replace the placeholder with actual home content
-    CalendarScreen(),
-    const DashboardScreen(),
-    const SettingsScreen(),
-  ];
+  /// Method to get time-based greeting
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return 'Good Morning,';
+    } else if (hour < 17) {
+      return 'Good Afternoon,';
+    } else {
+      return 'Good Evening,';
+    }
+  }
 
-  // Add this static method to build home content
-  static Widget _buildHomeContent() {
+  /// Method to fetch username and profile picture from Firestore
+  Future<void> _fetchUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      if (doc.exists) {
+        setState(() {
+          _username = doc.data()?['username'] as String?;
+          _profilePictureUrl = doc.data()?['profilePicture'] as String?;
+          _hasNotifications = doc.data()?['hasNotifications'] as bool? ?? false;
+        });
+      }
+    }
+  }
+
+  /// Method to build home content
+  Widget _buildHomeContent() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 60),  // Space for status bar
-          const Text(
-            'This Week',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      image: DecorationImage(
+                        image: _profilePictureUrl != null
+                            ? NetworkImage(_profilePictureUrl!)
+                            : const AssetImage('assets/images/pfp.png') as ImageProvider,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Row(
+                    children: [
+                      Text(
+                        _getGreeting(),
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.normal,
+                          color: Colors.black,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                      if (_username != null) ...[
+                        const SizedBox(width: 8),
+                        Row(
+                          children: [
+                            Text(
+                              _username!,
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                            const Text(
+                              ' ✨',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.normal,
+                                color: Colors.black,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+              GestureDetector(
+                onTap: () {
+                  // Handle notification tap
+                  setState(() {
+                    _hasNotifications = false;
+                  });
+                  // TODO: Navigate to notifications screen
+                },
+                child: Stack(
+                  children: [
+                    Icon(
+                      Icons.notifications_outlined,
+                      size: 28,
+                      color: Colors.black,
+                    ),
+                    if (_hasNotifications)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
-          const MiniCalendar(),  // Add the mini calendar here
+          MiniCalendar(key: const ValueKey('mini_calendar')),
           // Add more content below as needed
         ],
       ),
@@ -69,9 +180,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _selectedIndex = widget.initialIndex;  // Set initial index from parameter
+    _selectedIndex = widget.initialIndex;
+    _fetchUserData();  // Changed from _fetchUsername to _fetchUserData
+
     _glowController = AnimationController(
-      duration: const Duration(milliseconds: 3000), // Slower animation for smoother flow
+      duration: const Duration(milliseconds: 3000),
       vsync: this,
     );
 
@@ -178,7 +291,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       body: Stack(
         children: [
           // Main content
-          _pages[_selectedIndex],
+          _selectedIndex == 0 ? _buildHomeContent() :
+          _selectedIndex == 1 ? CalendarScreen() :
+          _selectedIndex == 2 ? const DashboardScreen() :
+          const SettingsScreen(),
 
           if (_isSplashAnimating && _splashPosition != null)
             Positioned.fill(
