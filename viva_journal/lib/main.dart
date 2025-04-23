@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:provider/provider.dart'; // ✅ NEW
+import 'package:provider/provider.dart';
+
 import 'firebase_options.dart';
+import 'package:viva_journal/theme_provider.dart';
+import 'package:viva_journal/widgets/widgets.dart';
 import 'package:viva_journal/screens/loading_screen.dart';
 import 'package:viva_journal/screens/login_screen.dart';
 import 'package:viva_journal/screens/sign_up_screen.dart';
-
-import 'package:viva_journal/screens/home.dart'; // HomeScreen is defined in home.dart.
-
 import 'package:viva_journal/screens/home.dart';
-
-import 'package:viva_journal/screens/home.dart'; // Fixed import path
 import 'package:viva_journal/screens/background_theme.dart';
 import 'package:viva_journal/screens/reset_password.dart';
 import 'package:viva_journal/screens/dashboard_screen.dart';
@@ -19,8 +17,6 @@ import 'package:viva_journal/screens/calendar_screen.dart';
 import 'package:viva_journal/screens/trackerlog_screen.dart';
 import 'package:viva_journal/screens/settings_screen.dart';
 import 'package:viva_journal/screens/journal_screen.dart';
-import 'package:viva_journal/widgets/widgets.dart';
-import 'package:viva_journal/theme_provider.dart'; // ✅ NEW
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -32,7 +28,7 @@ void main() async {
 
   runApp(
     ChangeNotifierProvider(
-      create: (_) => ThemeProvider(), // ✅ Wrap app with ThemeProvider
+      create: (_) => ThemeProvider(),
       child: const MyApp(),
     ),
   );
@@ -47,50 +43,26 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context); // ✅ Access theme
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
     return MaterialApp(
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
-
-      title: 'Flutter Journal App',
       title: 'Viva Journal',
-      theme: ThemeData(
-        fontFamily: 'SF Pro Display',
-        primarySwatch: Colors.grey,
-        pageTransitionsTheme: PageTransitionsTheme(
-          builders: {
-            TargetPlatform.android: FadePageTransition(),
-            TargetPlatform.iOS: FadePageTransition(),
-          },
-        ),
-      ),
-      // Wraps each screen in a dismiss keyboard wrapper.
-      builder: (context, child) => buildDismissKeyboardWrapper(child: child!),
-
-      title: 'Viva Journal',
-      theme: ThemeData.light(),           // ✅ Light theme
-      darkTheme: ThemeData.dark(),        // ✅ Dark theme
-      themeMode: themeProvider.themeMode, // ✅ Controlled by ThemeProvider
-
+      theme: ThemeData.light(),
+      darkTheme: ThemeData.dark(),
+      themeMode: themeProvider.themeMode,
       themeAnimationCurve: Curves.easeInOut,
       themeAnimationDuration: const Duration(milliseconds: 400),
-
       builder: (context, child) => buildDismissKeyboardWrapper(child: child!),
 
-      // Determines the initial route based on the user's Firebase login status.
       home: FutureBuilder<User?>(
         future: _checkUserLoginStatus(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return _buildRoute(const LoadingScreen());
           } else if (snapshot.hasData && snapshot.data != null) {
-
-
-            // If logged in, go to the CalendarScreen (serving as home).
             return _buildRoute(const HomeScreen());
-            // If logged in, go to the HomeScreen
-            return _buildRoute(const SignUpScreen());
           } else {
             return _buildRoute(const SignUpScreen());
           }
