@@ -71,12 +71,20 @@ class _LoginScreenState extends State<LoginScreen> {
       final password = _passwordController.text.trim();
 
       if (email.isEmpty || password.isEmpty) {
+
         setState(() => errorMessage = "Enter both email and password!");
+
+        setState(() {
+          errorMessage = "Please enter both email and password!";
+        });
         return;
       }
 
       if (!EmailValidator.validate(email)) {
         setState(() => errorMessage = "Invalid email format.");
+        setState(() {
+          errorMessage = "Please enter a valid email address!";
+        });
         return;
       }
 
@@ -88,6 +96,11 @@ class _LoginScreenState extends State<LoginScreen> {
           !userCredential.user!.emailVerified) {
         setState(() =>
         errorMessage = "Verify your email before logging in.");
+      // Check if the user's email is verified
+      if (userCredential.user != null && !userCredential.user!.emailVerified) {
+        setState(() {
+          errorMessage = "Please verify your email before logging in!";
+        });
       } else {
         Navigator.pushReplacementNamed(context, '/home');
       }
@@ -97,6 +110,10 @@ class _LoginScreenState extends State<LoginScreen> {
           errorMessage = "No user found!";
         } else if (e.code == 'wrong-password') {
           errorMessage = "Wrong password!";
+
+          errorMessage = "No user found for this email!";
+        } else if (e.code == 'wrong-password') {
+          errorMessage = "Incorrect password. Please try again!";
         } else {
           errorMessage = "Login error: ${e.message}";
         }
@@ -187,6 +204,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       Text(errorMessage!,
                           style: const TextStyle(
                               color: Colors.red, fontSize: 14)),
+                      Text(
+                        errorMessage!,
+                        style: const TextStyle(color: Colors.black, fontSize: 14), // Color changed to black
+                      ),
                     const SizedBox(height: 10),
                     const Text('OR',
                         style: TextStyle(

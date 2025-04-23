@@ -2,40 +2,240 @@ import 'package:flutter/material.dart';
 import 'package:viva_journal/screens/settings_screen.dart';
 import 'package:viva_journal/screens/dashboard_screen.dart';
 import 'package:viva_journal/screens/calendar_screen.dart';
-import 'package:viva_journal/screens/trackerlog_screen.dart'; // Tracker log screen import
+import 'package:viva_journal/screens/trackerlog_screen.dart';
+import 'package:viva_journal/widgets/mini_calendar.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Home screen with a bottom navigation bar and a floating action button.
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final int initialIndex;  // Add initialIndex parameter
+  const HomeScreen({super.key, this.initialIndex = 0});  // Default to 0 if not provided
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _selectedIndex = 0;
-  late AnimationController _controller;
+  late AnimationController _glowController;
+  late AnimationController _splashController;
+  late Animation<double> _glowAnimation;
+  late Animation<double> _splashAnimation;
+  late double homeBarHeight;
+  bool _isSplashAnimating = false;
+  Offset? _splashPosition;
+  double _homeBarOpacity = 1.0;  // Add opacity control
+  double _floatingButtonOpacity = 1.0;  // Add opacity control
+  String? _username;
+  String? _profilePictureUrl;  // Add profile picture URL
+  bool _hasNotifications = false;  // Add notification state
 
-  /// List of screens corresponding to navigation items.
-  final List<Widget> _pages = [
-    Center(child: Text('Welcome to Home!', style: TextStyle(color: Colors.black, fontSize: 24))),
-     CalendarScreen(),
-    const DashboardScreen(),
-    const SettingsScreen(),
+  final List<Color> _glowColors = [
+    const Color(0xFFFFE100), // Yellow
+    const Color(0xFFFFC917), // Light Orange
+    const Color(0xFFF8650C), // Orange
+    const Color(0xFFF00000), // Red
+    const Color(0xFF8C0000), // Dark Red
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 600), // Floating button animation duration
-      vsync: this,
+  /// Method to get time-based greeting
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return 'Good Morning,';
+    } else if (hour < 17) {
+      return 'Good Afternoon,';
+    } else {
+      return 'Good Evening,';
+    }
+  }
+
+  /// Method to fetch username and profile picture from Firestore
+  Future<void> _fetchUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      if (doc.exists) {
+        setState(() {
+          _username = doc.data()?['username'] as String?;
+          _profilePictureUrl = doc.data()?['profilePicture'] as String?;
+          _hasNotifications = doc.data()?['hasNotifications'] as bool? ?? false;
+        });
+      }
+    }
+  }
+
+  /// Method to build home content
+  Widget _buildHomeContent() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 60),  // Space for status bar
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      image: DecorationImage(
+                        image: _profilePictureUrl != null
+                            ? NetworkImage(_profilePictureUrl!)
+                            : const AssetImage('assets/images/pfp.png') as ImageProvider,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Row(
+                    children: [
+                      Text(
+                        _getGreeting(),
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.normal,
+                          color: Colors.black,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                      if (_username != null) ...[
+                        const SizedBox(width: 8),
+                        Row(
+                          children: [
+                            Text(
+                              _username!,
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                            const Text(
+                              ' ✨',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.normal,
+                                color: Colors.black,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+              GestureDetector(
+                onTap: () {
+                  // Handle notification tap
+                  setState(() {
+                    _hasNotifications = false;
+                  });
+                  // TODO: Navigate to notifications screen
+                },
+                child: Stack(
+                  children: [
+                    Icon(
+                      Icons.notifications_outlined,
+                      size: 28,
+                      color: Colors.black,
+                    ),
+                    if (_hasNotifications)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          MiniCalendar(key: const ValueKey('mini_calendar')),
+          // Add more content below as needed
+        ],
+      ),
     );
   }
 
   @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialIndex;
+    _fetchUserData();  // Changed from _fetchUsername to _fetchUserData
+
+    _glowController = AnimationController(
+      duration: const Duration(milliseconds: 3000),
+      vsync: this,
+    );
+
+    _splashController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _glowAnimation = CurvedAnimation(
+      parent: _glowController,
+      curve: Curves.easeInOut,
+    );
+
+    _splashAnimation = CurvedAnimation(
+      parent: _splashController,
+      curve: Curves.easeInOut,
+    );
+
+    _glowController.repeat();
+
+    _splashController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        // Delay the navigation slightly to ensure smooth transition
+        Future.delayed(const Duration(milliseconds: 50), () {
+          if (mounted) {
+            Navigator.push(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) => TrackerLogScreen(date: DateTime.now()),
+                transitionDuration: Duration.zero,
+                reverseTransitionDuration: Duration.zero,
+              ),
+            ).then((_) {
+              if (mounted) {
+                setState(() {
+                  _isSplashAnimating = false;
+                  _homeBarOpacity = 1.0;
+                  _floatingButtonOpacity = 1.0;
+                });
+              }
+            });
+          }
+        });
+      }
+    });
+  }
+
+  @override
   void dispose() {
-    _controller.dispose();
+    _glowController.dispose();
+    _splashController.dispose();
     super.dispose();
   }
 
@@ -47,110 +247,238 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   /// Triggers animation and navigates to the tracker log screen.
-  void _onFloatingButtonPressed() {
-    _controller.forward(from: 0).then((_) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const TrackerLogScreen()),
-      );
+  void _onFloatingButtonPressed(TapDownDetails details) {
+    setState(() {
+      _isSplashAnimating = true;
+      _splashPosition = details.globalPosition;
+      _homeBarOpacity = 0.0;  // Start fade out
+      _floatingButtonOpacity = 0.0;  // Start fade out
+      _splashController.forward(from: 0);
     });
+  }
+
+  Color _getGlowColor(double value) {
+    final colorCount = _glowColors.length;
+    final position = (value * colorCount).floor();
+    final nextPosition = (position + 1) % colorCount;
+    final progress = (value * colorCount) - position;
+
+    return Color.lerp(
+      _glowColors[position],
+      _glowColors[nextPosition],
+      progress,
+    )!;
   }
 
   @override
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
-    double homeBarHeight = screenWidth * 0.25;
-    double floatingButtonSize = homeBarHeight * 0.8;
+    double screenHeight = MediaQuery.of(context).size.height;
 
-    return Stack(
-      children: [
-        Positioned.fill(child: _pages[_selectedIndex]), // Displays the selected page
+    // Calculate responsive dimensions
+    homeBarHeight = screenWidth * 0.2;  // Slightly smaller for better proportions
+    double floatingButtonSize = screenWidth * 0.20;  // Proportional to screen width
+    double horizontalPadding = screenWidth * 0.05;
+    double floatingButtonBottomPadding = homeBarHeight * 0.4;
+    double bottomPadding = screenHeight * 0.01;
 
-        // Bottom Navigation Bar Background Image
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          child: Image.asset(
-            'assets/images/HomeBarBG.png',
-            fit: BoxFit.cover,
-            height: homeBarHeight,
-          ),
-        ),
+    // Calculate icon sizes based on screen width
+    double iconSize = screenWidth * 0.07;  // Responsive icon size
+    double starSize = screenWidth * 0.04;  // Responsive star indicator size
+    double iconTopPadding = homeBarHeight * 0.2;  // Proportional top padding
 
-        // Scaffold with Bottom Navigation and Floating Action Button
-        Scaffold(
-          backgroundColor: Colors.transparent,
-          bottomNavigationBar: BottomAppBar(
-            color: Colors.transparent,
-            shape: const CircularNotchedRectangle(),
-            notchMargin: 10,
-            child: SizedBox(
-              height: homeBarHeight * 0.9,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
+    return Scaffold(
+      body: Stack(
+        children: [
+          // Main content
+          _selectedIndex == 0 ? _buildHomeContent() :
+          _selectedIndex == 1 ? CalendarScreen() :
+          _selectedIndex == 2 ? DashboardScreen() :
+          const SettingsScreen(),
+
+          if (_isSplashAnimating && _splashPosition != null)
+            Positioned.fill(
+              child: AnimatedBuilder(
+                animation: _splashAnimation,
+                builder: (context, child) {
+                  return CustomPaint(
+                    painter: SplashPainter(
+                      position: _splashPosition!,
+                      progress: _splashAnimation.value,
+                      color: _getGlowColor(_glowController.value),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+          // Bottom Navigation Bar
+          Positioned(
+            bottom: bottomPadding,
+            left: horizontalPadding,
+            right: horizontalPadding,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 300),
+              opacity: _homeBarOpacity,
+              child: Container(
+                height: homeBarHeight,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(screenWidth * 0.05),  // Responsive border radius
+                  image: DecorationImage(
+                    image: AssetImage('assets/images/HomeBarBG.png'),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: horizontalPadding,
+                      vertical: homeBarHeight * 0.1
+                  ),
+                  child: Row(
                     children: [
-                      _buildNavItem(Icons.home, 0),
-                      SizedBox(width: homeBarHeight * 0.4),
-                      _buildNavItem(Icons.calendar_today, 1),
+                      _buildNavItem(Icons.home, 0, iconSize, starSize, iconTopPadding),
+                      const Spacer(),
+                      _buildNavItem(Icons.calendar_today, 1, iconSize, starSize, iconTopPadding),
+                      const Spacer(flex: 4),
+                      _buildNavItem(Icons.bar_chart, 2, iconSize, starSize, iconTopPadding),
+                      const Spacer(),
+                      _buildNavItem(Icons.settings, 3, iconSize, starSize, iconTopPadding),
                     ],
                   ),
-                  SizedBox(width: homeBarHeight * 0.5),
-                  Row(
-                    children: [
-                      _buildNavItem(Icons.bar_chart, 2),
-                      SizedBox(width: homeBarHeight * 0.4),
-                      _buildNavItem(Icons.settings, 3),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
           ),
-          floatingActionButton: SizedBox(
-            width: floatingButtonSize,
-            height: floatingButtonSize,
-            child: FloatingActionButton(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              onPressed: _onFloatingButtonPressed,
-              child: RotationTransition(
-                turns: _controller,
-                child: Image.asset('assets/images/float_button.png', width: floatingButtonSize),
-              ),
-            ),
-          ),
-          floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        ],
+      ),
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: floatingButtonBottomPadding),
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 300),
+          opacity: _floatingButtonOpacity,
+          child: _buildFloatingButton(floatingButtonSize),
         ),
-      ],
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
 
-  /// Builds navigation bar items with an icon and optional highlight.
-  Widget _buildNavItem(IconData icon, int index) {
+  /// Builds navigation bar items with responsive sizes
+  Widget _buildNavItem(IconData icon, int index, double iconSize, double starSize, double topPadding) {
     return GestureDetector(
       onTap: () => _onItemTapped(index),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 32,
-            color: _selectedIndex == index ? Colors.white : const Color(0xFF3C3C3C),
-          ),
-          if (_selectedIndex == index)
+      child: Container(
+        height: homeBarHeight * 0.8,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
             Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Image.asset(
-                'assets/images/HBstar.png',
-                width: 18,
-                height: 18,
+              padding: EdgeInsets.only(top: topPadding),
+              child: Icon(
+                icon,
+                size: iconSize,
+                color: _selectedIndex == index ? Colors.white : const Color(0xFF3C3C3C),
               ),
             ),
-        ],
+            if (_selectedIndex == index)
+              Padding(
+                padding: EdgeInsets.only(top: homeBarHeight * 0.02),
+                child: Image.asset(
+                  'assets/images/HBstar.png',
+                  width: starSize,
+                  height: starSize,
+                ),
+              ),
+          ],
+        ),
       ),
     );
+  }
+
+  Widget _buildFloatingButton(double size) {
+    return GestureDetector(
+      onTapDown: _onFloatingButtonPressed,
+      child: AnimatedBuilder(
+        animation: _glowAnimation,
+        builder: (context, child) {
+          final glowColor = _getGlowColor(_glowController.value);
+
+          return Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: SweepGradient(
+                colors: [
+                  glowColor.withAlpha(76),
+                  glowColor.withAlpha(153),
+                  glowColor.withAlpha(255),
+                  glowColor.withAlpha(153),
+                  glowColor.withAlpha(76),
+                ],
+                stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+                transform: GradientRotation(_glowController.value * 2 * 3.14159),
+              ),
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(size * 0.05),
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.black,
+                  boxShadow: [
+                    BoxShadow(
+                      color: glowColor.withAlpha(153),
+                      blurRadius: size * 0.25,  // Responsive blur
+                      spreadRadius: size * 0.04,  // Responsive spread
+                    ),
+                    BoxShadow(
+                      color: glowColor.withAlpha(102),
+                      blurRadius: size * 0.3,  // Responsive blur
+                      spreadRadius: size * 0.06,  // Responsive spread
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Image.asset(
+                    'assets/images/float_button.png',
+                    width: size * 0.7,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class SplashPainter extends CustomPainter {
+  final Offset position;
+  final double progress;
+  final Color color;
+
+  SplashPainter({
+    required this.position,
+    required this.progress,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.fill;
+
+    final radius = size.width * 2 * progress;
+    canvas.drawCircle(position, radius, paint);
+  }
+
+  @override
+  bool shouldRepaint(SplashPainter oldDelegate) {
+    return oldDelegate.position != position ||
+        oldDelegate.progress != progress;
   }
 }

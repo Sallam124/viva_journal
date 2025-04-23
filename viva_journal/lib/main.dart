@@ -6,11 +6,12 @@ import 'firebase_options.dart';
 import 'package:viva_journal/screens/loading_screen.dart';
 import 'package:viva_journal/screens/login_screen.dart';
 import 'package:viva_journal/screens/sign_up_screen.dart';
-<<<<<<< Updated upstream
+
 import 'package:viva_journal/screens/home.dart'; // HomeScreen is defined in home.dart.
-=======
+
 import 'package:viva_journal/screens/home.dart';
->>>>>>> Stashed changes
+
+import 'package:viva_journal/screens/home.dart'; // Fixed import path
 import 'package:viva_journal/screens/background_theme.dart';
 import 'package:viva_journal/screens/reset_password.dart';
 import 'package:viva_journal/screens/dashboard_screen.dart';
@@ -51,8 +52,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
-<<<<<<< Updated upstream
+
       title: 'Flutter Journal App',
+      title: 'Viva Journal',
       theme: ThemeData(
         fontFamily: 'SF Pro Display',
         primarySwatch: Colors.grey,
@@ -65,8 +67,7 @@ class MyApp extends StatelessWidget {
       ),
       // Wraps each screen in a dismiss keyboard wrapper.
       builder: (context, child) => buildDismissKeyboardWrapper(child: child!),
-      // Determines the initial route based on the user’s Firebase login status.
-=======
+
       title: 'Viva Journal',
       theme: ThemeData.light(),           // ✅ Light theme
       darkTheme: ThemeData.dark(),        // ✅ Dark theme
@@ -77,18 +78,19 @@ class MyApp extends StatelessWidget {
 
       builder: (context, child) => buildDismissKeyboardWrapper(child: child!),
 
->>>>>>> Stashed changes
+      // Determines the initial route based on the user's Firebase login status.
       home: FutureBuilder<User?>(
         future: _checkUserLoginStatus(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return _buildRoute(const LoadingScreen());
           } else if (snapshot.hasData && snapshot.data != null) {
-<<<<<<< Updated upstream
+
+
             // If logged in, go to the CalendarScreen (serving as home).
-=======
->>>>>>> Stashed changes
             return _buildRoute(const HomeScreen());
+            // If logged in, go to the HomeScreen
+            return _buildRoute(const SignUpScreen());
           } else {
             return _buildRoute(const SignUpScreen());
           }
@@ -101,9 +103,9 @@ class MyApp extends StatelessWidget {
         '/login': (context) => _buildRoute(const LoginScreen()),
         '/home': (context) => _buildRoute(const HomeScreen()),
         '/resetPassword': (context) => _buildRoute(const ForgotPasswordScreen()),
-        '/dashboard': (context) => _buildRoute(const DashboardScreen()),
+        '/dashboard': (context) => _buildRoute(DashboardScreen()),
         '/calendar': (context) => _buildRoute(CalendarScreen()),
-        '/trackerLog': (context) => _buildRoute(const TrackerLogScreen()),
+        '/trackerLog': (context) => _buildRoute(TrackerLogScreen()),
         '/settings': (context) => _buildRoute(const SettingsScreen()),
         '/journal': (context) => _buildRoute(JournalScreen(mood: 'happy', tags: [])),
       },
