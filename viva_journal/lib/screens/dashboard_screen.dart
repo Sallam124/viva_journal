@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-import 'package:viva_journal/database_helper.dart'; // Adjust if needed
+import 'package:viva_journal/database_helper.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -28,15 +28,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> loadMoodData() async {
     try {
       final allEntries = await dbHelper.getEntries();
-      final entries = allEntries.take(7).toList(); // last 7
+      final entries = allEntries.take(7).toList(); // last 7 entries
 
       setState(() {
-        moodData = entries
-            .map((e) => double.tryParse(e['mood'] ?? '3') ?? 3)
-            .toList();
-        moodDates = entries
-            .map((e) => DateTime.tryParse(e['date'] ?? '') ?? DateTime.now())
-            .toList();
+        moodData = entries.map((e) => double.tryParse(e['mood'] ?? '3') ?? 3).toList();
+        moodDates = entries.map((e) => DateTime.tryParse(e['date'] ?? '') ?? DateTime.now()).toList();
         isLoading = false;
       });
     } catch (e) {
@@ -45,6 +41,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
         isLoading = false;
       });
     }
+  }
+
+  int _calculateStreak() {
+    if (moodDates.isEmpty) return 0;
+
+    moodDates.sort((a, b) => b.compareTo(a)); // newest to oldest
+    int streak = 1;
+
+    for (int i = 1; i < moodDates.length; i++) {
+      final current = moodDates[i - 1];
+      final next = moodDates[i];
+      if (current.difference(next).inDays == 1) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    return streak;
   }
 
   @override
@@ -79,8 +94,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Card(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     elevation: 4,
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -95,10 +109,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 interval: 1,
                                 getTitlesWidget: (value, meta) {
                                   final index = value.toInt();
-                                  if (index >= 0 &&
-                                      index < moodDates.length) {
-                                    return Text(DateFormat('MM/dd')
-                                        .format(moodDates[index]));
+                                  if (index >= 0 && index < moodDates.length) {
+                                    return Text(DateFormat('MM/dd').format(moodDates[index]));
                                   }
                                   return const Text('');
                                 },
@@ -109,8 +121,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 showTitles: true,
                                 interval: 1,
                                 getTitlesWidget: (value, meta) {
-                                  int mood =
-                                  value.toInt().clamp(1, 5);
+                                  int mood = value.toInt().clamp(1, 5);
                                   return Text(
                                     emojiLabels[mood - 1],
                                     style: const TextStyle(fontSize: 20),
@@ -125,8 +136,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             LineChartBarData(
                               spots: List.generate(
                                 moodData.length,
-                                    (index) => FlSpot(
-                                    index.toDouble(), moodData[index]),
+                                    (index) => FlSpot(index.toDouble(), moodData[index]),
                               ),
                               isCurved: true,
                               color: Colors.blue,
@@ -145,45 +155,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
 
-              /// Mood Avg + Placeholder
+              /// Mood Avg + Streak Tracker
               Expanded(
                 flex: 1,
                 child: Row(
                   children: [
+                    /// Weekly Avg Mood
                     Expanded(
                       child: Card(
                         margin: const EdgeInsets.all(16),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         elevation: 4,
                         child: Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(avgEmoji,
-                                  style:
-                                  const TextStyle(fontSize: 48)),
+                              Text(avgEmoji, style: const TextStyle(fontSize: 48)),
                               const SizedBox(height: 8),
-                              const Text("Weekly Avg",
-                                  style: TextStyle(fontSize: 14)),
+                              const Text("Weekly Avg", style: TextStyle(fontSize: 14)),
                             ],
                           ),
                         ),
                       ),
                     ),
 
-                    /// Placeholder card instead of photo
+                    /// 🔥 Streak Tracker
                     Expanded(
                       child: Card(
                         margin: const EdgeInsets.all(16),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         elevation: 4,
-                        child: const Center(
-                          child: Text(
-                            "No image available.\nFeature replaced.",
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 16),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text("🔥", style: TextStyle(fontSize: 48)),
+                              const SizedBox(height: 8),
+                              Text(
+                                "Current Streak:\n${_calculateStreak()} days",
+                                style: const TextStyle(fontSize: 14),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
                           ),
                         ),
                       ),
