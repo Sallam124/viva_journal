@@ -3,7 +3,11 @@
 <plist version="1.0">
 <dict>
     <key>NSFaceIDUsageDescription</key>
+<<<<<<< Updated upstream
     <string>We use Face ID to protect your account and simplify login.</string>
+=======
+    <string>This app uses Face ID to protect your journal entries.</string>
+>>>>>>> Stashed changes
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
