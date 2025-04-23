@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +14,8 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = false;
   TimeOfDay? _selectedTime;
+  bool _authEnabled = false;
+  String? _savedPasscode;
 
   @override
   void initState() {
@@ -24,6 +27,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _notificationsEnabled = prefs.getBool('notificationsEnabled') ?? false;
+      _authEnabled = prefs.getBool('authEnabled') ?? false;
+      _savedPasscode = prefs.getString('passcode');
       final hour = prefs.getInt('notificationHour');
       final minute = prefs.getInt('notificationMinute');
       if (hour != null && minute != null) {
@@ -35,9 +40,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _savePreferences() async {
     final prefs = await SharedPreferences.getInstance();
     prefs.setBool('notificationsEnabled', _notificationsEnabled);
+    prefs.setBool('authEnabled', _authEnabled);
     if (_selectedTime != null) {
       prefs.setInt('notificationHour', _selectedTime!.hour);
       prefs.setInt('notificationMinute', _selectedTime!.minute);
+    }
+    if (_savedPasscode != null) {
+      prefs.setString('passcode', _savedPasscode!);
     }
   }
 
@@ -55,11 +64,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<String?> _showPasscodeDialog(BuildContext context) async {
+    TextEditingController controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Enter Passcode"),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          obscureText: true,
+          decoration: const InputDecoration(labelText: '4-digit passcode'),
+          maxLength: 4,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          ElevatedButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text("Save")),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final currentTheme = themeProvider.themeMode;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -82,7 +111,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              /// 🔔 Notification Toggle
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -100,8 +128,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-
-              /// 🕒 Time Picker
               if (_notificationsEnabled)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,25 +142,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       child: Text(
-                        _selectedTime == null
-                            ? 'Pick a time'
-                            : 'Selected: ${_selectedTime!.format(context)}',
+                        _selectedTime == null ? 'Pick a time' : 'Selected: ${_selectedTime!.format(context)}',
                         style: const TextStyle(color: Colors.white),
                       ),
                     ),
                   ],
                 ),
-
               const SizedBox(height: 40),
-
-              /// 🎨 Theme Mode (Dark + System only)
               const Text('Theme Mode:', style: TextStyle(fontSize: 18, color: Colors.white)),
               const SizedBox(height: 10),
               ToggleButtons(
-                isSelected: [
-                  currentTheme == ThemeMode.dark,
-                  currentTheme == ThemeMode.system,
-                ],
+                isSelected: [currentTheme == ThemeMode.dark, currentTheme == ThemeMode.system],
                 onPressed: (index) {
                   if (index == 0) themeProvider.setTheme(ThemeMode.dark);
                   if (index == 1) themeProvider.setTheme(ThemeMode.system);
@@ -144,16 +162,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 fillColor: Colors.black87,
                 color: Colors.white70,
                 children: const [
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Text("Dark"),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Text("System"),
-                  ),
+                  Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text("Dark")),
+                  Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text("System")),
                 ],
               ),
+              const SizedBox(height: 40),
+              const Text('Authentication', style: TextStyle(fontSize: 18, color: Colors.white)),
+              SwitchListTile(
+                title: const Text('Enable Extra Authentication', style: TextStyle(color: Colors.white)),
+                value: _authEnabled,
+                onChanged: (value) {
+                  setState(() {
+                    _authEnabled = value;
+                  });
+                  _savePreferences();
+                },
+              ),
+              if (_authEnabled)
+                ElevatedButton(
+                  onPressed: () async {
+                    final newPasscode = await _showPasscodeDialog(context);
+                    if (newPasscode != null) {
+                      setState(() => _savedPasscode = newPasscode);
+                      _savePreferences();
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
+                  child: Text(_savedPasscode == null ? "Set Passcode" : "Change Passcode"),
+                ),
             ],
           ),
         ),
