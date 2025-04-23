@@ -8,9 +8,18 @@ environment:
   sdk: ^3.7.0
 
 dependencies:
+<<<<<<< Updated upstream
+
+  local_auth: ^2.1.6
+  local_auth_android: ^1.0.19
+=======
+  provider: ^6.1.1
+  shared_preferences: ^2.2.2
+>>>>>>> Stashed changes
   firebase_core: ^3.12.1
   firebase_auth: ^5.5.1
   google_sign_in: ^6.3.0
+  local_auth: ^2.1.6
   crypto: ^3.0.3
   flutter:
     sdk: flutter
