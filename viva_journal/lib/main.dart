@@ -63,7 +63,12 @@ class MyApp extends StatelessWidget {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return _buildRoute(const LoadingScreen());
           } else if (snapshot.hasData && snapshot.data != null) {
+<<<<<<< Updated upstream
             return _buildRoute(const AuthenticationScreen());
+=======
+            // If logged in, go to the HomeScreen
+            return _buildRoute(const HomeScreen());
+>>>>>>> Stashed changes
           } else {
             return _buildRoute(const SignUpScreen());
           }
