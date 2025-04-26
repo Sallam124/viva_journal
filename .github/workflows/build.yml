@@ -17,7 +17,10 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'stable'
+          flutter-version: '3.10.6'  # <-- Set Flutter version explicitly
+
+      - name: Verify Flutter Installation
+        run: flutter --version   # <-- Added flutter --version step
 
       - name: Navigate to project directory
         working-directory: viva_journal/viva_journal
@@ -46,7 +49,10 @@ jobs:
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'stable'
+          flutter-version: '3.10.6'  # <-- Also here, set 3.10.6
+
+      - name: Verify Flutter Installation
+        run: flutter --version   # <-- Also here, check flutter version
 
       - name: Build the Flutter project
         working-directory: viva_journal/viva_journal
