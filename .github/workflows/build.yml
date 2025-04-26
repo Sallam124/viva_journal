@@ -28,6 +28,11 @@ jobs:
       - name: Verify Flutter Installation
         run: flutter --version
 
+      - name: Install GTK dependencies for Linux build
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev
+
       - name: Navigate to viva_journal directory
         working-directory: viva_journal
         run: pwd
@@ -69,6 +74,11 @@ jobs:
 
       - name: Verify Flutter Installation
         run: flutter --version
+
+      - name: Install GTK dependencies for Linux build
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev
 
       - name: Build the Flutter project (flutter run instead of gradle build)
         working-directory: viva_journal
