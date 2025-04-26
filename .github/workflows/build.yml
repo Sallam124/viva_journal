@@ -17,25 +17,25 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.10.6'  # <-- Set Flutter version explicitly
+          flutter-version: '3.10.6'
 
       - name: Verify Flutter Installation
-        run: flutter --version   # <-- Added flutter --version step
+        run: flutter --version
 
       - name: Navigate to project directory
-        working-directory: viva_journal/viva_journal
+        working-directory: viva_journal  # <-- only one viva_journal
         run: pwd
 
       - name: Install dependencies
-        working-directory: viva_journal/viva_journal
+        working-directory: viva_journal
         run: flutter pub get
 
       - name: Analyze project source
-        working-directory: viva_journal/viva_journal
+        working-directory: viva_journal
         run: flutter analyze
 
       - name: Run tests
-        working-directory: viva_journal/viva_journal
+        working-directory: viva_journal
         run: flutter test
 
   sonarqube:
@@ -49,13 +49,13 @@ jobs:
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.10.6'  # <-- Also here, set 3.10.6
+          flutter-version: '3.10.6'
 
       - name: Verify Flutter Installation
-        run: flutter --version   # <-- Also here, check flutter version
+        run: flutter --version
 
       - name: Build the Flutter project
-        working-directory: viva_journal/viva_journal
+        working-directory: viva_journal  # <-- only one viva_journal
         run: |
           flutter pub get
           flutter build apk
@@ -65,4 +65,4 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
-          projectBaseDir: viva_journal/viva_journal
+          projectBaseDir: viva_journal  # <-- only one viva_journal
