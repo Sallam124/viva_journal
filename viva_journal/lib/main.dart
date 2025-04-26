@@ -57,19 +57,16 @@ class MyApp extends StatelessWidget {
       themeAnimationDuration: const Duration(milliseconds: 400),
       builder: (context, child) => buildDismissKeyboardWrapper(child: child!),
 
-      home: FutureBuilder<User?>(
+      home: FutureBuilder<User?>( // Handling user login status check
         future: _checkUserLoginStatus(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return _buildRoute(const LoadingScreen());
           } else if (snapshot.hasData && snapshot.data != null) {
-<<<<<<< Updated upstream
-            return _buildRoute(const AuthenticationScreen());
-=======
             // If logged in, go to the HomeScreen
             return _buildRoute(const HomeScreen());
->>>>>>> Stashed changes
           } else {
+            // If not logged in, go to SignUpScreen
             return _buildRoute(const SignUpScreen());
           }
         },
@@ -91,7 +88,7 @@ class MyApp extends StatelessWidget {
   }
 
   Future<User?> _checkUserLoginStatus() async {
-    return FirebaseAuth.instance.currentUser;
+    return FirebaseAuth.instance.currentUser; // Check for current user status
   }
 }
 
