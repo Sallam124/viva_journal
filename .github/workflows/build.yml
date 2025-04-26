@@ -23,19 +23,19 @@ jobs:
         run: flutter --version
 
       - name: Navigate to project directory
-        working-directory: viva_journal/viva_journal
+        working-directory: viva_journal
         run: pwd
 
       - name: Install dependencies
-        working-directory: viva_journal/viva_journal
+        working-directory: viva_journal
         run: flutter pub get
 
       - name: Analyze project source
-        working-directory: viva_journal/viva_journal
+        working-directory: viva_journal
         run: flutter analyze
 
       - name: Run tests
-        working-directory: viva_journal/viva_journal
+        working-directory: viva_journal
         run: flutter test
 
   sonarqube:
@@ -55,7 +55,7 @@ jobs:
         run: flutter --version
 
       - name: Build the Flutter project
-        working-directory: viva_journal/viva_journal
+        working-directory: viva_journal
         run: |
           flutter pub get
           flutter build apk
@@ -65,4 +65,4 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
-          projectBaseDir: viva_journal/viva_journal
+          projectBaseDir: viva_journal
