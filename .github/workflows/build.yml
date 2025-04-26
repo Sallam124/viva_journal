@@ -49,13 +49,14 @@ jobs:
         working-directory: viva_journal
         run: flutter test
 
-      - name: Run the app (flutter run instead of gradle build)
+      - name: Build the Flutter project
         working-directory: viva_journal
-        run: flutter run -d linux --release
+        run: flutter build linux --release
 
   sonarqube:
     name: SonarQube
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -80,11 +81,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev
 
-      - name: Build the Flutter project (flutter run instead of gradle build)
+      - name: Build the Flutter project
         working-directory: viva_journal
         run: |
           flutter pub get
-          flutter run -d linux --release
+          flutter build linux --release
 
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5
