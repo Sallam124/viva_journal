@@ -1,6 +1,6 @@
-import 'dart:io';
 import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:intl/intl.dart';  // For date formatting
 
 // Define the model for the mood entry
 class MoodEntry {
@@ -66,7 +66,7 @@ class DatabaseHelper {
 
   // Create the moods table if it doesn't exist
   Future<void> _onCreate(Database db, int version) async {
-    await db.execute('''
+    await db.execute(''' 
       CREATE TABLE moods(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         mood TEXT,
@@ -86,49 +86,63 @@ class DatabaseHelper {
     }
   }
 
+  // Get entries from the past week
+  Future<List<MoodEntry>> getEntriesPastWeek() async {
+    try {
+      final db = await database;
+
+      // Get the current date and the date from 7 days ago
+      DateTime currentDate = DateTime.now();
+      DateTime sevenDaysAgo = currentDate.subtract(Duration(days: 7));
+
+      // Format the dates to ISO 8601 strings for comparison
+      String formattedCurrentDate = DateFormat('yyyy-MM-dd').format(currentDate);
+      String formattedSevenDaysAgo = DateFormat('yyyy-MM-dd').format(sevenDaysAgo);
+
+      // Query the database for moods within the past 7 days
+      final List<Map<String, dynamic>> maps = await db.query(
+        'moods',
+        where: 'date BETWEEN ? AND ?',
+        whereArgs: [formattedSevenDaysAgo, formattedCurrentDate],
+        orderBy: 'date DESC',  // Optionally order by date (most recent first)
+      );
+
+      // Convert the list of maps into a list of MoodEntry objects
+      return List.generate(maps.length, (i) => MoodEntry.fromMap(maps[i]));
+    } catch (e) {
+      return []; // Return an empty list in case of error
+    }
+  }
+// Get mood entry for a specific date
+  Future<MoodEntry?> getMoodForDay(String date) async {
+    try {
+      final db = await database;
+
+      // Query the database for mood entry for the specified date
+      final List<Map<String, dynamic>> maps = await db.query(
+        'moods',
+        where: 'date = ?',
+        whereArgs: [date],
+      );
+
+      // If the result is not empty, return the first matching mood entry
+      if (maps.isNotEmpty) {
+        return MoodEntry.fromMap(maps.first);
+      } else {
+        return null; // Return null if no entry found for the date
+      }
+    } catch (e) {
+      return null; // Return null in case of error
+    }
+  }
+
   // Insert a new mood entry
   Future<int> insertMood(MoodEntry moodEntry) async {
     try {
       final db = await database;
       return await db.insert('moods', moodEntry.toMap());
     } catch (e) {
-      print('Error inserting mood: $e');
       rethrow; // Rethrow the error or return a custom error code
-    }
-  }
-
-  // Get all mood entries with pagination (limit and offset)
-  Future<List<MoodEntry>> getMoodsPage(int offset, int limit) async {
-    try {
-      final db = await database;
-      final List<Map<String, dynamic>> maps = await db.query(
-        'moods',
-        limit: limit,
-        offset: offset,
-      );
-      return List.generate(maps.length, (i) => MoodEntry.fromMap(maps[i]));
-    } catch (e) {
-      print('Error fetching moods: $e');
-      return []; // Return an empty list in case of error
-    }
-  }
-
-  // Get mood for a specific day (by date)
-  Future<MoodEntry?> getMoodForDay(String date) async {
-    try {
-      final db = await database;
-      final List<Map<String, dynamic>> maps = await db.query(
-        'moods',
-        where: 'date = ?',
-        whereArgs: [date],
-      );
-      if (maps.isNotEmpty) {
-        return MoodEntry.fromMap(maps.first);
-      }
-      return null;
-    } catch (e) {
-      print('Error fetching mood for day: $e');
-      return null;
     }
   }
 
@@ -143,7 +157,6 @@ class DatabaseHelper {
         whereArgs: [moodEntry.date],
       );
     } catch (e) {
-      print('Error updating mood: $e');
       return 0; // Return 0 if no rows were updated
     }
   }
@@ -158,7 +171,6 @@ class DatabaseHelper {
         whereArgs: [date],
       );
     } catch (e) {
-      print('Error deleting mood: $e');
       return 0; // Return 0 if no rows were deleted
     }
   }

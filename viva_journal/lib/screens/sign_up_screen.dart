@@ -103,7 +103,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final username = _usernameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
-    final cleanUsername = username.replaceAll(RegExp(r'^\s+|\s+$'), '');
+    username.replaceAll(RegExp(r'^\s+|\s+$'), '');
 
     setState(() {
       _isLoading = true;

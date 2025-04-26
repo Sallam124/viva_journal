@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
-
 import 'firebase_options.dart';
 import 'package:viva_journal/theme_provider.dart';
 import 'package:viva_journal/widgets/widgets.dart';
@@ -17,7 +16,7 @@ import 'package:viva_journal/screens/calendar_screen.dart';
 import 'package:viva_journal/screens/trackerlog_screen.dart';
 import 'package:viva_journal/screens/settings_screen.dart';
 import 'package:viva_journal/screens/journal_screen.dart';
-import 'package:viva_journal/screens/authentication_screen.dart';
+// import 'package:viva_journal/screens/authentication_screen.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 

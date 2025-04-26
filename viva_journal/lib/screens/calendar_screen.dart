@@ -1,12 +1,7 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:viva_journal/database/database.dart';
 import 'package:viva_journal/screens/trackerlog_screen.dart';
-import 'package:viva_journal/widgets/widgets.dart';
-import 'package:viva_journal/screens/home.dart';
-import 'package:viva_journal/screens/settings_screen.dart';
-import 'package:viva_journal/screens/dashboard_screen.dart';
 
 class MonthSelector extends StatelessWidget {
   final int selectedMonth;
@@ -15,12 +10,12 @@ class MonthSelector extends StatelessWidget {
   final ValueChanged<int> onYearChanged;
 
   const MonthSelector({
-    Key? key,
+    super.key,
     required this.selectedMonth,
     required this.selectedYear,
     required this.onMonthChanged,
     required this.onYearChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -69,13 +64,13 @@ class DayCell extends StatelessWidget {
   final bool isWeekend; // Added flag to highlight weekends
 
   const DayCell({
-    Key? key,
+    super.key,
     required this.day,
     required this.isToday,
     required this.moodAsset,
     required this.onTap,
     this.isWeekend = false, // Default is false
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -92,12 +87,12 @@ class DayCell extends StatelessWidget {
             decoration: isToday
                 ? BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.grey.withOpacity(0.8), // Highlight today
+              color: Colors.grey.withValues(alpha: (0.8 * 255).toDouble()),
             )
                 : isWeekend // Highlight weekends with a different color
                 ? BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white.withOpacity(0.5), // Highlight weekends
+              color: Colors.white.withValues(alpha: (0.5 * 255).toDouble()),
             )
                 : null,
             child: Text(
@@ -117,7 +112,7 @@ class DayCell extends StatelessWidget {
 }
 
 class CalendarScreen extends StatefulWidget {
-  CalendarScreen({Key? key}) : super(key: key);
+  const CalendarScreen({super.key});
 
   @override
   _CalendarScreenState createState() => _CalendarScreenState();
@@ -267,11 +262,6 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
   }
 
   // Update the cache with the mood for the selected day
-  void _updateCacheForDay(int day, String mood) {
-    setState(() {
-      _cachedMoodData.putIfAbsent(currentKey, () => {})[day] = mood;
-    });
-  }
 
   // Check if the current month's mood data is already fetched, if not, fetch it
   Future<void> _fetchMoodsForCurrentMonthIfNeeded() async {
