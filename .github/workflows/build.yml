@@ -9,13 +9,10 @@ on:
 
 jobs:
   build:
-    name: Build and Analyze
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -38,13 +35,28 @@ jobs:
         working-directory: viva_journal/viva_journal
         run: flutter test
 
-      - name: Build APK
-        working-directory: viva_journal/viva_journal
-        run: flutter build apk
+  sonarqube:
+    name: SonarQube
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
 
+      - name: Build the Flutter project
+        working-directory: viva_journal/viva_journal
+        run: |
+          flutter pub get
+          flutter build apk
+      
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
-          projectBaseDir: viva_journal/viva_journal   # Important: Correct relative path
+          projectBaseDir: viva_journal/viva_journal
