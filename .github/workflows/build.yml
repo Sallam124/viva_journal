@@ -25,13 +25,14 @@ jobs:
       # Build the Flutter project
       - name: Build
         run: |
-          flutter pub get   
+          cd viva_journal
+          flutter pub get
           flutter build apk
-        working-directory: ./viva_journal # Adjust this path to the folder where your pubspec.yaml is located
       
       # Run SonarQube Scan
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        working-directory: ./viva_journal # Adjust this path to the folder where your sonar-project.properties is located
+        with:
+          projectBaseDir: viva_journal   # <-- IMPORTANT to tell Sonar where to look
