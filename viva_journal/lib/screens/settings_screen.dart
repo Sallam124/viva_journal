@@ -1,8 +1,8 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:viva_journal/theme_provider.dart';
+import 'background_theme.dart'; // ✅ Already imported
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -97,19 +97,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/images/background.png'),
-            fit: BoxFit.cover,
-          ),
-        ),
-        width: double.infinity,
-        height: double.infinity,
+      body: BackgroundContainer(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 100, 20, 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+
+
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -127,6 +121,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ],
               ),
+
               const SizedBox(height: 16),
               if (_notificationsEnabled)
                 Column(

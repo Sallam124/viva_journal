@@ -40,25 +40,21 @@ class _BackgroundContainerState extends State<BackgroundContainer> with SingleTi
           Positioned.fill(
             child: Container(color: Colors.white),
           ),
-          // froze animation to code peacefully in without terminal flash u ( remove the /**/)
           // Rotating and Blurred Star (BIGGER WITHOUT CROPPING)
-          Center(
-            child:
-            /* AnimatedBuilder(
-              animation: _controller,
-              builder: (context, child) {
-                return */
-            Transform.rotate(
-              /* angle: _controller.value * 2 * 3.1416, // Full rotation */
-              angle: 0, // Keeps it frozen
-              child: OverflowBox(
-                maxWidth: double.infinity,
-                maxHeight: double.infinity,
+          Positioned(
+            top: 120,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Transform.rotate(
+              angle: 0, // Keeps it frozen, no rotation
+              child: Container(
+                alignment: Alignment.center,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
                     Transform.scale(
-                      scale: 2.5, // Enlarges the star without cropping
+                      scale: 3.2, // Enlarges the star without cropping
                       child: Image.asset(
                         'assets/images/Rotate_Star.png',
                         width: 500, // Original size
@@ -69,19 +65,18 @@ class _BackgroundContainerState extends State<BackgroundContainer> with SingleTi
                       child: BackdropFilter(
                         filter: ImageFilter.blur(sigmaX: 1500, sigmaY: 1500), // Blur effect
                         child: Container(color: Colors.transparent),
+
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            // },
-            // ),
           ),
 
           // Centered Child Content
           Align(
-            alignment: Alignment.center,
+            alignment: Alignment.topCenter,
             child: widget.child,
           ),
         ],

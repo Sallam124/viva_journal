@@ -63,7 +63,7 @@ class MyApp extends StatelessWidget {
             return _buildRoute(const LoadingScreen());
           } else if (snapshot.hasData && snapshot.data != null) {
             // If logged in, go to the HomeScreen
-            return _buildRoute(const HomeScreen());
+            return _buildRoute(const SettingsScreen());
           } else {
             // If not logged in, go to SignUpScreen
             return _buildRoute(const SignUpScreen());

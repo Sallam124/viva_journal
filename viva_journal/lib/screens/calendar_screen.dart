@@ -87,12 +87,12 @@ class DayCell extends StatelessWidget {
             decoration: isToday
                 ? BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.grey.withValues(alpha: (0.8 * 255).toDouble()),
+              color: Colors.grey.withOpacity(0.5),
             )
                 : isWeekend // Highlight weekends with a different color
                 ? BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: (0.5 * 255).toDouble()),
+              color: Colors.white.withOpacity(0.4),
             )
                 : null,
             child: Text(
