@@ -46,7 +46,7 @@ jobs:
 
       - name: Run the app (flutter run instead of gradle build)
         working-directory: viva_journal
-        run: flutter run --release
+	run: flutter run -d linux --release
 
   sonarqube:
     name: SonarQube
