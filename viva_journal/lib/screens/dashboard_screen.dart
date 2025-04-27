@@ -1,23 +1,80 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:viva_journal/database/database.dart';
 
-class DashboardScreen extends StatelessWidget {
-  final List<double> moodData = [1, 3, 2, 4, 3, 5, 2];
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({Key? key}) : super(key: key);
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  final DatabaseHelper dbHelper = DatabaseHelper();
+  List<double> moodData = [];
+  List<DateTime> moodDates = [];
   final List<String> emojiLabels = ['😢', '😐', '😊', '😄', '🤩'];
-  final List<DateTime> moodDates = List.generate(
-    7,
-        (index) => DateTime.now().subtract(Duration(days: 6 - index)),
-  );
-  final String lastWeekPicPath = '/storage/emulated/0/Download/sample.jpg';
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    loadMoodData();
+  }
+
+  Future<void> loadMoodData() async {
+    try {
+      // Fetch entries from the past week using the getEntriesPastWeek method
+      final allEntries = await dbHelper.getEntriesPastWeek();
+
+      setState(() {
+        moodData = allEntries.map((entry) {
+          // Map the mood string to a number (ensure it's a valid double)
+          return double.tryParse(entry.mood) ?? 3; // Default to 3 if parsing fails
+        }).toList();
+
+        moodDates = allEntries.map((entry) {
+          // Parse date (ensure the date format is consistent with your data)
+          return DateTime.tryParse(entry.date) ?? DateTime.now();
+        }).toList();
+
+        isLoading = false;
+      });
+    } catch (e) {
+      print("Error loading mood data: $e");
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  int _calculateStreak() {
+    if (moodDates.isEmpty) return 0;
+
+    moodDates.sort((a, b) => b.compareTo(a)); // Sort from newest to oldest
+    int streak = 1;
+
+    for (int i = 1; i < moodDates.length; i++) {
+      final current = moodDates[i - 1];
+      final next = moodDates[i];
+      if (current.difference(next).inDays == 1) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    return streak;
+  }
 
   @override
   Widget build(BuildContext context) {
-    double avg = moodData.reduce((a, b) => a + b) / moodData.length;
-    int avgMood = avg.round().clamp(1, 5);
-    String avgEmoji = emojiLabels[avgMood - 1];
+    final double avg = moodData.isNotEmpty
+        ? moodData.reduce((a, b) => a + b) / moodData.length
+        : 3;
+    final int avgMood = avg.round().clamp(1, 5);
+    final String avgEmoji = emojiLabels[avgMood - 1];
 
     return Stack(
       children: [
@@ -31,9 +88,11 @@ class DashboardScreen extends StatelessWidget {
           backgroundColor: Colors.transparent,
           appBar: AppBar(
             title: const Text("Dashboard"),
-            backgroundColor: Colors.black54,
+            backgroundColor: Colors.black87,
           ),
-          body: Column(
+          body: isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
             children: [
               /// Mood Graph
               Expanded(
@@ -55,7 +114,7 @@ class DashboardScreen extends StatelessWidget {
                                 showTitles: true,
                                 interval: 1,
                                 getTitlesWidget: (value, meta) {
-                                  final int index = value.toInt();
+                                  final index = value.toInt();
                                   if (index >= 0 && index < moodDates.length) {
                                     return Text(DateFormat('MM/dd').format(moodDates[index]));
                                   }
@@ -102,12 +161,12 @@ class DashboardScreen extends StatelessWidget {
                 ),
               ),
 
-              /// Mood Avg + Weekly Image
+              /// Mood Avg + Streak Tracker
               Expanded(
                 flex: 1,
                 child: Row(
                   children: [
-                    /// Mood Avg
+                    /// Weekly Avg Mood
                     Expanded(
                       child: Card(
                         margin: const EdgeInsets.all(16),
@@ -126,19 +185,25 @@ class DashboardScreen extends StatelessWidget {
                       ),
                     ),
 
-                    /// Weekly Image
+                    /// 🔥 Streak Tracker
                     Expanded(
                       child: Card(
                         margin: const EdgeInsets.all(16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         elevation: 4,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: kIsWeb
-                              ? const Center(child: Text('Image not supported on Web'))
-                              : File(lastWeekPicPath).existsSync()
-                              ? Image.file(File(lastWeekPicPath), fit: BoxFit.cover)
-                              : const Center(child: Text('No image found')),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text("🔥", style: TextStyle(fontSize: 48)),
+                              const SizedBox(height: 8),
+                              Text(
+                                "Current Streak:\n${_calculateStreak()} days",
+                                style: const TextStyle(fontSize: 14),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
