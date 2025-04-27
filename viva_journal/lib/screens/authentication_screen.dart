@@ -13,7 +13,7 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
   final LocalAuthentication auth = LocalAuthentication();
   String _enteredCode = '';
   String? _savedPasscode;
-  bool _isAuthenticating = false;
+  // final bool _isAuthenticating = false;
   String? _error;
 
   @override

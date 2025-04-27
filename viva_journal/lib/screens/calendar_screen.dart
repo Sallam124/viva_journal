@@ -87,13 +87,14 @@ class DayCell extends StatelessWidget {
             decoration: isToday
                 ? BoxDecoration(
               shape: BoxShape.circle,
+              // ignore: deprecated_member_use
               color: Colors.grey.withOpacity(0.5),
             )
                 : isWeekend // Highlight weekends with a different color
                 ? BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white.withOpacity(0.4),
-            )
+              color: const Color.fromARGB(102, 255, 255, 255)
+              )//            )
                 : null,
             child: Text(
               '$day', // Display the day number
@@ -115,6 +116,7 @@ class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _CalendarScreenState createState() => _CalendarScreenState();
 }
 

@@ -6,7 +6,6 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:path_provider/path_provider.dart';
 import '../widgets/media.dart';
 import 'package:video_player/video_player.dart';
-import 'dart:ui' as ui;
 import 'dart:math';
 
 class JournalScreen extends StatefulWidget {

@@ -11,6 +11,7 @@ class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _SignUpScreenState createState() => _SignUpScreenState();
 }
 
@@ -110,6 +111,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
 
     try {
+      // ignore: deprecated_member_use
       final existingMethods = await _auth.fetchSignInMethodsForEmail(email);
       if (existingMethods.isNotEmpty) {
         setState(() => _isLoading = false);

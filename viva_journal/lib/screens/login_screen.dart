@@ -10,6 +10,7 @@ class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _LoginScreenState createState() => _LoginScreenState();
 }
 
@@ -22,13 +23,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
   String? errorMessage;
   bool _obscurePassword = true;
-  FocusNode _emailFocusNode = FocusNode();
-  FocusNode _passwordFocusNode = FocusNode();
+  final FocusNode _emailFocusNode = FocusNode();
+  final FocusNode _passwordFocusNode = FocusNode();
 
   Future<void> _handleGoogleSignIn() async {
     try {
       final GoogleSignInAccount? account = await _googleSignIn.signIn();
       if (account != null) {
+        // ignore: use_build_context_synchronously
         Navigator.pushReplacementNamed(context, '/home');
       } else {
         setState(() => errorMessage = "Google Sign-In failed. Try again.");
@@ -63,6 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() =>
         errorMessage = "Please verify your email before logging in!");
       } else {
+        // ignore: use_build_context_synchronously
         Navigator.pushReplacementNamed(context, '/home');
       }
     } on FirebaseAuthException catch (e) {
