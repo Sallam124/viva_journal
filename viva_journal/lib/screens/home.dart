@@ -171,7 +171,53 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 16),
           MiniCalendar(key: const ValueKey('mini_calendar')),
-          // Add more content below as needed
+          const SizedBox(height: 32), // Increased space between calendar and blocks
+          // Blocks Section
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                flex: 2,
+                child: _buildBigBlock(
+                  title: "Streak",
+                  color: Color(0xFFF8650C), // Orange-ish
+                  leftImage: Image.asset(
+                    'assets/images/streak.gif', // Place your gif in assets/images and update pubspec.yaml
+                    width: 80,
+                    height: 80,
+                  ),
+                  onTap: () {
+                    // TODO: Handle Streak block tap
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 1,
+                child: Column(
+                  children: [
+                    _buildSmallBlock(
+                      title: "On this same day",
+                      color: Colors.white,
+                      iconPath: 'assets/images/your_calendar_icon.png', // Change accordingly
+                      onTap: () {
+                        // TODO: Handle On this same day tap
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _buildSmallBlock(
+                      title: "Average mood",
+                      color: Color(0xFF8C0000), // Dark red
+                      iconPath: 'assets/images/your_mood_icon.png', // Change accordingly
+                      onTap: () {
+                        // TODO: Handle Average mood tap
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -450,6 +496,111 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           );
         },
+      ),
+    );
+  }
+
+  // Helper widget for big block
+  Widget _buildBigBlock({
+    required String title,
+    required Color color,
+    Widget? leftImage, // New optional parameter for left-aligned image/gif
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 160,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Stack(
+          children: [
+            if (leftImage != null)
+              Positioned(
+                left: 16,
+                top: 32,
+                bottom: 32,
+                child: SizedBox(
+                  width: 80,
+                  child: leftImage,
+                ),
+              ),
+            Positioned(
+              top: 16,
+              left: leftImage != null ? 110 : 16, // Move title right if image present
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 20,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'SF Pro Display',
+                ),
+              ),
+            ),
+            Positioned(
+              top: 16,
+              right: 16,
+              child: Icon(Icons.open_in_new, color: Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Helper widget for small block
+  Widget _buildSmallBlock({
+    required String title,
+    required Color color,
+    required String iconPath,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 70,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 6,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              top: 10,
+              left: 12,
+              right: 12,
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: color == Colors.white ? Colors.black : Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'SF Pro Display',
+                ),
+              ),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Icon(
+                Icons.open_in_new,
+                size: 16,
+                color: color == Colors.white ? Colors.black : Colors.white,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
