@@ -10,10 +10,10 @@ class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
 
   @override
-  _ForgotPasswordScreenState createState() => _ForgotPasswordScreenState();
+  ForgotPasswordScreenState createState() => ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final TextEditingController _emailController = TextEditingController();
   final FocusNode _emailFocusNode = FocusNode();
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -98,138 +98,124 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     });
   }
 
-  Future<bool> _onWillPop() async {
-    FocusScope.of(context).unfocus();
-    await Future.delayed(const Duration(milliseconds: 200));
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => LoginScreen()),
-    );
-    return false;
-  }
-
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: _onWillPop,
-      child: Scaffold(
-        body: GestureDetector(
-          onTap: () => FocusScope.of(context).unfocus(),
-          child: BackgroundContainer(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 30),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Forgot Password',
-                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Enter your email to reset your password.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Colors.black54),
-                    ),
-                    const SizedBox(height: 20),
+    return Scaffold(
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: BackgroundContainer(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Forgot Password',
+                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Enter your email to reset your password.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 16, color: Colors.black54),
+                  ),
+                  const SizedBox(height: 20),
 
-                    // ✅ Show error message *above* the text field
-                    if (errorMessage != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: Text(
-                          errorMessage!,
-                          style: const TextStyle(
-                            color: Colors.red,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 10),
-
-                    // ✅ Email input field
-                    buildTextField(
-                      _emailController,
-                      'Enter your email',
-                      _emailFocusNode,
-                      context,
-                          () {},
-                    ),
-
-                    // ✅ Success message *below* the text field
-                    if (emailSent)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 10),
-                        child: Text(
-                          "Password reset email sent! Check your inbox.",
-                          style: TextStyle(
-                            color: Colors.green,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-
-                    const SizedBox(height: 20),
-
-                    // ✅ Send Reset Link Button, Cooldown, or Loading
-                    if (isLoading)
-                      const CircularProgressIndicator()
-                    else if (cooldownSeconds > 0)
-                      Text(
-                        'Please wait $cooldownSeconds seconds before retrying.',
+                  // ✅ Show error message *above* the text field
+                  if (errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Text(
+                        errorMessage!,
                         style: const TextStyle(
+                          color: Colors.red,
                           fontSize: 14,
-                          color: Colors.black54,
                           fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    else
-                      SizedBox(
-
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _resetPassword,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                          ),
-                          child: const Text(
-                            'Send Reset Link',
-                            style: TextStyle(fontSize: 16, color: Colors.white),
-                          ),
                         ),
                       ),
+                    ),
+                  const SizedBox(height: 10),
 
-                    const SizedBox(height: 20),
+                  // ✅ Email input field
+                  buildTextField(
+                    _emailController,
+                    'Enter your email',
+                    _emailFocusNode,
+                    context,
+                        () {},
+                  ),
 
-                    // ✅ Back to Login button
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => LoginScreen()),
-                        );
-                      },
-                      child: const Text(
-                        'Back to Login',
+                  // ✅ Success message *below* the text field
+                  if (emailSent)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 10),
+                      child: Text(
+                        "Password reset email sent! Check your inbox.",
                         style: TextStyle(
+                          color: Colors.green,
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          decoration: TextDecoration.underline,
                         ),
                       ),
                     ),
 
-                    const SizedBox(height: 50),
-                  ],
-                ),
+                  const SizedBox(height: 20),
+
+                  // ✅ Send Reset Link Button, Cooldown, or Loading
+                  if (isLoading)
+                    const CircularProgressIndicator()
+                  else if (cooldownSeconds > 0)
+                    Text(
+                      'Please wait $cooldownSeconds seconds before retrying.',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black54,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  else
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _resetPassword,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                        child: const Text(
+                          'Send Reset Link',
+                          style: TextStyle(fontSize: 16, color: Colors.white),
+                        ),
+                      ),
+                    ),
+
+                  const SizedBox(height: 20),
+
+                  // ✅ Back to Login button
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => LoginScreen()),
+                      );
+                    },
+                    child: const Text(
+                      'Back to Login',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 50),
+                ],
               ),
             ),
           ),
