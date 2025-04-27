@@ -38,7 +38,7 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   Widget _buildRoute(Widget screen) {
-    return buildWillPopWrapper(child: BackgroundContainer(child: screen));
+    return BackgroundContainer(child: screen);
   }
 
   @override
@@ -63,7 +63,7 @@ class MyApp extends StatelessWidget {
             return _buildRoute(const LoadingScreen());
           } else if (snapshot.hasData && snapshot.data != null) {
             // If logged in, go to the HomeScreen
-            return _buildRoute(const SettingsScreen());
+            return _buildRoute(const HomeScreen());
           } else {
             // If not logged in, go to SignUpScreen
             return _buildRoute(const SignUpScreen());
