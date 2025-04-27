@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -8,6 +9,9 @@ import '../widgets/media.dart';
 import 'package:video_player/video_player.dart';
 import 'dart:ui' as ui;
 import 'dart:math';
+import 'package:flutter_quill/flutter_quill.dart';
+import 'package:flutter_quill_extensions/flutter_quill_extensions.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 class JournalScreen extends StatefulWidget {
   final String mood;
@@ -17,19 +21,6 @@ class JournalScreen extends StatefulWidget {
 
   @override
   _JournalScreenState createState() => _JournalScreenState();
-}
-
-class JournalPage {
-  String text;
-  List<InteractiveMedia> attachments;
-  List<DrawingPoint> drawingPoints;
-
-  JournalPage({
-    this.text = '',
-    List<InteractiveMedia>? attachments,
-    List<DrawingPoint>? drawingPoints,
-  })  : attachments = attachments ?? [],
-        drawingPoints = drawingPoints ?? [];
 }
 
 class InteractiveMedia extends Media {
@@ -57,7 +48,9 @@ class InteractiveMedia extends Media {
 }
 
 class _JournalScreenState extends State<JournalScreen> with TickerProviderStateMixin {
-  TextEditingController _textController = TextEditingController();
+  late QuillController _controller;
+  final FocusNode _editorFocusNode = FocusNode();
+  final ScrollController _editorScrollController = ScrollController();
   List<DrawingPoint> _points = [];
   List<List<DrawingPoint>> _drawingHistory = [];
   List<List<DrawingPoint>> _redoHistory = [];
@@ -72,7 +65,6 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
   bool _isEraserActive = false;
   double _strokeWidth = 3.0;
   double _eraserWidth = 30.0;
-  FocusNode _textFocusNode = FocusNode();
   bool _isDrawingMode = false;
   late AnimationController _eraserAnimationController;
   late Animation<double> _eraserAnimation;
@@ -82,100 +74,35 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
   late AnimationController _pencilAnimationController;
   late Animation<double> _pencilAnimation;
   bool _isPencilActive = false;
-  final PageController _pageController = PageController();
-  List<JournalPage> _pages = [];
-  int _currentPage = 0;
   final GlobalKey _pageKey = GlobalKey();
-  double _pageHeight = 0;
-  TextEditingController _currentPageController = TextEditingController();
 
   List<Color> _pencilColors = [
-    Colors.black,  // Standard black pencil
-    Color(0xFFFFE100),  // Original yellow
-    Color(0xFFFFC917),  // Original yellow-orange
-    Color(0xFFF8650C),  // Original orange
-    Color(0xFFF00000),  // Original red
-    Color(0xFF8C0000),  // Original dark red
+    Colors.black,
+    Color(0xFFFFE100),
+    Color(0xFFFFC917),
+    Color(0xFFF8650C),
+    Color(0xFFF00000),
+    Color(0xFF8C0000),
   ];
 
   @override
   void initState() {
     super.initState();
+    _controller = QuillController.basic();
     _recorder = FlutterSoundRecorder();
     _recorder!.openRecorder();
-
-    _pages.add(JournalPage());
-
-    _currentPageController.addListener(_handleTextOverflow);
-
     _initializeAnimations();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _updatePageSize();
-    });
   }
 
-  void _updatePageSize() {
-    final RenderBox? renderBox = _pageKey.currentContext?.findRenderObject() as RenderBox?;
-    if (renderBox != null) {
-      setState(() {
-        _pageHeight = renderBox.size.height;
-      });
-    }
-  }
-
-  void _handleTextOverflow() {
-    if (_currentPageController.text.isEmpty) return;
-
-    final TextSpan textSpan = TextSpan(
-      text: _currentPageController.text,
-      style: TextStyle(color: Colors.black),
-    );
-    final TextPainter textPainter = TextPainter(
-      text: textSpan,
-      textDirection: TextDirection.ltr,
-      maxLines: null,
-    );
-
-    final availableHeight = MediaQuery.of(context).size.height -
-        MediaQuery.of(context).padding.top -
-        kToolbarHeight - 40;
-    final availableWidth = MediaQuery.of(context).size.width - 40;
-
-    textPainter.layout(maxWidth: availableWidth);
-
-    if (textPainter.height > availableHeight) {
-      final lastVisiblePosition = textPainter.getPositionForOffset(
-          Offset(0, availableHeight)
-      );
-
-      final text = _currentPageController.text;
-      int splitIndex = lastVisiblePosition.offset;
-
-      while (splitIndex > 0 && text[splitIndex - 1] != ' ' && text[splitIndex - 1] != '\n') {
-        splitIndex--;
-      }
-
-      if (splitIndex > 0) {
-        final currentPageText = text.substring(0, splitIndex).trimRight();
-        final nextPageText = text.substring(splitIndex).trimLeft();
-
-        setState(() {
-          _pages[_currentPage].text = currentPageText;
-          _currentPageController.text = currentPageText;
-
-          _pages.add(JournalPage(text: nextPageText));
-
-          _pageController.animateToPage(
-            _currentPage + 1,
-            duration: Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-          );
-
-          _textFocusNode.requestFocus();
-        });
-      }
-    }
+  @override
+  void dispose() {
+    _controller.dispose();
+    _editorFocusNode.dispose();
+    _editorScrollController.dispose();
+    _recorder?.closeRecorder();
+    _eraserAnimationController.dispose();
+    _pencilAnimationController.dispose();
+    super.dispose();
   }
 
   void _initializeAnimations() {
@@ -204,11 +131,11 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
 
   Color _getRainbowColor(Offset position) {
     final List<Color> rainbowColors = [
-      Color(0xFFFFE100),  // Yellow
-      Color(0xFFFFC917),  // Yellow-orange
-      Color(0xFFF8650C),  // Orange
-      Color(0xFFF00000),  // Red
-      Color(0xFF8C0000),  // Dark red
+      Color(0xFFFFE100),
+      Color(0xFFFFC917),
+      Color(0xFFF8650C),
+      Color(0xFFF00000),
+      Color(0xFF8C0000),
     ];
 
     final double time = DateTime.now().millisecondsSinceEpoch / 500.0;
@@ -286,9 +213,9 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
     setState(() {
       _isDrawingMode = !_isDrawingMode;
       if (!_isDrawingMode) {
-        _textFocusNode.requestFocus();
+        _editorFocusNode.requestFocus();
       } else {
-        _textFocusNode.unfocus();
+        _editorFocusNode.unfocus();
       }
       _selectedMedia = null;
     });
@@ -422,7 +349,6 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
   void _handleScaleUpdate(ScaleUpdateDetails details, InteractiveMedia media) {
     setState(() {
       media.position += details.focalPointDelta;
-
       media.size = (media.size * details.scale).clamp(50.0, 500.0);
 
       if (details.rotation != 0) {
@@ -431,52 +357,6 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
         media.angle = newAngle * 3.14159265359 / 180;
       }
     });
-  }
-
-  void _addNewPage() {
-    setState(() {
-      _pages.add(JournalPage());
-      _pageController.animateToPage(
-        _pages.length - 1,
-        duration: Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    });
-  }
-
-  void _checkLastLineAndCreatePage(String text) {
-    final TextSpan textSpan = TextSpan(
-      text: text,
-      style: TextStyle(color: Colors.black),
-    );
-    final TextPainter textPainter = TextPainter(
-      text: textSpan,
-      textDirection: TextDirection.ltr,
-      maxLines: null,
-    );
-
-    final availableHeight = MediaQuery.of(context).size.height -
-        MediaQuery.of(context).padding.top -
-        kToolbarHeight - 40;
-    final availableWidth = MediaQuery.of(context).size.width - 40;
-
-    textPainter.layout(maxWidth: availableWidth);
-
-    final lineHeight = textPainter.preferredLineHeight;
-    final maxLines = (availableHeight / lineHeight).floor();
-    final currentLines = '\n'.allMatches(text).length + 1;
-
-    if (currentLines >= maxLines || textPainter.height + lineHeight > availableHeight) {
-      setState(() {
-        _pages.add(JournalPage());
-
-        _pageController.animateToPage(
-          _currentPage + 1,
-          duration: Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
-      });
-    }
   }
 
   @override
@@ -502,137 +382,121 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
               onPressed: _deleteSelectedMedia,
               tooltip: 'Delete Selected Media',
             ),
-          IconButton(
-            icon: Icon(Icons.add),
-            onPressed: _addNewPage,
-            tooltip: 'Add New Page',
-          ),
         ],
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return PageView.builder(
-            controller: _pageController,
-            scrollDirection: Axis.horizontal,
-            pageSnapping: true,
-            physics: (_isPencilActive || _isEraserActive)
-                ? NeverScrollableScrollPhysics()
-                : const BouncingScrollPhysics(),
-            onPageChanged: (index) {
-              setState(() {
-                _currentPage = index;
-                _selectedMedia = null;
-                _currentPageController.text = _pages[index].text;
-              });
-            },
-            itemCount: _pages.length,
-            itemBuilder: (context, index) {
-              return Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: SingleChildScrollView(
-                  physics: const ClampingScrollPhysics(),
-                  child: Container(
-                    key: index == _currentPage ? _pageKey : null,
-                    constraints: BoxConstraints(
-                      minHeight: MediaQuery.of(context).size.height -
-                          MediaQuery.of(context).padding.top -
-                          kToolbarHeight,
-                    ),
-                    child: Stack(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(20),
-                          child: TextField(
-                            controller: index == _currentPage
-                                ? _currentPageController
-                                : TextEditingController(text: _pages[index].text),
-                            focusNode: index == _currentPage ? _textFocusNode : null,
-                            maxLines: null,
-                            readOnly: _isDrawingMode || index != _currentPage,
-                            style: TextStyle(color: Colors.black),
-                            decoration: InputDecoration(
-                              hintText: "Type here...",
-                              hintStyle: TextStyle(color: Colors.grey),
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.all(16),
-                            ),
-                            onChanged: (value) {
-                              _pages[index].text = value;
-                              if (value.endsWith('\n')) {
-                                _checkLastLineAndCreatePage(value);
-                              }
-                            },
-                          ),
+      body: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: Container(
+                key: _pageKey,
+                child: Stack(
+                  children: [
+                    SingleChildScrollView(
+                      controller: _editorScrollController,
+                      child: Container(
+                        constraints: BoxConstraints(
+                          minHeight: MediaQuery.of(context).size.height -
+                              MediaQuery.of(context).padding.top -
+                              kToolbarHeight -
+                              (MediaQuery.of(context).padding.bottom + 60),
                         ),
-                        if (index == _currentPage)
-                          IgnorePointer(
-                            ignoring: !_isDrawingMode,
-                            child: GestureDetector(
-                              onPanStart: _handleDrawingStart,
-                              onPanUpdate: _handleDrawingUpdate,
-                              onPanEnd: _handleDrawingEnd,
-                              child: SingleChildScrollView(
-                                physics: (_isPencilActive || _isEraserActive)
-                                    ? NeverScrollableScrollPhysics()
-                                    : ClampingScrollPhysics(),
-                                child: SizedBox(
-                                  width: MediaQuery.of(context).size.width,
-                                  height: MediaQuery.of(context).size.height -
-                                      MediaQuery.of(context).padding.top -
-                                      kToolbarHeight -
-                                      (MediaQuery.of(context).padding.bottom + 60),
-                                  child: Stack(
-                                    children: [
-                                      CustomPaint(
-                                        size: Size.infinite,
-                                        painter: _SmoothDrawingPainter(
-                                          points: _points,
-                                          showLines: _showLines,
-                                        ),
-                                      ),
-                                      // Media attachments
-                                      ..._attachments.map((media) => MediaWidget(
-                                        media: media,
-                                        isSelected: _selectedMedia == media,
-                                        onTap: () => _handleMediaTap(media),
-                                        onUpdate: (updatedMedia) {
-                                          setState(() {
-                                            final index = _attachments.indexOf(media);
-                                            if (index != -1) {
-                                              _attachments[index] = InteractiveMedia.fromMedia(updatedMedia);
-                                              if (_selectedMedia == media) {
-                                                _selectedMedia = _attachments[index];
-                                              }
-                                            }
-                                          });
-                                        },
-                                        isEditingMode: !_isDrawingMode,
-                                      )).toList(),
-                                    ],
+                        child: Stack(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(20),
+                              child: QuillEditor(
+                                focusNode: _editorFocusNode,
+                                scrollController: _editorScrollController,
+                                controller: _controller,
+                                config: QuillEditorConfig(
+                                  placeholder: 'Start writing your notes...',
+                                  padding: const EdgeInsets.all(16),
+                                  embedBuilders: FlutterQuillEmbeds.editorBuilders(
+                                    imageEmbedConfig: QuillEditorImageEmbedConfig(
+                                      imageProviderBuilder: (context, imageUrl) {
+                                        if (imageUrl.startsWith('assets/')) {
+                                          return AssetImage(imageUrl);
+                                        }
+                                        return null;
+                                      },
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                      ],
+                            GestureDetector(
+                              onPanStart: _isDrawingMode ? _handleDrawingStart : null,
+                              onPanUpdate: _isDrawingMode ? _handleDrawingUpdate : null,
+                              onPanEnd: _isDrawingMode ? _handleDrawingEnd : null,
+                              child: Container(
+                                width: MediaQuery.of(context).size.width,
+                                height: MediaQuery.of(context).size.height -
+                                    MediaQuery.of(context).padding.top -
+                                    kToolbarHeight -
+                                    (MediaQuery.of(context).padding.bottom + 60),
+                                child: Stack(
+                                  children: [
+                                    CustomPaint(
+                                      size: Size.infinite,
+                                      painter: _SmoothDrawingPainter(
+                                        points: _points,
+                                        showLines: _showLines,
+                                      ),
+                                    ),
+                                    ..._attachments.map((media) => Positioned(
+                                      left: media.position.dx,
+                                      top: media.position.dy,
+                                      child: Transform.scale(
+                                        scale: media.size / 200.0,
+                                        child: Transform.rotate(
+                                          angle: media.angle,
+                                          child: MediaWidget(
+                                            media: media,
+                                            isSelected: _selectedMedia == media,
+                                            onTap: () => _handleMediaTap(media),
+                                            onUpdate: (updatedMedia) {
+                                              setState(() {
+                                                final index = _attachments.indexOf(media);
+                                                if (index != -1) {
+                                                  _attachments[index] = InteractiveMedia.fromMedia(updatedMedia);
+                                                  if (_selectedMedia == media) {
+                                                    _selectedMedia = _attachments[index];
+                                                  }
+                                                }
+                                              });
+                                            },
+                                            isEditingMode: !_isDrawingMode,
+                                          ),
+                                        ),
+                                      ),
+                                    )).toList(),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              );
-            },
-          );
-        },
+              ),
+            ),
+          ],
+        ),
       ),
-      bottomNavigationBar: _isDrawingMode ? _buildDrawingToolbar() : null,
+      bottomNavigationBar: _isDrawingMode ? _buildDrawingToolbar() : _buildQuillToolbar(),
       resizeToAvoidBottomInset: true,
     );
   }
@@ -750,6 +614,123 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
     );
   }
 
+  Widget _buildQuillToolbar() {
+    return Container(
+      height: 56,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildToolbarButton(Icons.format_bold, () {
+              _controller.formatSelection(Attribute.bold);
+              _editorFocusNode.requestFocus();
+            }),
+            _buildToolbarButton(Icons.format_italic, () {
+              _controller.formatSelection(Attribute.italic);
+              _editorFocusNode.requestFocus();
+            }),
+            _buildToolbarButton(Icons.format_underline, () {
+              _controller.formatSelection(Attribute.underline);
+              _editorFocusNode.requestFocus();
+            }),
+            _buildToolbarButton(Icons.format_strikethrough, () {
+              _controller.formatSelection(Attribute.strikeThrough);
+              _editorFocusNode.requestFocus();
+            }),
+            VerticalDivider(thickness: 1, width: 8, color: Colors.grey[300]),
+            _buildToolbarButton(Icons.format_align_left, () {
+              _controller.formatSelection(Attribute.leftAlignment);
+              _editorFocusNode.requestFocus();
+            }),
+            _buildToolbarButton(Icons.format_align_center, () {
+              _controller.formatSelection(Attribute.centerAlignment);
+              _editorFocusNode.requestFocus();
+            }),
+            _buildToolbarButton(Icons.format_align_right, () {
+              _controller.formatSelection(Attribute.rightAlignment);
+              _editorFocusNode.requestFocus();
+            }),
+            VerticalDivider(thickness: 1, width: 8, color: Colors.grey[300]),
+            _buildToolbarButton(Icons.format_list_bulleted, () {
+              _controller.formatSelection(Attribute.ul);
+              _editorFocusNode.requestFocus();
+            }),
+            _buildToolbarButton(Icons.format_list_numbered, () {
+              _controller.formatSelection(Attribute.ol);
+              _editorFocusNode.requestFocus();
+            }),
+            _buildToolbarButton(Icons.format_quote, () {
+              _controller.formatSelection(Attribute.blockQuote);
+              _editorFocusNode.requestFocus();
+            }),
+            VerticalDivider(thickness: 1, width: 8, color: Colors.grey[300]),
+            _buildToolbarButton(Icons.link, () {
+              _showLinkDialog();
+              _editorFocusNode.requestFocus();
+            }),
+            _buildToolbarButton(Icons.image, () {
+              _pickMedia();
+              _editorFocusNode.requestFocus();
+            }),
+            _buildToolbarButton(Icons.code, () {
+              _controller.formatSelection(Attribute.inlineCode);
+              _editorFocusNode.requestFocus();
+            }),
+            VerticalDivider(thickness: 1, width: 8, color: Colors.grey[300]),
+            _buildToolbarButton(Icons.undo, () {
+              _controller.undo();
+              _editorFocusNode.requestFocus();
+            }),
+            _buildToolbarButton(Icons.redo, () {
+              _controller.redo();
+              _editorFocusNode.requestFocus();
+            }),
+            _buildToolbarButton(Icons.format_clear, () {
+              final selection = _controller.selection;
+              if (selection.isValid) {
+                _controller.formatSelection(Attribute.bold);
+                _controller.formatSelection(Attribute.italic);
+                _controller.formatSelection(Attribute.underline);
+                _controller.formatSelection(Attribute.strikeThrough);
+                _controller.formatSelection(Attribute.inlineCode);
+                _controller.formatSelection(Attribute.link);
+                _controller.formatSelection(Attribute.ul);
+                _controller.formatSelection(Attribute.ol);
+                _controller.formatSelection(Attribute.blockQuote);
+                _controller.formatSelection(Attribute.leftAlignment);
+                _controller.formatSelection(Attribute.centerAlignment);
+                _controller.formatSelection(Attribute.rightAlignment);
+              }
+              _editorFocusNode.requestFocus();
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildToolbarButton(IconData icon, VoidCallback onPressed) {
+    return IconButton(
+      icon: Icon(icon, size: 20),
+      color: Colors.grey[800],
+      splashRadius: 20,
+      padding: EdgeInsets.symmetric(horizontal: 8),
+      constraints: BoxConstraints(minWidth: 36, minHeight: 36),
+      onPressed: onPressed,
+    );
+  }
+
   Future<void> _pickMedia() async {
     final ImagePicker picker = ImagePicker();
     final XFile? pickedFile = await picker.pickMedia(
@@ -802,6 +783,66 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
         _drawingHistory.add(List.from(_points));
         _points = _redoHistory.removeLast();
       });
+    }
+  }
+
+  Future<void> _showLinkDialog() async {
+    final TextEditingController urlController = TextEditingController();
+    final TextEditingController textController = TextEditingController();
+
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Insert Link'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: urlController,
+              decoration: InputDecoration(
+                labelText: 'URL',
+                hintText: 'https://example.com',
+              ),
+              keyboardType: TextInputType.url,
+            ),
+            SizedBox(height: 8),
+            TextField(
+              controller: textController,
+              decoration: InputDecoration(
+                labelText: 'Text to display',
+                hintText: 'Link text',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              if (urlController.text.isNotEmpty) {
+                Navigator.pop(context, {
+                  'url': urlController.text,
+                  'text': textController.text.isNotEmpty ? textController.text : urlController.text,
+                });
+              }
+            },
+            child: Text('Insert'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null) {
+      final url = result['url']!;
+      final text = result['text']!;
+
+      final selection = _controller.selection;
+      if (selection.isValid) {
+        _controller.formatSelection(LinkAttribute(url));
+      }
     }
   }
 }

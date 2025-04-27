@@ -24,11 +24,13 @@ dependencies:
   flutter_sound: ^9.2.13
   speech_to_text: 7.0.0
   flutter_tts: ^4.2.2
-  intl: ^0.20.2 # Keeping the latest version
+  intl: ^0.19.0 # Keeping the latest version
   video_player: ^2.7.0
   cloud_firestore: ^5.6.5
   email_validator: ^3.0.0
-  fl_chart: ^0.66.2
+  fl_chart: ^0.71.0
+  flutter_quill: ^11.2.0
+  flutter_quill_extensions: ^11.0.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

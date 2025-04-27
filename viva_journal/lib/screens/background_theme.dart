@@ -15,19 +15,15 @@ class _BackgroundContainerState extends State<BackgroundContainer> with SingleTi
   @override
   void initState() {
     super.initState();
-    /*
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 20), // 360° rotation in 20 sec
     )..repeat(); // Loop animation
-    */
   }
 
   @override
   void dispose() {
-    /*
     _controller.dispose();
-    */
     super.dispose();
   }
 
@@ -40,43 +36,39 @@ class _BackgroundContainerState extends State<BackgroundContainer> with SingleTi
           Positioned.fill(
             child: Container(color: Colors.white),
           ),
-          // froze animation to code peacefully in without terminal flash u ( remove the /**/)
           // Rotating and Blurred Star (BIGGER WITHOUT CROPPING)
           Center(
-            child:
-            /* AnimatedBuilder(
+            child: AnimatedBuilder(
               animation: _controller,
               builder: (context, child) {
-                return */
-            Transform.rotate(
-              /* angle: _controller.value * 2 * 3.1416, // Full rotation */
-              angle: 0, // Keeps it frozen
-              child: OverflowBox(
-                maxWidth: double.infinity,
-                maxHeight: double.infinity,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Transform.scale(
-                      scale: 2.5, // Enlarges the star without cropping
-                      child: Image.asset(
-                        'assets/images/Rotate_Star.png',
-                        width: 500, // Original size
-                        height: 500,
-                      ),
+                return Transform.rotate(
+                  angle: _controller.value * 2 * 3.1416, // Full rotation
+                  child: OverflowBox(
+                    maxWidth: double.infinity,
+                    maxHeight: double.infinity,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Transform.scale(
+                          scale: 2.5, // Enlarges the star without cropping
+                          child: Image.asset(
+                            'assets/images/Rotate_Star.png',
+                            width: 500, // Original size
+                            height: 500,
+                          ),
+                        ),
+                        Positioned.fill(
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 1500, sigmaY: 1500), // Blur effect
+                            child: Container(color: Colors.transparent),
+                          ),
+                        ),
+                      ],
                     ),
-                    Positioned.fill(
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 1500, sigmaY: 1500), // Blur effect
-                        child: Container(color: Colors.transparent),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
-            // },
-            // ),
           ),
 
           // Centered Child Content

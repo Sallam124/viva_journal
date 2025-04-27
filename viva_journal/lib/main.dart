@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth functionality.
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'firebase_options.dart'; // Firebase configuration options.
 import 'package:viva_journal/screens/loading_screen.dart';
 import 'package:viva_journal/screens/login_screen.dart';
@@ -14,6 +15,7 @@ import 'package:viva_journal/screens/trackerlog_screen.dart';
 import 'package:viva_journal/screens/settings_screen.dart';
 import 'package:viva_journal/screens/journal_screen.dart';
 import 'package:viva_journal/widgets/widgets.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 
 // Global navigator key for app-wide navigation control.
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -51,6 +53,15 @@ class MyApp extends StatelessWidget {
           },
         ),
       ),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        FlutterQuillLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en', 'US'),
+      ],
       // Wraps each screen in a dismiss keyboard wrapper.
       builder: (context, child) => buildDismissKeyboardWrapper(child: child!),
       // Determines the initial route based on the user's Firebase login status.
@@ -61,11 +72,11 @@ class MyApp extends StatelessWidget {
             // While waiting for login status, show a loading screen.
             return _buildRoute(const LoadingScreen());
           } else if (snapshot.hasData && snapshot.data != null) {
-            // If logged in, go to the HomeScreen
-            return _buildRoute(const SignUpScreen());
+            // If logged in, go to the JournalScreen
+            return _buildRoute(JournalScreen(mood: 'happy', tags: []));
           } else {
-            // If not logged in, show the SignUpScreen.
-            return _buildRoute(const SignUpScreen());
+            // If not logged in, show the JournalScreen.
+            return _buildRoute(JournalScreen(mood: 'happy', tags: []));
           }
         },
       ),
