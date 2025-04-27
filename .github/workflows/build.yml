@@ -1,0 +1,95 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        run: |
+          sudo apt-get update
+          sudo apt-get install openjdk-17-jdk -y
+          java -version  # Verify Java version
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.2'
+
+      - name: Verify Flutter Installation
+        run: flutter --version
+
+      - name: Install GTK dependencies for Linux build
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev
+
+      - name: Navigate to viva_journal directory
+        working-directory: viva_journal
+        run: pwd
+
+      - name: Install dependencies
+        working-directory: viva_journal
+        run: flutter pub get
+
+      - name: Analyze project source
+        working-directory: viva_journal
+        run: flutter analyze
+
+      - name: Run tests
+        working-directory: viva_journal
+        run: flutter test
+
+      - name: Build the Flutter project
+        working-directory: viva_journal
+        run: flutter build linux --release
+
+  sonarqube:
+    name: SonarQube
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 17
+        run: |
+          sudo apt-get update
+          sudo apt-get install openjdk-17-jdk -y
+          java -version  # Verify Java version
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.2'
+
+      - name: Verify Flutter Installation
+        run: flutter --version
+
+      - name: Install GTK dependencies for Linux build
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev
+
+      - name: Build the Flutter project
+        working-directory: viva_journal
+        run: |
+          flutter pub get
+          flutter build linux --release
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          projectBaseDir: viva_journal
