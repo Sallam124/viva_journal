@@ -82,38 +82,6 @@ Widget buildPasswordField(
   );
 }
 
-/// Wraps a widget in a WillPopScope that prompts the user before exiting.
-Widget buildWillPopWrapper({required Widget child}) {
-  return WillPopScope(
-    onWillPop: _onWillPop,
-    child: child,
-  );
-}
-
-/// Displays an exit confirmation dialog.
-Future<bool> _onWillPop() async {
-  BuildContext? context = navigatorKey.currentContext;
-  if (context == null) return false; // Fallback if context is not found
-
-  final shouldExit = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Exit App?'),
-      content: const Text('Do you really want to exit?'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('No'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Yes'),
-        ),
-      ],
-    ),
-  );
-  return shouldExit ?? false;
-}
 
 /// Wraps a widget in a GestureDetector that dismisses the keyboard when tapping outside input fields.
 Widget buildDismissKeyboardWrapper({required Widget child}) {
@@ -143,7 +111,7 @@ class CustomTextFormField extends StatelessWidget {
   final VoidCallback? onTap;
 
   const CustomTextFormField({
-    Key? key,
+    super.key,
     required this.controller,
     required this.focusNode,
     required this.hint,
@@ -151,7 +119,7 @@ class CustomTextFormField extends StatelessWidget {
     this.obscureText = false,
     this.suffixIcon,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -187,10 +155,10 @@ class CustomElevatedButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   const CustomElevatedButton({
-    Key? key,
+    super.key,
     required this.text,
     required this.onPressed,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -210,6 +178,7 @@ class CustomElevatedButton extends StatelessWidget {
     );
   }
 }
+
 class HoverableIconButton extends StatefulWidget {
   final Widget icon;
   final VoidCallback onPressed;
@@ -217,12 +186,12 @@ class HoverableIconButton extends StatefulWidget {
   final EdgeInsets padding;
 
   const HoverableIconButton({
-    Key? key,
+    super.key,
     required this.icon,
     required this.onPressed,
     this.hoverScale = 1.2,
     this.padding = const EdgeInsets.all(0),
-  }) : super(key: key);
+  });
 
   @override
   State<HoverableIconButton> createState() => _HoverableIconButtonState();
