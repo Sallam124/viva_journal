@@ -58,6 +58,15 @@ class MyApp extends StatelessWidget {
       themeAnimationCurve: Curves.easeInOut,
       themeAnimationDuration: const Duration(milliseconds: 400),
       builder: (context, child) => buildDismissKeyboardWrapper(child: child!),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        FlutterQuillLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en'), // Add other supported locales if needed
+      ],
 
       home: FutureBuilder<User?>( // Handling user login status check
         future: _checkUserLoginStatus(),
@@ -82,9 +91,15 @@ class MyApp extends StatelessWidget {
         '/resetPassword': (context) => _buildRoute(const ForgotPasswordScreen()),
         '/dashboard': (context) => _buildRoute(DashboardScreen()),
         '/calendar': (context) => _buildRoute(CalendarScreen()),
-        '/trackerLog': (context) => _buildRoute(TrackerLogScreen()),
+        '/trackerLog': (context) => _buildRoute(TrackerLogScreen(date: DateTime.now())),
         '/settings': (context) => _buildRoute(const SettingsScreen()),
-        '/journal': (context) => _buildRoute(JournalScreen(mood: 'happy', tags: [])),
+        '/journal': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          return _buildRoute(JournalScreen(
+            date: args['date'] as DateTime,
+            color: args['color'] as Color,
+          ));
+        },
       },
     );
   }

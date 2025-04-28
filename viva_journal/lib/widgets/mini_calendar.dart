@@ -7,13 +7,13 @@ import 'package:viva_journal/screens/trackerlog_screen.dart';
 import 'dart:async';
 
 class MiniCalendar extends StatefulWidget {
-  const MiniCalendar({Key? key}) : super(key: key);
+  const MiniCalendar({super.key});
 
   @override
-  _MiniCalendarState createState() => _MiniCalendarState();
+  MiniCalendarState createState() => MiniCalendarState();
 }
 
-class _MiniCalendarState extends State<MiniCalendar> {
+class MiniCalendarState extends State<MiniCalendar> {
   late List<DateTime> _weekDates;
   final Map<DateTime, String> _moodData = {};
   final DatabaseHelper _db = DatabaseHelper();
@@ -139,7 +139,7 @@ class _MiniCalendarState extends State<MiniCalendar> {
               boxShadow: isToday
                   ? [
                 BoxShadow(
-                  color: moodColor.withOpacity(0.6),
+                  color: moodColor.withAlpha(153),
                   blurRadius: 8,
                   spreadRadius: 1,
                   offset: const Offset(0, 3),
@@ -226,7 +226,7 @@ class _MiniCalendarState extends State<MiniCalendar> {
                   boxShadow: isToday
                       ? [
                     BoxShadow(
-                      color: moodColor.withOpacity(0.6),
+                      color: moodColor.withAlpha(153),
                       blurRadius: 8,
                       spreadRadius: 1,
                       offset: const Offset(0, 3),

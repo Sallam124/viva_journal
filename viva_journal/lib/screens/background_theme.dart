@@ -6,10 +6,10 @@ class BackgroundContainer extends StatefulWidget {
   const BackgroundContainer({super.key, required this.child});
 
   @override
-  _BackgroundContainerState createState() => _BackgroundContainerState();
+  BackgroundContainerState createState() => BackgroundContainerState();
 }
 
-class _BackgroundContainerState extends State<BackgroundContainer> with SingleTickerProviderStateMixin {
+class BackgroundContainerState extends State<BackgroundContainer> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
