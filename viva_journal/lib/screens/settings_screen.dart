@@ -16,6 +16,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   TimeOfDay? _selectedTime;
   bool _authEnabled = false;
   String? _savedPasscode;
+  String? _savedBackground;
 
   @override
   void initState() {
@@ -29,12 +30,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _notificationsEnabled = prefs.getBool('notificationsEnabled') ?? false;
       _authEnabled = prefs.getBool('authEnabled') ?? false;
       _savedPasscode = prefs.getString('passcode');
+      _savedBackground = prefs.getString('background_image');
       final hour = prefs.getInt('notificationHour');
       final minute = prefs.getInt('notificationMinute');
       if (hour != null && minute != null) {
         _selectedTime = TimeOfDay(hour: hour, minute: minute);
       }
     });
+
+    // لو مفيش خلفية محفوظة، نحفظ واحدة افتراضية
+    if (_savedBackground == null) {
+      await _saveBackground('assets/images/background.png');
+    }
   }
 
   Future<void> _savePreferences() async {
@@ -50,12 +57,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _saveBackground(String path) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('background_image', path);
+    setState(() {
+      _savedBackground = path;
+    });
+  }
+
   void _pickTime(BuildContext context) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: _selectedTime ?? TimeOfDay.now(),
     );
-
     if (picked != null) {
       setState(() {
         _selectedTime = picked;
@@ -74,12 +88,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
           controller: controller,
           keyboardType: TextInputType.number,
           obscureText: true,
-          decoration: const InputDecoration(labelText: '4-digit passcode'),
           maxLength: 4,
+          decoration: const InputDecoration(labelText: '4-digit passcode'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          ElevatedButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text("Save")),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text("Save"),
+          ),
         ],
       ),
     );
@@ -89,6 +109,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final currentTheme = themeProvider.themeMode;
+    final brightness = MediaQuery.of(context).platformBrightness;
+    final bool isDark = (currentTheme == ThemeMode.dark) ||
+        (currentTheme == ThemeMode.system && brightness == Brightness.dark);
+
+    final backgroundColor = isDark ? Colors.black : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black;
+    final toggleSelectedColor = isDark ? Colors.black : Colors.white;
+    final toggleUnselectedColor = isDark ? Colors.white : Colors.black;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -98,6 +126,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         elevation: 0,
       ),
       body: Container(
+<<<<<<< Updated upstream
         decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/images/background.png'),
@@ -106,6 +135,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         width: double.infinity,
         height: double.infinity,
+=======
+        width: double.infinity,
+        height: double.infinity,
+        decoration: () {
+          if (currentTheme == ThemeMode.system) {
+            if (_savedBackground != null) {
+              return BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage(_savedBackground!),
+                  fit: BoxFit.cover,
+                ),
+              );
+            } else {
+              return BoxDecoration(
+                color: isDark ? Colors.black : Colors.white,
+              );
+            }
+          } else {
+            if (isDark) {
+              return const BoxDecoration(color: Colors.black);
+            } else {
+              return const BoxDecoration(color: Colors.white);
+            }
+          }
+        }(),
+>>>>>>> Stashed changes
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 100, 20, 20),
           child: Column(
@@ -114,7 +169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Enable Notifications', style: TextStyle(fontSize: 18, color: Colors.white)),
+                  Text('Enable Notifications', style: TextStyle(fontSize: 18, color: textColor)),
                   Switch(
                     value: _notificationsEnabled,
                     onChanged: (value) {
@@ -132,44 +187,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Notification Time:', style: TextStyle(fontSize: 16, color: Colors.white)),
+                    Text('Notification Time:', style: TextStyle(fontSize: 16, color: textColor)),
                     const SizedBox(height: 8),
                     ElevatedButton(
                       onPressed: () => _pickTime(context),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
+                        backgroundColor: toggleUnselectedColor,
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       child: Text(
-                        _selectedTime == null ? 'Pick a time' : 'Selected: ${_selectedTime!.format(context)}',
-                        style: const TextStyle(color: Colors.white),
+                        _selectedTime == null
+                            ? 'Pick a time'
+                            : 'Selected: ${_selectedTime!.format(context)}',
+                        style: TextStyle(color: toggleSelectedColor),
                       ),
                     ),
                   ],
                 ),
               const SizedBox(height: 40),
-              const Text('Theme Mode:', style: TextStyle(fontSize: 18, color: Colors.white)),
+              Text('Theme Mode:', style: TextStyle(fontSize: 18, color: textColor)),
               const SizedBox(height: 10),
               ToggleButtons(
-                isSelected: [currentTheme == ThemeMode.dark, currentTheme == ThemeMode.system],
+                isSelected: [
+                  currentTheme == ThemeMode.light,
+                  currentTheme == ThemeMode.dark,
+                  currentTheme == ThemeMode.system
+                ],
                 onPressed: (index) {
-                  if (index == 0) themeProvider.setTheme(ThemeMode.dark);
-                  if (index == 1) themeProvider.setTheme(ThemeMode.system);
+                  setState(() {
+                    if (index == 0) themeProvider.setTheme(ThemeMode.light);
+                    if (index == 1) themeProvider.setTheme(ThemeMode.dark);
+                    if (index == 2) themeProvider.setTheme(ThemeMode.system);
+                  });
                 },
                 borderRadius: BorderRadius.circular(20),
-                selectedColor: Colors.white,
-                fillColor: Colors.black87,
-                color: Colors.white70,
+                selectedColor: toggleSelectedColor,
+                fillColor: toggleUnselectedColor,
+                color: toggleUnselectedColor.withOpacity(0.6),
                 children: const [
-                  Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text("Dark")),
-                  Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text("System")),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Text("Light", style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Text("Dark", style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Text("System", style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
                 ],
               ),
               const SizedBox(height: 40),
-              const Text('Authentication', style: TextStyle(fontSize: 18, color: Colors.white)),
+              Text('Authentication', style: TextStyle(fontSize: 18, color: textColor)),
               SwitchListTile(
-                title: const Text('Enable Extra Authentication', style: TextStyle(color: Colors.white)),
+                title: Text('Enable Extra Authentication', style: TextStyle(color: textColor)),
                 value: _authEnabled,
                 onChanged: (value) {
                   setState(() {
@@ -187,8 +261,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _savePreferences();
                     }
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
-                  child: Text(_savedPasscode == null ? "Set Passcode" : "Change Passcode"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: toggleUnselectedColor,
+                  ),
+                  child: Text(
+                    _savedPasscode == null ? "Set Passcode" : "Change Passcode",
+                    style: TextStyle(color: toggleSelectedColor),
+                  ),
                 ),
             ],
           ),
