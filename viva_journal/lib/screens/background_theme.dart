@@ -39,6 +39,7 @@ class BackgroundContainerState extends State<BackgroundContainer> with SingleTic
           // Rotating and Blurred Star (BIGGER WITHOUT CROPPING)
           Center(
             child: AnimatedBuilder(
+
               animation: _controller,
               builder: (context, child) {
                 return Transform.rotate(
@@ -47,10 +48,10 @@ class BackgroundContainerState extends State<BackgroundContainer> with SingleTic
                     maxWidth: double.infinity,
                     maxHeight: double.infinity,
                     child: Stack(
-                      alignment: Alignment.center,
+                      alignment:   Alignment.center,
                       children: [
                         Transform.scale(
-                          scale: 2.5, // Enlarges the star without cropping
+                          scale: 3.5, // Enlarges the star without cropping
                           child: Image.asset(
                             'assets/images/Rotate_Star.png',
                             width: 500, // Original size
@@ -73,7 +74,7 @@ class BackgroundContainerState extends State<BackgroundContainer> with SingleTic
 
           // Centered Child Content
           Align(
-            alignment: Alignment.center,
+            alignment: Alignment.topCenter,
             child: widget.child,
           ),
         ],

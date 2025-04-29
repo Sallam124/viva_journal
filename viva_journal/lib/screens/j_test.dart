@@ -17,7 +17,7 @@ class JournalScreen extends StatefulWidget {
   final String mood;
   final List<String> tags;
 
-  const JournalScreen({Key? key, required this.mood, required this.tags}) : super(key: key);
+  const JournalScreen({super.key, required this.mood, required this.tags});
 
   @override
   _JournalScreenState createState() => _JournalScreenState();
@@ -25,18 +25,12 @@ class JournalScreen extends StatefulWidget {
 
 class InteractiveMedia extends Media {
   InteractiveMedia({
-    required File file,
-    bool isVideo = false,
-    Offset position = Offset.zero,
-    double size = 1.0,
-    double angle = 0.0,
-  }) : super(
-    file: file,
-    isVideo: isVideo,
-    position: position,
-    size: size,
-    angle: angle,
-  );
+    required super.file,
+    super.isVideo,
+    super.position,
+    super.size,
+    super.angle,
+  });
 
   InteractiveMedia.fromMedia(Media media) : super(
     file: media.file,
@@ -52,9 +46,9 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
   final FocusNode _editorFocusNode = FocusNode();
   final ScrollController _editorScrollController = ScrollController();
   List<DrawingPoint> _points = [];
-  List<List<DrawingPoint>> _drawingHistory = [];
-  List<List<DrawingPoint>> _redoHistory = [];
-  List<InteractiveMedia> _attachments = [];
+  final List<List<DrawingPoint>> _drawingHistory = [];
+  final List<List<DrawingPoint>> _redoHistory = [];
+  final List<InteractiveMedia> _attachments = [];
   FlutterSoundRecorder? _recorder;
   String? _voiceNotePath;
   final FlutterTts _flutterTts = FlutterTts();
@@ -63,8 +57,8 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
   Color _currentColor = Colors.black;
   int _pencilIndex = 0;
   bool _isEraserActive = false;
-  double _strokeWidth = 3.0;
-  double _eraserWidth = 30.0;
+  final double _strokeWidth = 3.0;
+  final double _eraserWidth = 30.0;
   bool _isDrawingMode = false;
   late AnimationController _eraserAnimationController;
   late Animation<double> _eraserAnimation;
@@ -75,7 +69,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
   bool _isPencilActive = false;
   final GlobalKey _pageKey = GlobalKey();
 
-  List<Color> _pencilColors = [
+  final List<Color> _pencilColors = [
     Colors.black,
     Color(0xFFFFE100),
     Color(0xFFFFC917),
@@ -438,7 +432,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
                               onPanStart: _isDrawingMode ? _handleDrawingStart : null,
                               onPanUpdate: _isDrawingMode ? _handleDrawingUpdate : null,
                               onPanEnd: _isDrawingMode ? _handleDrawingEnd : null,
-                              child: Container(
+                              child: SizedBox(
                                 width: MediaQuery.of(context).size.width,
                                 height: MediaQuery.of(context).size.height -
                                     MediaQuery.of(context).padding.top -
@@ -479,7 +473,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
                                           ),
                                         ),
                                       ),
-                                    )).toList(),
+                                    )),
                                   ],
                                 ),
                               ),
@@ -849,7 +843,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
 class VideoWidget extends StatefulWidget {
   final File file;
 
-  const VideoWidget({Key? key, required this.file}) : super(key: key);
+  const VideoWidget({super.key, required this.file});
 
   @override
   _VideoWidgetState createState() => _VideoWidgetState();

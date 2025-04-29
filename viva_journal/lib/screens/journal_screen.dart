@@ -71,18 +71,12 @@ class JournalPage {
 
 class InteractiveMedia extends Media {
   InteractiveMedia({
-    required File file,
-    bool isVideo = false,
-    Offset position = Offset.zero,
-    double size = 1.0,
-    double angle = 0.0,
-  }) : super(
-    file: file,
-    isVideo: isVideo,
-    position: position,
-    size: size,
-    angle: angle,
-  );
+    required super.file,
+    super.isVideo,
+    super.position,
+    super.size,
+    super.angle,
+  });
 
   InteractiveMedia.fromMedia(Media media) : super(
     file: media.file,
@@ -441,7 +435,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
                 // Insert the text at the current selection
                 _quillController.document.insert(
                   selection.baseOffset,
-                  _text + ' ',
+                  '$_text ',
                 );
                 _text = '';
               }
@@ -612,7 +606,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
                                       ),
                                     ),
                                   ),
-                                )).toList(),
+                                )),
                               ],
                             ),
                           ),
