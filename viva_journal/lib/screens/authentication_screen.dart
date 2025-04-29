@@ -1,171 +1,216 @@
 import 'package:flutter/material.dart';
-import 'package:local_auth/local_auth.dart';
-import 'package:viva_journal/utils/auth_prefs.dart';
+import 'package:provider/provider.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
+import 'package:viva_journal/database_helper.dart';
 
-class AuthenticationScreen extends StatefulWidget {
-  const AuthenticationScreen({super.key});
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({Key? key}) : super(key: key);
 
   @override
-  State<AuthenticationScreen> createState() => _AuthenticationScreenState();
+  State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _AuthenticationScreenState extends State<AuthenticationScreen> {
-  final LocalAuthentication auth = LocalAuthentication();
-  String _enteredCode = '';
-  String? _savedPasscode;
-  // final bool _isAuthenticating = false;
-  String? _error;
+class _DashboardScreenState extends State<DashboardScreen> {
+  final DatabaseHelper dbHelper = DatabaseHelper();
+  List<double> moodData = [];
+  List<DateTime> moodDates = [];
+  final List<String> emojiLabels = ['😢', '😐', '😊', '😄', '🤩'];
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _startAuthentication();
+    loadMoodData();
   }
 
-  Future<void> _startAuthentication() async {
-    final bool enabled = await AuthPrefs.isBiometricEnabled();
-    final String? savedCode = await AuthPrefs.getSavedPasscode();
+  Future<void> loadMoodData() async {
+    try {
+      final allEntries = await dbHelper.getEntriesPastWeek(); // latest 7 days
 
-    setState(() {
-      _savedPasscode = savedCode;
+      setState(() {
+        moodData = allEntries.map((entry) => double.tryParse(entry.mood) ?? 3).toList();
+        moodDates = allEntries.map((entry) => DateTime.tryParse(entry.date) ?? DateTime.now()).toList();
+        isLoading = false;
+      });
+    } catch (e) {
+      print("Error loading mood data: $e");
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  String _bestDayOfWeek() {
+    if (moodDates.isEmpty) return "N/A";
+
+    Map<int, List<double>> dayMoodMap = {};
+
+    for (int i = 0; i < moodDates.length; i++) {
+      int weekday = moodDates[i].weekday;
+      dayMoodMap.putIfAbsent(weekday, () => []);
+      dayMoodMap[weekday]!.add(moodData[i]);
+    }
+
+    int bestDay = 1;
+    double bestAvg = 0;
+
+    dayMoodMap.forEach((day, moods) {
+      double avg = moods.reduce((a, b) => a + b) / moods.length;
+      if (avg > bestAvg) {
+        bestAvg = avg;
+        bestDay = day;
+      }
     });
 
-    if (enabled) {
-      try {
-        bool didAuthenticate = await auth.authenticate(
-          localizedReason: 'Authenticate with your biometrics',
-          options: const AuthenticationOptions(biometricOnly: true),
-        );
-
-        if (didAuthenticate) {
-          _goToHome();
-        }
-      } catch (e) {
-        setState(() => _error = "Biometric error: $e");
-      }
-    }
-  }
-
-  void _onNumberPressed(String digit) {
-    if (_enteredCode.length < 4) {
-      setState(() {
-        _enteredCode += digit;
-      });
-
-      if (_enteredCode.length == 4) {
-        if (_enteredCode == _savedPasscode) {
-          _goToHome();
-        } else {
-          setState(() {
-            _error = "Incorrect Passcode";
-            _enteredCode = '';
-          });
-        }
-      }
-    }
-  }
-
-  void _onBackspacePressed() {
-    if (_enteredCode.isNotEmpty) {
-      setState(() {
-        _enteredCode = _enteredCode.substring(0, _enteredCode.length - 1);
-      });
-    }
-  }
-
-  void _goToHome() {
-    Navigator.pushReplacementNamed(context, '/home');
+    return DateFormat.E().format(DateTime.utc(2020, 1, bestDay + 5)); // Return the day of the week with the best mood
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black87,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              "Enter Passcode",
-              style: TextStyle(color: Colors.white, fontSize: 24),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                4,
-                    (index) => Container(
-                  margin: const EdgeInsets.all(8),
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: index < _enteredCode.length ? Colors.white : Colors.grey,
+    final double avg = moodData.isNotEmpty
+        ? moodData.reduce((a, b) => a + b) / moodData.length
+        : 3;
+    final int avgMood = avg.round().clamp(1, 5);
+    final String avgEmoji = emojiLabels[avgMood - 1];
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Image.asset(
+            'assets/images/background.png',
+            fit: BoxFit.cover,
+          ),
+        ),
+        Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            title: const Text("Dashboard"),
+            backgroundColor: Colors.black87,
+          ),
+          body: isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+            children: [
+              // Mood Chart
+              Expanded(
+                flex: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: BarChart(
+                        BarChartData(
+                          alignment: BarChartAlignment.spaceAround,
+                          maxY: 5,
+                          minY: 1,
+                          titlesData: FlTitlesData(
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: 1,
+                                getTitlesWidget: (value, _) {
+                                  int mood = value.toInt().clamp(1, 5);
+                                  return Text(
+                                    emojiLabels[mood - 1],
+                                    style: const TextStyle(fontSize: 20),
+                                  );
+                                },
+                              ),
+                            ),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: 1,
+                                getTitlesWidget: (value, _) {
+                                  int index = value.toInt();
+                                  if (index >= 0 && index < moodDates.length) {
+                                    return Text(DateFormat('E').format(moodDates[index]));
+                                  }
+                                  return const Text('');
+                                },
+                              ),
+                            ),
+                          ),
+                          gridData: FlGridData(show: true),
+                          borderData: FlBorderData(show: false),
+                          barGroups: List.generate(moodData.length, (index) {
+                            return BarChartGroupData(
+                              x: index,
+                              barRods: [
+                                BarChartRodData(
+                                  toY: moodData[index],
+                                  color: Colors.blueAccent,
+                                  width: 16,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ],
+                            );
+                          }),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Text(
-                  _error!,
-                  style: const TextStyle(color: Colors.red),
+
+              // Weekly Average + Best Day
+              Expanded(
+                flex: 1,
+                child: Row(
+                  children: [
+                    // Weekly Average
+                    Expanded(
+                      child: Card(
+                        margin: const EdgeInsets.all(16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 4,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(avgEmoji, style: const TextStyle(fontSize: 48)),
+                              const SizedBox(height: 8),
+                              const Text("Weekly Avg", style: TextStyle(fontSize: 14)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Best Day Highlight
+                    Expanded(
+                      child: Card(
+                        margin: const EdgeInsets.all(16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 4,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.star, size: 48, color: Colors.amber),
+                              const SizedBox(height: 8),
+                              Text(
+                                "Best Day:\n${_bestDayOfWeek()}",
+                                style: const TextStyle(fontSize: 14),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            const SizedBox(height: 30),
-            _buildNumberPad(),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildNumberPad() {
-    return SizedBox(
-      width: 240,
-      child: Column(
-        children: [
-          for (var row in [
-            ['1', '2', '3'],
-            ['4', '5', '6'],
-            ['7', '8', '9'],
-            ['', '0', '<']
-          ])
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: row.map((value) {
-                return _buildKey(value);
-              }).toList(),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildKey(String value) {
-    return GestureDetector(
-      onTap: () {
-        if (value == '<') {
-          _onBackspacePressed();
-        } else if (value.isNotEmpty) {
-          _onNumberPressed(value);
-        }
-      },
-      child: Container(
-        margin: const EdgeInsets.all(8),
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(
-          color: Colors.grey[800],
-          shape: BoxShape.circle,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          value,
-          style: const TextStyle(fontSize: 24, color: Colors.white),
-        ),
-      ),
+      ],
     );
   }
 }
