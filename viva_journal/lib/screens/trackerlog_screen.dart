@@ -408,17 +408,18 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
       return;
     }
 
-    // final entry = JournalEntry(
-    //   date: widget.date,
-    //   tags: selectedTags.toList(),
-    //   title: journalData.title,
-    //   content: journalData.content,
-    //   drawingPoints: journalData.drawingPoints,
-    //   mediaPaths: journalData.attachments.map((a) => a.file.path).toList(),
-    //   color: colors[_currentIndex],
-    // );
-    //
-    // await DatabaseHelper().insertJournal(entry);
+    final entry = JournalEntry(
+      date: widget.date,
+      tags: selectedTags.toList(),
+      title: journalData.title,
+      content: journalData.content,
+      drawingPoints: journalData.drawingPoints,
+      mediaPaths: journalData.attachments.map((a) => a.file.path).toList(),
+      color: colors[_currentIndex],
+      mood: emotions[_currentIndex],
+    );
+
+    await DatabaseHelper().insertJournal(entry);
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Journal entry saved successfully!')),

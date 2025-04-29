@@ -39,7 +39,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     const Color(0xFF8C0000), // Dark Red
   ];
 
-  /// Method to get time-based greeting
+  /// time-based greeting
   String _getGreeting() {
     final hour = DateTime.now().hour;
     if (hour < 12) {
@@ -218,76 +218,6 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ],
           ),
-          const SizedBox(height: 32), // Space after blocks
-          // New section for time and username
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Current Time:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                    StreamBuilder(
-                      stream: Stream.periodic(const Duration(seconds: 1)),
-                      builder: (context, snapshot) {
-                        return Text(
-                          '${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}:${DateTime.now().second.toString().padLeft(2, '0')}',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Username:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                    Text(
-                      _username ?? 'Not set',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16), // Space after the new section
         ],
       ),
     );
@@ -483,7 +413,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildNavItem(IconData icon, int index, double iconSize, double starSize, double topPadding) {
     return GestureDetector(
       onTap: () => _onItemTapped(index),
-      child: Container(
+      child: SizedBox(
         height: homeBarHeight * 0.8,
         child: Column(
           mainAxisSize: MainAxisSize.min,
