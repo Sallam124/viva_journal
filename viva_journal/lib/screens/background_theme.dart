@@ -6,10 +6,10 @@ class BackgroundContainer extends StatefulWidget {
   const BackgroundContainer({super.key, required this.child});
 
   @override
-  _BackgroundContainerState createState() => _BackgroundContainerState();
+  BackgroundContainerState createState() => BackgroundContainerState();
 }
 
-class _BackgroundContainerState extends State<BackgroundContainer> with SingleTickerProviderStateMixin {
+class BackgroundContainerState extends State<BackgroundContainer> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
@@ -39,6 +39,7 @@ class _BackgroundContainerState extends State<BackgroundContainer> with SingleTi
           // Rotating and Blurred Star (BIGGER WITHOUT CROPPING)
           Center(
             child: AnimatedBuilder(
+
               animation: _controller,
               builder: (context, child) {
                 return Transform.rotate(
@@ -47,10 +48,10 @@ class _BackgroundContainerState extends State<BackgroundContainer> with SingleTi
                     maxWidth: double.infinity,
                     maxHeight: double.infinity,
                     child: Stack(
-                      alignment: Alignment.center,
+                      alignment:   Alignment.center,
                       children: [
                         Transform.scale(
-                          scale: 2.5, // Enlarges the star without cropping
+                          scale: 3.5, // Enlarges the star without cropping
                           child: Image.asset(
                             'assets/images/Rotate_Star.png',
                             width: 500, // Original size
@@ -73,7 +74,7 @@ class _BackgroundContainerState extends State<BackgroundContainer> with SingleTi
 
           // Centered Child Content
           Align(
-            alignment: Alignment.center,
+            alignment: Alignment.topCenter,
             child: widget.child,
           ),
         ],

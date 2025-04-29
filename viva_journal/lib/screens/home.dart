@@ -13,10 +13,10 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.initialIndex = 0});  // Default to 0 if not provided
 
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  HomeScreenState createState() => HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _selectedIndex = 0;
   late AnimationController _glowController;
   late AnimationController _splashController;
@@ -39,7 +39,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     const Color(0xFF8C0000), // Dark Red
   ];
 
-  /// Method to get time-based greeting
+  /// time-based greeting
   String _getGreeting() {
     final hour = DateTime.now().hour;
     if (hour < 12) {
@@ -197,7 +197,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 child: Column(
                   children: [
                     _buildSmallBlock(
-                      title: "On this same day",
+                      title: "\n On this same day",
                       color: Colors.white,
                       iconPath: 'assets/images/your_calendar_icon.png', // Change accordingly
                       onTap: () {
@@ -206,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                     const SizedBox(height: 12),
                     _buildSmallBlock(
-                      title: "Average mood",
+                      title: "\n Average mood",
                       color: Color(0xFF8C0000), // Dark red
                       iconPath: 'assets/images/your_mood_icon.png', // Change accordingly
                       onTap: () {
@@ -413,7 +413,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildNavItem(IconData icon, int index, double iconSize, double starSize, double topPadding) {
     return GestureDetector(
       onTap: () => _onItemTapped(index),
-      child: Container(
+      child: SizedBox(
         height: homeBarHeight * 0.8,
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -557,6 +557,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     required Color color,
     required String iconPath,
     required VoidCallback onTap,
+
   }) {
     return GestureDetector(
       onTap: onTap,
