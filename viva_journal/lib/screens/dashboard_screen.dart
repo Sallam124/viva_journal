@@ -27,12 +27,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> loadMoodData() async {
     try {
-      final allEntries = await dbHelper.getEntries();
-      final entries = allEntries.take(7).toList(); // last 7 entries
+      final allEntries = await dbHelper.getEntriesPastWeek(); // latest 7 days
 
       setState(() {
-        moodData = entries.map((e) => double.tryParse(e['mood'] ?? '3') ?? 3).toList();
-        moodDates = entries.map((e) => DateTime.tryParse(e['date'] ?? '') ?? DateTime.now()).toList();
+        moodData = allEntries.map((entry) => double.tryParse(entry['mood'].toString()) ?? 3).toList();
+        moodDates = allEntries.map((entry) => DateTime.tryParse(entry['date'].toString()) ?? DateTime.now()).toList();
         isLoading = false;
       });
     } catch (e) {
@@ -43,23 +42,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  int _calculateStreak() {
-    if (moodDates.isEmpty) return 0;
+  String _bestDayOfWeek() {
+    if (moodDates.isEmpty) return "N/A";
 
-    moodDates.sort((a, b) => b.compareTo(a)); // newest to oldest
-    int streak = 1;
+    Map<int, List<double>> dayMoodMap = {};
 
-    for (int i = 1; i < moodDates.length; i++) {
-      final current = moodDates[i - 1];
-      final next = moodDates[i];
-      if (current.difference(next).inDays == 1) {
-        streak++;
-      } else {
-        break;
-      }
+    for (int i = 0; i < moodDates.length; i++) {
+      int weekday = moodDates[i].weekday;
+      dayMoodMap.putIfAbsent(weekday, () => []);
+      dayMoodMap[weekday]!.add(moodData[i]);
     }
 
-    return streak;
+    int bestDay = 1;
+    double bestAvg = 0;
+
+    dayMoodMap.forEach((day, moods) {
+      double avg = moods.reduce((a, b) => a + b) / moods.length;
+      if (avg > bestAvg) {
+        bestAvg = avg;
+        bestDay = day;
+      }
+    });
+
+    return DateFormat.E().format(DateTime.utc(2020, 1, bestDay + 5));
   }
 
   @override
@@ -88,39 +93,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ? const Center(child: CircularProgressIndicator())
               : Column(
             children: [
-              /// Mood Graph
+              // Mood Chart
               Expanded(
                 flex: 2,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     elevation: 4,
                     child: Padding(
                       padding: const EdgeInsets.all(16),
-                      child: LineChart(
-                        LineChartData(
-                          minY: 1,
+                      child: BarChart(
+                        BarChartData(
+                          alignment: BarChartAlignment.spaceAround,
                           maxY: 5,
+                          minY: 1,
                           titlesData: FlTitlesData(
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                interval: 1,
-                                getTitlesWidget: (value, meta) {
-                                  final index = value.toInt();
-                                  if (index >= 0 && index < moodDates.length) {
-                                    return Text(DateFormat('MM/dd').format(moodDates[index]));
-                                  }
-                                  return const Text('');
-                                },
-                              ),
-                            ),
                             leftTitles: AxisTitles(
                               sideTitles: SideTitles(
                                 showTitles: true,
                                 interval: 1,
-                                getTitlesWidget: (value, meta) {
+                                getTitlesWidget: (value, _) {
                                   int mood = value.toInt().clamp(1, 5);
                                   return Text(
                                     emojiLabels[mood - 1],
@@ -129,25 +124,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 },
                               ),
                             ),
-                          ),
-                          gridData: FlGridData(show: true),
-                          borderData: FlBorderData(show: true),
-                          lineBarsData: [
-                            LineChartBarData(
-                              spots: List.generate(
-                                moodData.length,
-                                    (index) => FlSpot(index.toDouble(), moodData[index]),
-                              ),
-                              isCurved: true,
-                              color: Colors.blue,
-                              barWidth: 3,
-                              dotData: FlDotData(show: true),
-                              belowBarData: BarAreaData(
-                                show: true,
-                                color: Colors.blue.withOpacity(0.3),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: 1,
+                                getTitlesWidget: (value, _) {
+                                  int index = value.toInt();
+                                  if (index >= 0 && index < moodDates.length) {
+                                    return Text(DateFormat('E').format(moodDates[index]));
+                                  }
+                                  return const Text('');
+                                },
                               ),
                             ),
-                          ],
+                          ),
+                          gridData: FlGridData(show: true),
+                          borderData: FlBorderData(show: false),
+                          barGroups: List.generate(moodData.length, (index) {
+                            return BarChartGroupData(
+                              x: index,
+                              barRods: [
+                                BarChartRodData(
+                                  toY: moodData[index],
+                                  color: Colors.blueAccent,
+                                  width: 16,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ],
+                            );
+                          }),
                         ),
                       ),
                     ),
@@ -155,12 +160,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
 
-              /// Mood Avg + Streak Tracker
+              // Weekly Average + Best Day
               Expanded(
                 flex: 1,
                 child: Row(
                   children: [
-                    /// Weekly Avg Mood
+                    // Weekly Average
                     Expanded(
                       child: Card(
                         margin: const EdgeInsets.all(16),
@@ -179,7 +184,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
 
-                    /// 🔥 Streak Tracker
+                    // Best Day
                     Expanded(
                       child: Card(
                         margin: const EdgeInsets.all(16),
@@ -189,10 +194,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Text("🔥", style: TextStyle(fontSize: 48)),
+                              const Icon(Icons.star, size: 48, color: Colors.amber),
                               const SizedBox(height: 8),
                               Text(
-                                "Current Streak:\n${_calculateStreak()} days",
+                                "Best Day:\n${_bestDayOfWeek()}",
                                 style: const TextStyle(fontSize: 14),
                                 textAlign: TextAlign.center,
                               ),
