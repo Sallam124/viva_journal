@@ -197,7 +197,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 child: Column(
                   children: [
                     _buildSmallBlock(
-                      title: "On this same day",
+                      title: "\n On this same day",
                       color: Colors.white,
                       iconPath: 'assets/images/your_calendar_icon.png', // Change accordingly
                       onTap: () {
@@ -206,7 +206,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                     const SizedBox(height: 12),
                     _buildSmallBlock(
-                      title: "Average mood",
+                      title: "\n Average mood",
                       color: Color(0xFF8C0000), // Dark red
                       iconPath: 'assets/images/your_mood_icon.png', // Change accordingly
                       onTap: () {
@@ -557,6 +557,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     required Color color,
     required String iconPath,
     required VoidCallback onTap,
+
   }) {
     return GestureDetector(
       onTap: onTap,
