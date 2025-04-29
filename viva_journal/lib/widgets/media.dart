@@ -42,19 +42,19 @@ class MediaWidget extends StatefulWidget {
   final bool isEditingMode;
 
   const MediaWidget({
-    Key? key,
+    super.key,
     required this.media,
     required this.isSelected,
     required this.onUpdate,
     required this.onTap,
     required this.isEditingMode,
-  }) : super(key: key);
+  });
 
   @override
-  _MediaWidgetState createState() => _MediaWidgetState();
+  MediaWidgetState createState() => MediaWidgetState();
 }
 
-class _MediaWidgetState extends State<MediaWidget> {
+class MediaWidgetState extends State<MediaWidget> {
   late VideoPlayerController _controller;
   bool _isPlaying = false;
   bool _isInitialized = false;

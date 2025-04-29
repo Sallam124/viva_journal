@@ -1,22 +1,59 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_quill/quill_delta.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter_quill/flutter_quill.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../widgets/media.dart';
 import 'package:video_player/video_player.dart';
 import 'dart:ui' as ui;
 import 'dart:math';
+import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+
+// Journal state management
+class JournalState {
+  static final Map<DateTime, JournalData> _journalData = {};
+
+  static void saveJournalData(DateTime date, JournalData data) {
+    _journalData[date] = data;
+  }
+
+  static Future<JournalData?> getJournalData(DateTime date) async {
+    return _journalData[date];
+  }
+}
+
+class JournalData {
+  final String title;
+  final List<Map<String, dynamic>> content;
+  final List<Map<String, dynamic>> drawingPoints;
+  final List<InteractiveMedia> attachments;
+
+  JournalData({
+    required this.title,
+    required this.content,
+    required this.drawingPoints,
+    required this.attachments,
+  });
+}
 
 class JournalScreen extends StatefulWidget {
-  final String mood;
-  final List<String> tags;
+  final DateTime date;
+  final Color color;
 
-  const JournalScreen({Key? key, required this.mood, required this.tags}) : super(key: key);
+  const JournalScreen({
+    super.key,
+    required this.date,
+    required this.color,
+  });
 
   @override
-  _JournalScreenState createState() => _JournalScreenState();
+  State<JournalScreen> createState() => _JournalScreenState();
 }
 
 class JournalPage {
@@ -34,18 +71,12 @@ class JournalPage {
 
 class InteractiveMedia extends Media {
   InteractiveMedia({
-    required File file,
-    bool isVideo = false,
-    Offset position = Offset.zero,
-    double size = 1.0,
-    double angle = 0.0,
-  }) : super(
-    file: file,
-    isVideo: isVideo,
-    position: position,
-    size: size,
-    angle: angle,
-  );
+    required super.file,
+    super.isVideo,
+    super.position,
+    super.size,
+    super.angle,
+  });
 
   InteractiveMedia.fromMedia(Media media) : super(
     file: media.file,
@@ -57,45 +88,41 @@ class InteractiveMedia extends Media {
 }
 
 class _JournalScreenState extends State<JournalScreen> with TickerProviderStateMixin {
-  TextEditingController _textController = TextEditingController();
-  List<DrawingPoint> _points = [];
-  List<List<DrawingPoint>> _drawingHistory = [];
-  List<List<DrawingPoint>> _redoHistory = [];
-  List<InteractiveMedia> _attachments = [];
+  final TextEditingController _titleController = TextEditingController();
+  final List<DrawingPoint> _points = [];
+  final List<List<DrawingPoint>> _drawingHistory = [];
+  final List<List<DrawingPoint>> _redoHistory = [];
+  final List<InteractiveMedia> _attachments = [];
   FlutterSoundRecorder? _recorder;
-  String? _voiceNotePath;
-  final FlutterTts _flutterTts = FlutterTts();
-  bool _isRecording = false;
   bool _showLines = false;
   Color _currentColor = Colors.black;
   int _pencilIndex = 0;
   bool _isEraserActive = false;
-  double _strokeWidth = 3.0;
-  double _eraserWidth = 30.0;
-  FocusNode _textFocusNode = FocusNode();
+  final double _strokeWidth = 3.0;
+  final double _eraserWidth = 30.0;
   bool _isDrawingMode = false;
   late AnimationController _eraserAnimationController;
   late Animation<double> _eraserAnimation;
   InteractiveMedia? _selectedMedia;
   bool _isRainbowMode = true;
-  double _rainbowOffset = 0.0;
   late AnimationController _pencilAnimationController;
   late Animation<double> _pencilAnimation;
   bool _isPencilActive = false;
-  final PageController _pageController = PageController();
-  List<JournalPage> _pages = [];
-  int _currentPage = 0;
   final GlobalKey _pageKey = GlobalKey();
-  double _pageHeight = 0;
-  TextEditingController _currentPageController = TextEditingController();
+  final QuillController _quillController = QuillController.basic();
+  final FocusNode _editorFocusNode = FocusNode();
+  final ScrollController _editorScrollController = ScrollController();
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _isListening = false;
+  String _text = '';
 
-  List<Color> _pencilColors = [
-    Colors.black,  // Standard black pencil
-    Color(0xFFFFE100),  // Original yellow
-    Color(0xFFFFC917),  // Original yellow-orange
-    Color(0xFFF8650C),  // Original orange
-    Color(0xFFF00000),  // Original red
-    Color(0xFF8C0000),  // Original dark red
+  final List<Color> _pencilColors = [
+    Colors.black,
+    Color(0xFFFFE100),
+    Color(0xFFFFC917),
+    Color(0xFFF8650C),
+    Color(0xFFF00000),
+    Color(0xFF8C0000),
   ];
 
   @override
@@ -103,79 +130,30 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
     super.initState();
     _recorder = FlutterSoundRecorder();
     _recorder!.openRecorder();
+    _initSpeech();
+    _titleController.text = "Untitled Journal";
+    _currentColor = widget.color;
 
-    _pages.add(JournalPage());
+    // Initialize with empty document
+    _quillController.document = Document.fromJson([
+      {"insert": "\n", "attributes": {"block": "normal"}}
+    ]);
 
-    _currentPageController.addListener(_handleTextOverflow);
+    // Load saved journal data if exists
+    _loadJournalData();
 
     _initializeAnimations();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _updatePageSize();
-    });
   }
 
-  void _updatePageSize() {
-    final RenderBox? renderBox = _pageKey.currentContext?.findRenderObject() as RenderBox?;
-    if (renderBox != null) {
-      setState(() {
-        _pageHeight = renderBox.size.height;
-      });
-    }
-  }
-
-  void _handleTextOverflow() {
-    if (_currentPageController.text.isEmpty) return;
-
-    final TextSpan textSpan = TextSpan(
-      text: _currentPageController.text,
-      style: TextStyle(color: Colors.black),
-    );
-    final TextPainter textPainter = TextPainter(
-      text: textSpan,
-      textDirection: TextDirection.ltr,
-      maxLines: null,
-    );
-
-    final availableHeight = MediaQuery.of(context).size.height -
-        MediaQuery.of(context).padding.top -
-        kToolbarHeight - 40;
-    final availableWidth = MediaQuery.of(context).size.width - 40;
-
-    textPainter.layout(maxWidth: availableWidth);
-
-    if (textPainter.height > availableHeight) {
-      final lastVisiblePosition = textPainter.getPositionForOffset(
-          Offset(0, availableHeight)
-      );
-
-      final text = _currentPageController.text;
-      int splitIndex = lastVisiblePosition.offset;
-
-      while (splitIndex > 0 && text[splitIndex - 1] != ' ' && text[splitIndex - 1] != '\n') {
-        splitIndex--;
-      }
-
-      if (splitIndex > 0) {
-        final currentPageText = text.substring(0, splitIndex).trimRight();
-        final nextPageText = text.substring(splitIndex).trimLeft();
-
-        setState(() {
-          _pages[_currentPage].text = currentPageText;
-          _currentPageController.text = currentPageText;
-
-          _pages.add(JournalPage(text: nextPageText));
-
-          _pageController.animateToPage(
-            _currentPage + 1,
-            duration: Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-          );
-
-          _textFocusNode.requestFocus();
-        });
-      }
-    }
+  @override
+  void dispose() {
+    // Save journal data before disposing
+    _saveJournalData();
+    _quillController.dispose();
+    _editorFocusNode.dispose();
+    _editorScrollController.dispose();
+    _titleController.dispose();
+    super.dispose();
   }
 
   void _initializeAnimations() {
@@ -204,11 +182,11 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
 
   Color _getRainbowColor(Offset position) {
     final List<Color> rainbowColors = [
-      Color(0xFFFFE100),  // Yellow
-      Color(0xFFFFC917),  // Yellow-orange
-      Color(0xFFF8650C),  // Orange
-      Color(0xFFF00000),  // Red
-      Color(0xFF8C0000),  // Dark red
+      Color(0xFFFFE100),
+      Color(0xFFFFC917),
+      Color(0xFFF8650C),
+      Color(0xFFF00000),
+      Color(0xFF8C0000),
     ];
 
     final double time = DateTime.now().millisecondsSinceEpoch / 500.0;
@@ -270,7 +248,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
   void _clearDrawing() {
     setState(() {
       _drawingHistory.add(List.from(_points));
-      _points = [];
+      _points.clear();
       _redoHistory.clear();
       _selectedMedia = null;
     });
@@ -286,9 +264,9 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
     setState(() {
       _isDrawingMode = !_isDrawingMode;
       if (!_isDrawingMode) {
-        _textFocusNode.requestFocus();
+        _editorFocusNode.requestFocus();
       } else {
-        _textFocusNode.unfocus();
+        _editorFocusNode.unfocus();
       }
       _selectedMedia = null;
     });
@@ -312,6 +290,8 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
   }
 
   void _handleDrawingUpdate(DragUpdateDetails details) {
+    if (!_isPencilActive && !_isEraserActive) return;
+
     final position = details.localPosition;
 
     setState(() {
@@ -352,8 +332,9 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
           }
         }
 
-        _points = pointsToKeep;
-      } else {
+        _points.clear();
+        _points.addAll(pointsToKeep);
+      } else if (_isPencilActive) {
         _points.add(DrawingPoint(
           position: position,
           color: _isRainbowMode ? _getRainbowColor(position) : _currentColor,
@@ -366,7 +347,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
   }
 
   void _handleDrawingEnd(DragEndDetails details) {
-    if (_selectedMedia != null) return;
+    if (!_isPencilActive && !_isEraserActive) return;
 
     setState(() {
       _points.add(DrawingPoint(
@@ -422,7 +403,6 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
   void _handleScaleUpdate(ScaleUpdateDetails details, InteractiveMedia media) {
     setState(() {
       media.position += details.focalPointDelta;
-
       media.size = (media.size * details.scale).clamp(50.0, 500.0);
 
       if (details.rotation != 0) {
@@ -433,174 +413,181 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
     });
   }
 
-  void _addNewPage() {
-    setState(() {
-      _pages.add(JournalPage());
-      _pageController.animateToPage(
-        _pages.length - 1,
-        duration: Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    });
+  void _initSpeech() async {
+    bool available = await _speech.initialize();
+    if (available) {
+      setState(() {});
+    }
   }
 
-  void _checkLastLineAndCreatePage(String text) {
-    final TextSpan textSpan = TextSpan(
-      text: text,
-      style: TextStyle(color: Colors.black),
-    );
-    final TextPainter textPainter = TextPainter(
-      text: textSpan,
-      textDirection: TextDirection.ltr,
-      maxLines: null,
-    );
-
-    final availableHeight = MediaQuery.of(context).size.height -
-        MediaQuery.of(context).padding.top -
-        kToolbarHeight - 40;
-    final availableWidth = MediaQuery.of(context).size.width - 40;
-
-    textPainter.layout(maxWidth: availableWidth);
-
-    final lineHeight = textPainter.preferredLineHeight;
-    final maxLines = (availableHeight / lineHeight).floor();
-    final currentLines = '\n'.allMatches(text).length + 1;
-
-    if (currentLines >= maxLines || textPainter.height + lineHeight > availableHeight) {
-      setState(() {
-        _pages.add(JournalPage());
-
-        _pageController.animateToPage(
-          _currentPage + 1,
-          duration: Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
+  void _startListening() async {
+    if (!_isListening) {
+      bool available = await _speech.initialize();
+      if (available) {
+        setState(() => _isListening = true);
+        _speech.listen(
+          onResult: (result) {
+            setState(() {
+              _text = result.recognizedWords;
+              if (result.finalResult) {
+                // Get the current selection
+                final selection = _quillController.selection;
+                // Insert the text at the current selection
+                _quillController.document.insert(
+                  selection.baseOffset,
+                  '$_text ',
+                );
+                _text = '';
+              }
+            });
+          },
         );
-      });
+      }
+    } else {
+      setState(() => _isListening = false);
+      _speech.stop();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pushReplacementNamed(context, '/trackerlog_screen');
-          },
-          tooltip: 'Back',
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(_isDrawingMode ? Icons.text_fields : Icons.edit),
-            onPressed: _toggleDrawingMode,
-            tooltip: _isDrawingMode ? 'Switch to Text Mode' : 'Switch to Drawing Mode',
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final isKeyboardVisible = bottomInset > 0;
+
+    return PopScope(
+      canPop: true,
+      onPopInvoked: (didPop) async {
+        if (didPop) {
+          _saveJournalData();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: widget.color,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            tooltip: 'Back',
           ),
-          if (_selectedMedia != null)
-            IconButton(
-              icon: Icon(Icons.delete),
-              onPressed: _deleteSelectedMedia,
-              tooltip: 'Delete Selected Media',
+          title: TextField(
+            controller: _titleController,
+            style: TextStyle(
+              color: Color(0xFF1E1E1E),
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
             ),
-          IconButton(
-            icon: Icon(Icons.add),
-            onPressed: _addNewPage,
-            tooltip: 'Add New Page',
-          ),
-        ],
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return PageView.builder(
-            controller: _pageController,
-            scrollDirection: Axis.horizontal,
-            pageSnapping: true,
-            physics: (_isPencilActive || _isEraserActive)
-                ? NeverScrollableScrollPhysics()
-                : const BouncingScrollPhysics(),
-            onPageChanged: (index) {
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              hintText: 'Enter title...',
+              hintStyle: TextStyle(
+                color: Color(0xFF1E1E1E).withAlpha(179), // 0.7 * 255 ≈ 179
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            textAlign: TextAlign.center,
+            onChanged: (value) {
               setState(() {
-                _currentPage = index;
-                _selectedMedia = null;
-                _currentPageController.text = _pages[index].text;
+                // Update title if needed
               });
             },
-            itemCount: _pages.length,
-            itemBuilder: (context, index) {
-              return Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: SingleChildScrollView(
-                  physics: const ClampingScrollPhysics(),
-                  child: Container(
-                    key: index == _currentPage ? _pageKey : null,
-                    constraints: BoxConstraints(
-                      minHeight: MediaQuery.of(context).size.height -
-                          MediaQuery.of(context).padding.top -
-                          kToolbarHeight,
-                    ),
-                    child: Stack(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(20),
-                          child: TextField(
-                            controller: index == _currentPage
-                                ? _currentPageController
-                                : TextEditingController(text: _pages[index].text),
-                            focusNode: index == _currentPage ? _textFocusNode : null,
-                            maxLines: null,
-                            readOnly: _isDrawingMode || index != _currentPage,
-                            style: TextStyle(color: Colors.black),
-                            decoration: InputDecoration(
-                              hintText: "Type here...",
-                              hintStyle: TextStyle(color: Colors.grey),
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.all(16),
-                            ),
-                            onChanged: (value) {
-                              _pages[index].text = value;
-                              if (value.endsWith('\n')) {
-                                _checkLastLineAndCreatePage(value);
-                              }
-                            },
+          ),
+          actions: [
+            IconButton(
+              icon: Icon(_isDrawingMode ? Icons.text_fields : Icons.edit),
+              onPressed: _toggleDrawingMode,
+              tooltip: _isDrawingMode ? 'Switch to Text Mode' : 'Switch to Drawing Mode',
+            ),
+            if (_selectedMedia != null)
+              IconButton(
+                icon: Icon(Icons.delete),
+                onPressed: _deleteSelectedMedia,
+                tooltip: 'Delete Selected Media',
+              ),
+          ],
+        ),
+        body: Stack(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(26), // 0.1 * 255 ≈ 26
+                    blurRadius: 10,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                child: Container(
+                  key: _pageKey,
+                  constraints: BoxConstraints(
+                    minHeight: MediaQuery.of(context).size.height -
+                        MediaQuery.of(context).padding.top -
+                        kToolbarHeight,
+                  ),
+                  child: Stack(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.only(
+                          left: 20,
+                          right: 20,
+                          top: 20,
+                          bottom: isKeyboardVisible ? bottomInset + 80 : 20,
+                        ),
+                        child: _isDrawingMode
+                            ? QuillEditor(
+                          controller: _quillController,
+                          scrollController: _editorScrollController,
+                          focusNode: _editorFocusNode,
+                          config: QuillEditorConfig(
+                            placeholder: 'Start writing your notes...',
+                            padding: const EdgeInsets.all(16),
+                          ),
+                        )
+                            : QuillEditor(
+                          controller: _quillController,
+                          scrollController: _editorScrollController,
+                          focusNode: _editorFocusNode,
+                          config: QuillEditorConfig(
+                            placeholder: 'Start writing your notes...',
+                            padding: const EdgeInsets.all(16),
                           ),
                         ),
-                        if (index == _currentPage)
-                          IgnorePointer(
-                            ignoring: !_isDrawingMode,
-                            child: GestureDetector(
-                              onPanStart: _handleDrawingStart,
-                              onPanUpdate: _handleDrawingUpdate,
-                              onPanEnd: _handleDrawingEnd,
-                              child: SingleChildScrollView(
-                                physics: (_isPencilActive || _isEraserActive)
-                                    ? NeverScrollableScrollPhysics()
-                                    : ClampingScrollPhysics(),
-                                child: SizedBox(
-                                  width: MediaQuery.of(context).size.width,
-                                  height: MediaQuery.of(context).size.height -
-                                      MediaQuery.of(context).padding.top -
-                                      kToolbarHeight -
-                                      (MediaQuery.of(context).padding.bottom + 60),
-                                  child: Stack(
-                                    children: [
-                                      CustomPaint(
-                                        size: Size.infinite,
-                                        painter: _SmoothDrawingPainter(
-                                          points: _points,
-                                          showLines: _showLines,
-                                        ),
-                                      ),
-                                      // Media attachments
-                                      ..._attachments.map((media) => MediaWidget(
+                      ),
+                      IgnorePointer(
+                        ignoring: !_isDrawingMode,
+                        child: GestureDetector(
+                          onPanStart: _handleDrawingStart,
+                          onPanUpdate: _handleDrawingUpdate,
+                          onPanEnd: _handleDrawingEnd,
+                          child: SizedBox(
+                            width: MediaQuery.of(context).size.width,
+                            height: MediaQuery.of(context).size.height -
+                                MediaQuery.of(context).padding.top -
+                                kToolbarHeight -
+                                (MediaQuery.of(context).padding.bottom + 60),
+                            child: Stack(
+                              children: [
+                                CustomPaint(
+                                  size: Size.infinite,
+                                  painter: _SmoothDrawingPainter(
+                                    points: _points,
+                                    showLines: _showLines,
+                                  ),
+                                ),
+                                ..._attachments.map((media) => Positioned(
+                                  left: media.position.dx,
+                                  top: media.position.dy,
+                                  child: Transform.scale(
+                                    scale: media.size / 200.0,
+                                    child: Transform.rotate(
+                                      angle: media.angle,
+                                      child: MediaWidget(
                                         media: media,
                                         isSelected: _selectedMedia == media,
                                         onTap: () => _handleMediaTap(media),
@@ -616,24 +603,116 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
                                           });
                                         },
                                         isEditingMode: !_isDrawingMode,
-                                      )).toList(),
-                                    ],
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
+                                )),
+                              ],
                             ),
                           ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            if (!_isDrawingMode)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: isKeyboardVisible ? bottomInset : 0,
+                child: Container(
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: Color(0xFF1E1E1E),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(26), // 0.1 * 255 ≈ 26
+                        blurRadius: 4,
+                        offset: Offset(0, -2),
+                      ),
+                    ],
+                  ),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildToolbarButton(
+                          _isListening ? Icons.mic : Icons.mic_none,
+                              () {
+                            _startListening();
+                            _editorFocusNode.requestFocus();
+                          },
+                        ),
+                        VerticalDivider(thickness: 1, width: 8, color: Colors.white24),
+                        _buildToolbarButton(Icons.undo, () {
+                          _quillController.undo();
+                          _editorFocusNode.requestFocus();
+                        }),
+                        _buildToolbarButton(Icons.redo, () {
+                          _quillController.redo();
+                          _editorFocusNode.requestFocus();
+                        }),
+                        VerticalDivider(thickness: 1, width: 8, color: Colors.white24),
+                        _buildToolbarButton(Icons.format_bold, () {
+                          _quillController.formatSelection(Attribute.bold);
+                          _editorFocusNode.requestFocus();
+                        }),
+                        _buildToolbarButton(Icons.format_italic, () {
+                          _quillController.formatSelection(Attribute.italic);
+                          _editorFocusNode.requestFocus();
+                        }),
+                        _buildToolbarButton(Icons.format_underline, () {
+                          _quillController.formatSelection(Attribute.underline);
+                          _editorFocusNode.requestFocus();
+                        }),
+                        _buildToolbarButton(Icons.format_strikethrough, () {
+                          _quillController.formatSelection(Attribute.strikeThrough);
+                          _editorFocusNode.requestFocus();
+                        }),
+                        VerticalDivider(thickness: 1, width: 8, color: Colors.white24),
+                        _buildToolbarButton(Icons.format_align_left, () {
+                          _quillController.formatSelection(Attribute.blockQuote);
+                          _editorFocusNode.requestFocus();
+                        }),
+                        _buildToolbarButton(Icons.format_align_center, () {
+                          _quillController.formatSelection(Attribute.centerAlignment);
+                          _editorFocusNode.requestFocus();
+                        }),
+                        _buildToolbarButton(Icons.format_align_right, () {
+                          _quillController.formatSelection(Attribute.rightAlignment);
+                          _editorFocusNode.requestFocus();
+                        }),
+                        VerticalDivider(thickness: 1, width: 8, color: Colors.white24),
+                        _buildToolbarButton(Icons.format_list_bulleted, () {
+                          _quillController.formatSelection(Attribute.ul);
+                          _editorFocusNode.requestFocus();
+                        }),
+                        _buildToolbarButton(Icons.format_list_numbered, () {
+                          _quillController.formatSelection(Attribute.ol);
+                          _editorFocusNode.requestFocus();
+                        }),
+                        VerticalDivider(thickness: 1, width: 8, color: Colors.white24),
+                        _buildToolbarButton(Icons.link, () {
+                          _showLinkDialog();
+                          _editorFocusNode.requestFocus();
+                        }),
+                        _buildToolbarButton(Icons.image, () {
+                          _pickMedia();
+                          _editorFocusNode.requestFocus();
+                        }),
                       ],
                     ),
                   ),
                 ),
-              );
-            },
-          );
-        },
+              ),
+          ],
+        ),
+        bottomNavigationBar: _isDrawingMode ? _buildDrawingToolbar() : null,
+        resizeToAvoidBottomInset: false,
       ),
-      bottomNavigationBar: _isDrawingMode ? _buildDrawingToolbar() : null,
-      resizeToAvoidBottomInset: true,
     );
   }
 
@@ -684,7 +763,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
                         child: Container(
                           padding: EdgeInsets.all(toolbarHeight * 0.05),
                           decoration: BoxDecoration(
-                            color: _isPencilActive ? Colors.white.withOpacity(0.2) : Colors.transparent,
+                            color: _isPencilActive ? Colors.white.withAlpha(51) : Colors.transparent, // 0.2 * 255 ≈ 51
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Image.asset(
@@ -706,7 +785,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
                         child: Container(
                           padding: EdgeInsets.all(toolbarHeight * 0.05),
                           decoration: BoxDecoration(
-                            color: _isEraserActive ? Colors.white.withOpacity(0.2) : Colors.transparent,
+                            color: _isEraserActive ? Colors.white.withAlpha(51) : Colors.transparent, // 0.2 * 255 ≈ 51
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Image.asset(
@@ -717,14 +796,6 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
                       );
                     },
                   ),
-                ),
-                IconButton(
-                  icon: Icon(
-                    _isRecording ? Icons.mic_off : Icons.mic,
-                    color: Colors.white,
-                    size: toolbarHeight * 0.3,
-                  ),
-                  onPressed: _isRecording ? _stopRecording : _startRecording,
                 ),
                 IconButton(
                   icon: Icon(
@@ -750,6 +821,49 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
     );
   }
 
+  Widget _buildToolbarButton(IconData icon, VoidCallback onPressed) {
+    return IconButton(
+      icon: Icon(icon, size: 20),
+      color: Colors.white,
+      splashRadius: 20,
+      padding: EdgeInsets.symmetric(horizontal: 8),
+      constraints: BoxConstraints(minWidth: 36, minHeight: 36),
+      onPressed: onPressed,
+    );
+  }
+
+  Future<void> _showLinkDialog() async {
+    final link = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        String url = '';
+        return AlertDialog(
+          title: Text('Insert Link'),
+          content: TextField(
+            decoration: InputDecoration(hintText: 'Enter URL'),
+            onChanged: (value) => url = value,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, url),
+              child: Text('Insert'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (link != null && link.isNotEmpty) {
+      final index = _quillController.selection.baseOffset;
+      final length = _quillController.selection.extentOffset - index;
+      _quillController.formatText(index, length, LinkAttribute(link));
+    }
+  }
+
   Future<void> _pickMedia() async {
     final ImagePicker picker = ImagePicker();
     final XFile? pickedFile = await picker.pickMedia(
@@ -771,27 +885,12 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
     }
   }
 
-  Future<void> _startRecording() async {
-    final dir = await getApplicationDocumentsDirectory();
-    _voiceNotePath = '${dir.path}/voice_note.aac';
-    await _recorder!.startRecorder(toFile: _voiceNotePath!);
-    setState(() {
-      _isRecording = true;
-    });
-  }
-
-  Future<void> _stopRecording() async {
-    await _recorder!.stopRecorder();
-    setState(() {
-      _isRecording = false;
-    });
-  }
-
   void _undo() {
     if (_drawingHistory.isNotEmpty) {
       setState(() {
         _redoHistory.add(List.from(_points));
-        _points = _drawingHistory.removeLast();
+        _points.clear();
+        _points.addAll(_drawingHistory.removeLast());
       });
     }
   }
@@ -800,7 +899,46 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
     if (_redoHistory.isNotEmpty) {
       setState(() {
         _drawingHistory.add(List.from(_points));
-        _points = _redoHistory.removeLast();
+        _points.clear();
+        _points.addAll(_redoHistory.removeLast());
+      });
+    }
+  }
+
+  void _saveJournalData() {
+    JournalState.saveJournalData(
+      widget.date,
+      JournalData(
+        title: _titleController.text,
+        content: _quillController.document.toDelta().toJson(),
+        drawingPoints: _points.map((point) => {
+          'position': {'dx': point.position.dx, 'dy': point.position.dy},
+          'color': point.color.value,
+          'isEraser': point.isEraser,
+          'strokeWidth': point.strokeWidth,
+          'isRainbow': point.isRainbow,
+        }).toList(),
+        attachments: _attachments,
+      ),
+    );
+  }
+
+  Future<void> _loadJournalData() async {
+    final savedData = await JournalState.getJournalData(widget.date);
+    if (savedData != null) {
+      setState(() {
+        _quillController.document = Document.fromDelta(Delta.fromJson(savedData.content));
+        _points.clear();
+        _points.addAll(savedData.drawingPoints.map((point) => DrawingPoint(
+          position: Offset(point['position']['dx'], point['position']['dy']),
+          color: Color(point['color']),
+          isEraser: point['isEraser'],
+          strokeWidth: point['strokeWidth'],
+          isRainbow: point['isRainbow'],
+        )).toList());
+        _attachments.clear();
+        _attachments.addAll(savedData.attachments);
+        _titleController.text = savedData.title;
       });
     }
   }
@@ -809,7 +947,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
 class VideoWidget extends StatefulWidget {
   final File file;
 
-  const VideoWidget({Key? key, required this.file}) : super(key: key);
+  const VideoWidget({super.key, required this.file});
 
   @override
   _VideoWidgetState createState() => _VideoWidgetState();

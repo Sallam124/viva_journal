@@ -4,16 +4,18 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'calendar_screen.dart';
 import 'package:viva_journal/screens/home.dart';  // Update import for HomeScreen
+import 'package:viva_journal/screens/journal_screen.dart';  // Added import for JournalScreen
+import 'package:viva_journal/database/database.dart';
 
 class TrackerLogScreen extends StatefulWidget {
   final DateTime date;
   TrackerLogScreen({super.key, DateTime? date}) : date = date ?? DateTime.now();
 
   @override
-  _TrackerLogScreenState createState() => _TrackerLogScreenState();
+  TrackerLogScreenState createState() => TrackerLogScreenState();
 }
 
-class _TrackerLogScreenState extends State<TrackerLogScreen> {
+class TrackerLogScreenState extends State<TrackerLogScreen> {
   int _currentIndex = 0;
   Set<String> selectedTags = {};  // Changed from single String to Set for multiple selection
   List<int> emotionLevels = [1, 1, 1, 1, 1]; // Track intensity levels for each emotion
@@ -125,10 +127,10 @@ class _TrackerLogScreenState extends State<TrackerLogScreen> {
                     width: 1,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: selectedColor.withOpacity(0.2),
+                      color: selectedColor.withAlpha(51),  // 0.2 * 255 ≈ 51
                       boxShadow: [
                         BoxShadow(
-                          color: selectedColor.withOpacity(0.4),
+                          color: selectedColor.withAlpha(102),  // 0.4 * 255 ≈ 102
                           blurRadius: 50,
                           spreadRadius: 120,
                         ),
@@ -234,7 +236,7 @@ class _TrackerLogScreenState extends State<TrackerLogScreen> {
                           ),
                         ),
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
               ),
@@ -246,30 +248,82 @@ class _TrackerLogScreenState extends State<TrackerLogScreen> {
                 alignment: Alignment.centerLeft,
                 child: Text("Do you have something in mind?", style: TextStyle(color: Colors.white, fontSize: 16)),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 20),
 
-              SizedBox(
-                height: 150,
-                child: TextField(
-                  maxLines: 6,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.black,
-                    hintText: "Type what's in your mind",
-                    hintStyle: TextStyle(color: Colors.grey.shade500),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: selectedColor, width: 2),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => JournalScreen(
+                        date: widget.date,
+                        color: colors[_currentIndex],
+                      ),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: selectedColor, width: 2),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: selectedColor, width: 2),
-                    ),
+                  );
+                },
+                child: Container(
+                  height: 150,
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: selectedColor, width: 2),
+                  ),
+                  child: FutureBuilder<JournalData?>(
+                    future: JournalState.getJournalData(widget.date),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        );
+                      }
+
+                      final journalData = snapshot.data;
+                      if (journalData == null || journalData.content.isEmpty) {
+                        return Center(
+                          child: Text(
+                            "Tap to write in your journal",
+                            style: TextStyle(
+                              color: Colors.grey.shade500,
+                              fontSize: 16,
+                            ),
+                          ),
+                        );
+                      }
+
+                      // Show preview of the content
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              journalData.title,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 8),
+                            Expanded(
+                              child: Text(
+                                journalData.content.map((op) => op['insert']?.toString() ?? '').join(''),
+                                style: TextStyle(
+                                  color: Colors.grey.shade400,
+                                  fontSize: 14,
+                                ),
+                                maxLines: 4,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
@@ -285,7 +339,7 @@ class _TrackerLogScreenState extends State<TrackerLogScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  onPressed: () {},
+                  onPressed: _handleSubmit,
                   child: const Text("Submit", style: TextStyle(color: Colors.white, fontSize: 18)),
                 ),
               ),
@@ -342,6 +396,39 @@ class _TrackerLogScreenState extends State<TrackerLogScreen> {
           ],
         );
       },
+    );
+  }
+
+  void _handleSubmit() async {
+    final journalData = await JournalState.getJournalData(widget.date);
+    if (journalData == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please write something in your journal first')),
+      );
+      return;
+    }
+
+    final entry = JournalEntry(
+      date: widget.date,
+      tags: selectedTags.toList(),
+      title: journalData.title,
+      content: journalData.content,
+      drawingPoints: journalData.drawingPoints,
+      mediaPaths: journalData.attachments.map((a) => a.file.path).toList(),
+      color: colors[_currentIndex],
+      mood: emotions[_currentIndex],
+    );
+
+    await DatabaseHelper().insertJournal(entry);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Journal entry saved successfully!')),
+    );
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const HomeScreen()),
+          (route) => false,
     );
   }
 }

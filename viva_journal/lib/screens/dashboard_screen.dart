@@ -1,12 +1,10 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-import 'package:viva_journal/database_helper.dart';
+import 'package:viva_journal/database/database.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({Key? key}) : super(key: key);
+  const DashboardScreen({super.key});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -27,12 +25,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> loadMoodData() async {
     try {
-      final allEntries = await dbHelper.getEntries();
-      final entries = allEntries.take(7).toList(); // last 7 entries
+      // Fetch entries from the past week using the getEntriesPastWeek method
+      final allEntries = await dbHelper.getEntriesPastWeek();
 
       setState(() {
-        moodData = entries.map((e) => double.tryParse(e['mood'] ?? '3') ?? 3).toList();
-        moodDates = entries.map((e) => DateTime.tryParse(e['date'] ?? '') ?? DateTime.now()).toList();
+        moodData = allEntries.map((entry) {
+          // Map the mood string to a number (ensure it's a valid double)
+          return double.tryParse(entry.mood) ?? 3; // Default to 3 if parsing fails
+        }).toList();
+
+        moodDates = allEntries.map((entry) {
+          // Parse date (ensure the date format is consistent with your data)
+          return DateTime.tryParse(entry.date) ?? DateTime.now();
+        }).toList();
+
         isLoading = false;
       });
     } catch (e) {
@@ -46,7 +52,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _calculateStreak() {
     if (moodDates.isEmpty) return 0;
 
-    moodDates.sort((a, b) => b.compareTo(a)); // newest to oldest
+    moodDates.sort((a, b) => b.compareTo(a)); // Sort from newest to oldest
     int streak = 1;
 
     for (int i = 1; i < moodDates.length; i++) {

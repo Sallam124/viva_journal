@@ -11,6 +11,7 @@ class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _SignUpScreenState createState() => _SignUpScreenState();
 }
 
@@ -61,7 +62,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   void _startCooldownTimer() {
     setState(() {
       _canResendEmail = false;
-      _resendCooldown = 30;
+      _resendCooldown = 90;
     });
 
     _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -103,13 +104,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final username = _usernameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
-    final cleanUsername = username.replaceAll(RegExp(r'^\s+|\s+$'), '');
+    username.replaceAll(RegExp(r'^\s+|\s+$'), '');
 
     setState(() {
       _isLoading = true;
     });
 
     try {
+      // ignore: deprecated_member_use
       final existingMethods = await _auth.fetchSignInMethodsForEmail(email);
       if (existingMethods.isNotEmpty) {
         setState(() => _isLoading = false);
@@ -224,11 +226,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
               key: _formKey,
               child: Column(
                 children: [
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 65),
                   const Text('Sign Up', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
                   const Text('Create Your Account', style: TextStyle(fontSize: 16, color: Colors.black54)),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 85),
                   CustomTextFormField(
                     controller: _usernameController,
                     focusNode: _usernameFocusNode,
@@ -289,7 +291,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         return 'Password must include at least one lowercase letter';
                       }
                       if (!RegExp(r'[0-9]').hasMatch(value)) {
-                        return 'Password must include a number';
+                        return 'Password must include at least 1 digit';
                       }
                       return null;
                     },
@@ -382,7 +384,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         },
                         child: const Text(
                           'Login',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                              decoration: TextDecoration.underline),
                         ),
                       ),
                     ],

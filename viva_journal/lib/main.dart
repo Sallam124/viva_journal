@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
-
+import 'package:flutter_quill/flutter_quill.dart';
 import 'firebase_options.dart';
 import 'package:viva_journal/theme_provider.dart';
 import 'package:viva_journal/widgets/widgets.dart';
@@ -17,7 +18,8 @@ import 'package:viva_journal/screens/calendar_screen.dart';
 import 'package:viva_journal/screens/trackerlog_screen.dart';
 import 'package:viva_journal/screens/settings_screen.dart';
 import 'package:viva_journal/screens/journal_screen.dart';
-import 'package:viva_journal/screens/authentication_screen.dart';
+
+// import 'package:viva_journal/screens/authentication_screen.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -39,7 +41,7 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   Widget _buildRoute(Widget screen) {
-    return buildWillPopWrapper(child: BackgroundContainer(child: screen));
+    return BackgroundContainer(child: screen);
   }
 
   @override
@@ -56,15 +58,26 @@ class MyApp extends StatelessWidget {
       themeAnimationCurve: Curves.easeInOut,
       themeAnimationDuration: const Duration(milliseconds: 400),
       builder: (context, child) => buildDismissKeyboardWrapper(child: child!),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        FlutterQuillLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en'), // Add other supported locales if needed
+      ],
 
-      home: FutureBuilder<User?>(
+      home: FutureBuilder<User?>( // Handling user login status check
         future: _checkUserLoginStatus(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return _buildRoute(const LoadingScreen());
           } else if (snapshot.hasData && snapshot.data != null) {
-            return _buildRoute(const AuthenticationScreen());
+            // If logged in, go to the HomeScreen
+            return _buildRoute(const HomeScreen());
           } else {
+            // If not logged in, go to SignUpScreen
             return _buildRoute(const SignUpScreen());
           }
         },
@@ -78,15 +91,21 @@ class MyApp extends StatelessWidget {
         '/resetPassword': (context) => _buildRoute(const ForgotPasswordScreen()),
         '/dashboard': (context) => _buildRoute(DashboardScreen()),
         '/calendar': (context) => _buildRoute(CalendarScreen()),
-        '/trackerLog': (context) => _buildRoute(TrackerLogScreen()),
+        '/trackerLog': (context) => _buildRoute(TrackerLogScreen(date: DateTime.now())),
         '/settings': (context) => _buildRoute(const SettingsScreen()),
-        '/journal': (context) => _buildRoute(JournalScreen(mood: 'happy', tags: [])),
+        '/journal': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          return _buildRoute(JournalScreen(
+            date: args['date'] as DateTime,
+            color: args['color'] as Color,
+          ));
+        },
       },
     );
   }
 
   Future<User?> _checkUserLoginStatus() async {
-    return FirebaseAuth.instance.currentUser;
+    return FirebaseAuth.instance.currentUser; // Check for current user status
   }
 }
 

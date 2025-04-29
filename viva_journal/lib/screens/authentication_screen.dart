@@ -1,246 +1,216 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:viva_journal/theme_provider.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
+import 'package:viva_journal/database_helper.dart';
 
-class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({Key? key}) : super(key: key);
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
-  bool _notificationsEnabled = false;
-  TimeOfDay? _selectedTime;
-  bool _authEnabled = false;
-  String? _savedPasscode;
-<<<<<<< Updated upstream
-  bool _isAuthenticating = false;
-  String? _error;
-=======
-  String? _savedBackground; // 🔵 Background saved from SharedPreferences if exists
->>>>>>> Stashed changes
+class _DashboardScreenState extends State<DashboardScreen> {
+  final DatabaseHelper dbHelper = DatabaseHelper();
+  List<double> moodData = [];
+  List<DateTime> moodDates = [];
+  final List<String> emojiLabels = ['😢', '😐', '😊', '😄', '🤩'];
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadPreferences();
+    loadMoodData();
   }
 
-  Future<void> _loadPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _notificationsEnabled = prefs.getBool('notificationsEnabled') ?? false;
-      _authEnabled = prefs.getBool('authEnabled') ?? false;
-      _savedPasscode = prefs.getString('passcode');
-      _savedBackground = prefs.getString('background_image'); // ✅ Load saved background if any
-      final hour = prefs.getInt('notificationHour');
-      final minute = prefs.getInt('notificationMinute');
-      if (hour != null && minute != null) {
-        _selectedTime = TimeOfDay(hour: hour, minute: minute);
+  Future<void> loadMoodData() async {
+    try {
+      final allEntries = await dbHelper.getEntriesPastWeek(); // latest 7 days
+
+      setState(() {
+        moodData = allEntries.map((entry) => double.tryParse(entry.mood) ?? 3).toList();
+        moodDates = allEntries.map((entry) => DateTime.tryParse(entry.date) ?? DateTime.now()).toList();
+        isLoading = false;
+      });
+    } catch (e) {
+      print("Error loading mood data: $e");
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  String _bestDayOfWeek() {
+    if (moodDates.isEmpty) return "N/A";
+
+    Map<int, List<double>> dayMoodMap = {};
+
+    for (int i = 0; i < moodDates.length; i++) {
+      int weekday = moodDates[i].weekday;
+      dayMoodMap.putIfAbsent(weekday, () => []);
+      dayMoodMap[weekday]!.add(moodData[i]);
+    }
+
+    int bestDay = 1;
+    double bestAvg = 0;
+
+    dayMoodMap.forEach((day, moods) {
+      double avg = moods.reduce((a, b) => a + b) / moods.length;
+      if (avg > bestAvg) {
+        bestAvg = avg;
+        bestDay = day;
       }
     });
-  }
 
-  Future<void> _savePreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setBool('notificationsEnabled', _notificationsEnabled);
-    prefs.setBool('authEnabled', _authEnabled);
-    if (_selectedTime != null) {
-      prefs.setInt('notificationHour', _selectedTime!.hour);
-      prefs.setInt('notificationMinute', _selectedTime!.minute);
-    }
-    if (_savedPasscode != null) {
-      prefs.setString('passcode', _savedPasscode!);
-    }
-  }
-
-  void _pickTime(BuildContext context) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: _selectedTime ?? TimeOfDay.now(),
-    );
-
-    if (picked != null) {
-      setState(() {
-        _selectedTime = picked;
-      });
-      _savePreferences();
-    }
-  }
-
-  Future<String?> _showPasscodeDialog(BuildContext context) async {
-    TextEditingController controller = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Enter Passcode"),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          obscureText: true,
-          maxLength: 4,
-          decoration: const InputDecoration(labelText: '4-digit passcode'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text("Save"),
-          ),
-        ],
-      ),
-    );
+    return DateFormat.E().format(DateTime.utc(2020, 1, bestDay + 5)); // Return the day of the week with the best mood
   }
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final currentTheme = themeProvider.themeMode;
-    final brightness = MediaQuery.of(context).platformBrightness;
-    final isSystemDark = brightness == Brightness.dark;
+    final double avg = moodData.isNotEmpty
+        ? moodData.reduce((a, b) => a + b) / moodData.length
+        : 3;
+    final int avgMood = avg.round().clamp(1, 5);
+    final String avgEmoji = emojiLabels[avgMood - 1];
 
-    bool isDarkMode;
-    if (currentTheme == ThemeMode.system) {
-      isDarkMode = isSystemDark;
-    } else {
-      isDarkMode = currentTheme == ThemeMode.dark;
-    }
-
-    final Color backgroundColor = isDarkMode ? Colors.black : Colors.white;
-    final Color textColor = isDarkMode ? Colors.white : Colors.black;
-
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: const Text('Settings'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: _savedBackground != null && currentTheme == ThemeMode.system
-            ? BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage(_savedBackground!), // use saved background if available
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Image.asset(
+            'assets/images/background.png',
             fit: BoxFit.cover,
           ),
-        )
-            : BoxDecoration(
-          color: backgroundColor, // fallback color
         ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 100, 20, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            title: const Text("Dashboard"),
+            backgroundColor: Colors.black87,
+          ),
+          body: isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Enable Notifications', style: TextStyle(fontSize: 18, color: textColor)),
-                  Switch(
-                    value: _notificationsEnabled,
-                    onChanged: (value) {
-                      setState(() {
-                        _notificationsEnabled = value;
-                        if (!value) _selectedTime = null;
-                      });
-                      _savePreferences();
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              if (_notificationsEnabled)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Notification Time:', style: TextStyle(fontSize: 16, color: textColor)),
-                    const SizedBox(height: 8),
-                    ElevatedButton(
-                      onPressed: () => _pickTime(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isDarkMode ? Colors.white10 : Colors.black87,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              // Mood Chart
+              Expanded(
+                flex: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: BarChart(
+                        BarChartData(
+                          alignment: BarChartAlignment.spaceAround,
+                          maxY: 5,
+                          minY: 1,
+                          titlesData: FlTitlesData(
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: 1,
+                                getTitlesWidget: (value, _) {
+                                  int mood = value.toInt().clamp(1, 5);
+                                  return Text(
+                                    emojiLabels[mood - 1],
+                                    style: const TextStyle(fontSize: 20),
+                                  );
+                                },
+                              ),
+                            ),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: 1,
+                                getTitlesWidget: (value, _) {
+                                  int index = value.toInt();
+                                  if (index >= 0 && index < moodDates.length) {
+                                    return Text(DateFormat('E').format(moodDates[index]));
+                                  }
+                                  return const Text('');
+                                },
+                              ),
+                            ),
+                          ),
+                          gridData: FlGridData(show: true),
+                          borderData: FlBorderData(show: false),
+                          barGroups: List.generate(moodData.length, (index) {
+                            return BarChartGroupData(
+                              x: index,
+                              barRods: [
+                                BarChartRodData(
+                                  toY: moodData[index],
+                                  color: Colors.blueAccent,
+                                  width: 16,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ],
+                            );
+                          }),
+                        ),
                       ),
-                      child: Text(
-                        _selectedTime == null
-                            ? 'Pick a time'
-                            : 'Selected: ${_selectedTime!.format(context)}',
-                        style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ),
+
+              // Weekly Average + Best Day
+              Expanded(
+                flex: 1,
+                child: Row(
+                  children: [
+                    // Weekly Average
+                    Expanded(
+                      child: Card(
+                        margin: const EdgeInsets.all(16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 4,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(avgEmoji, style: const TextStyle(fontSize: 48)),
+                              const SizedBox(height: 8),
+                              const Text("Weekly Avg", style: TextStyle(fontSize: 14)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Best Day Highlight
+                    Expanded(
+                      child: Card(
+                        margin: const EdgeInsets.all(16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 4,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.star, size: 48, color: Colors.amber),
+                              const SizedBox(height: 8),
+                              Text(
+                                "Best Day:\n${_bestDayOfWeek()}",
+                                style: const TextStyle(fontSize: 14),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
-              const SizedBox(height: 40),
-              Text('Theme Mode:', style: TextStyle(fontSize: 18, color: textColor)),
-              const SizedBox(height: 10),
-              ToggleButtons(
-                isSelected: [
-                  currentTheme == ThemeMode.light,
-                  currentTheme == ThemeMode.dark,
-                  currentTheme == ThemeMode.system
-                ],
-                onPressed: (index) {
-                  if (index == 0) themeProvider.setTheme(ThemeMode.light);
-                  if (index == 1) themeProvider.setTheme(ThemeMode.dark);
-                  if (index == 2) themeProvider.setTheme(ThemeMode.system);
-                },
-                borderRadius: BorderRadius.circular(20),
-                selectedColor: Colors.black,
-                fillColor: Colors.white,
-                color: Colors.white70,
-                children: const [
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Text("Light", style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Text("Dark", style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Text("System", style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                ],
               ),
-              const SizedBox(height: 40),
-              Text('Authentication', style: TextStyle(fontSize: 18, color: textColor)),
-              SwitchListTile(
-                title: Text('Enable Extra Authentication', style: TextStyle(color: textColor)),
-                value: _authEnabled,
-                onChanged: (value) {
-                  setState(() {
-                    _authEnabled = value;
-                  });
-                  _savePreferences();
-                },
-              ),
-              if (_authEnabled)
-                ElevatedButton(
-                  onPressed: () async {
-                    final newPasscode = await _showPasscodeDialog(context);
-                    if (newPasscode != null) {
-                      setState(() => _savedPasscode = newPasscode);
-                      _savePreferences();
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isDarkMode ? Colors.white10 : Colors.black87,
-                  ),
-                  child: Text(_savedPasscode == null ? "Set Passcode" : "Change Passcode"),
-                ),
             ],
           ),
         ),
-      ),
+      ],
     );
   }
 }
