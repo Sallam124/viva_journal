@@ -9,20 +9,6 @@ class DatabaseHelper {
     _database = await _initDB();
     return _database!;
   }
-  Future<List<Map<String, dynamic>>> getEntriesPastWeek() async {
-    final db = await database;
-    final oneWeekAgo = DateTime.now().subtract(const Duration(days: 7));
-    final oneWeekAgoStr = oneWeekAgo.toIso8601String();
-
-    final result = await db.query(
-      'entries', // your table name
-      where: 'date >= ?',
-      whereArgs: [oneWeekAgoStr],
-      orderBy: 'date DESC',
-    );
-
-    return result;
-  }
 
   Future<Database> _initDB() async {
     String path = join(await getDatabasesPath(), 'journal.db');

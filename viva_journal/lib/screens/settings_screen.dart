@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,6 +16,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   TimeOfDay? _selectedTime;
   bool _authEnabled = false;
   String? _savedPasscode;
+  String? _savedBackground;
 
   @override
   void initState() {
@@ -28,12 +30,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _notificationsEnabled = prefs.getBool('notificationsEnabled') ?? false;
       _authEnabled = prefs.getBool('authEnabled') ?? false;
       _savedPasscode = prefs.getString('passcode');
+      _savedBackground = prefs.getString('background_image');
       final hour = prefs.getInt('notificationHour');
       final minute = prefs.getInt('notificationMinute');
       if (hour != null && minute != null) {
         _selectedTime = TimeOfDay(hour: hour, minute: minute);
       }
     });
+
+    // لو مفيش خلفية محفوظة، نحفظ واحدة افتراضية
+    if (_savedBackground == null) {
+      await _saveBackground('assets/images/background.png');
+    }
   }
 
   Future<void> _savePreferences() async {
@@ -49,12 +57,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _saveBackground(String path) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('background_image', path);
+    setState(() {
+      _savedBackground = path;
+    });
+  }
+
   void _pickTime(BuildContext context) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: _selectedTime ?? TimeOfDay.now(),
     );
-
     if (picked != null) {
       setState(() {
         _selectedTime = picked;
@@ -73,12 +88,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
           controller: controller,
           keyboardType: TextInputType.number,
           obscureText: true,
-          decoration: const InputDecoration(labelText: '4-digit passcode'),
           maxLength: 4,
+          decoration: const InputDecoration(labelText: '4-digit passcode'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          ElevatedButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text("Save")),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text("Save"),
+          ),
         ],
       ),
     );
@@ -88,27 +109,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final currentTheme = themeProvider.themeMode;
+    final brightness = MediaQuery.of(context).platformBrightness;
+    final bool isDark = (currentTheme == ThemeMode.dark) ||
+        (currentTheme == ThemeMode.system && brightness == Brightness.dark);
 
-    // Define background color for Light/Dark modes
-    Color backgroundColor = currentTheme == ThemeMode.light
-        ? Colors.white
-        : Colors.black; // No more System Mode
-
-    // Define text color for Light/Dark modes
-    Color textColor = currentTheme == ThemeMode.light ? Colors.black : Colors.white;
+    final backgroundColor = isDark ? Colors.black : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black;
+    final toggleSelectedColor = isDark ? Colors.black : Colors.white;
+    final toggleUnselectedColor = isDark ? Colors.white : Colors.black;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Settings', style: TextStyle(color: Colors.white)),
+        title: const Text('Settings'),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Container(
+<<<<<<< Updated upstream
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/background.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
         width: double.infinity,
         height: double.infinity,
-        color: backgroundColor, // solid color for Light/Dark modes
+=======
+        width: double.infinity,
+        height: double.infinity,
+        decoration: () {
+          if (currentTheme == ThemeMode.system) {
+            if (_savedBackground != null) {
+              return BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage(_savedBackground!),
+                  fit: BoxFit.cover,
+                ),
+              );
+            } else {
+              return BoxDecoration(
+                color: isDark ? Colors.black : Colors.white,
+              );
+            }
+          } else {
+            if (isDark) {
+              return const BoxDecoration(color: Colors.black);
+            } else {
+              return const BoxDecoration(color: Colors.white);
+            }
+          }
+        }(),
+>>>>>>> Stashed changes
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 100, 20, 20),
           child: Column(
@@ -140,13 +192,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ElevatedButton(
                       onPressed: () => _pickTime(context),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
+                        backgroundColor: toggleUnselectedColor,
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       child: Text(
-                        _selectedTime == null ? 'Pick a time' : 'Selected: ${_selectedTime!.format(context)}',
-                        style: const TextStyle(color: Colors.white),
+                        _selectedTime == null
+                            ? 'Pick a time'
+                            : 'Selected: ${_selectedTime!.format(context)}',
+                        style: TextStyle(color: toggleSelectedColor),
                       ),
                     ),
                   ],
@@ -156,20 +210,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 10),
               ToggleButtons(
                 isSelected: [
-                  currentTheme == ThemeMode.dark,
                   currentTheme == ThemeMode.light,
+                  currentTheme == ThemeMode.dark,
+                  currentTheme == ThemeMode.system
                 ],
                 onPressed: (index) {
-                  if (index == 0) themeProvider.setTheme(ThemeMode.dark);
-                  if (index == 1) themeProvider.setTheme(ThemeMode.light);
+                  setState(() {
+                    if (index == 0) themeProvider.setTheme(ThemeMode.light);
+                    if (index == 1) themeProvider.setTheme(ThemeMode.dark);
+                    if (index == 2) themeProvider.setTheme(ThemeMode.system);
+                  });
                 },
                 borderRadius: BorderRadius.circular(20),
-                selectedColor: Colors.white,
-                fillColor: Colors.black87,
-                color: Colors.white70,
+                selectedColor: toggleSelectedColor,
+                fillColor: toggleUnselectedColor,
+                color: toggleUnselectedColor.withOpacity(0.6),
                 children: const [
-                  Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text("Dark")),
-                  Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text("Light")),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Text("Light", style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Text("Dark", style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Text("System", style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
                 ],
               ),
               const SizedBox(height: 40),
@@ -193,8 +261,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _savePreferences();
                     }
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
-                  child: Text(_savedPasscode == null ? "Set Passcode" : "Change Passcode"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: toggleUnselectedColor,
+                  ),
+                  child: Text(
+                    _savedPasscode == null ? "Set Passcode" : "Change Passcode",
+                    style: TextStyle(color: toggleSelectedColor),
+                  ),
                 ),
             ],
           ),

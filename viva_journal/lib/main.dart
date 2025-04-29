@@ -79,7 +79,7 @@ class MyApp extends StatelessWidget {
         '/dashboard': (context) => _buildRoute(DashboardScreen()),
         '/calendar': (context) => _buildRoute(CalendarScreen()),
         '/trackerLog': (context) => _buildRoute(TrackerLogScreen()),
-        '/settings': (context) => const SettingsScreen(),
+        '/settings': (context) => _buildRoute(const SettingsScreen()),
         '/journal': (context) => _buildRoute(JournalScreen(mood: 'happy', tags: [])),
       },
     );
