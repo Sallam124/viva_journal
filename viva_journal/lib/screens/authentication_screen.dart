@@ -15,11 +15,13 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
   final LocalAuthentication _localAuth = LocalAuthentication(); // Initialize LocalAuthentication class
   String enteredPin = ''; // To hold the entered PIN
   bool _isBiometricAvailable = false;
+  String? _backgroundImage = 'assets/images/default_background.jpg'; // Default background image
 
   @override
   void initState() {
     super.initState();
     _checkBiometricAvailability(); // Check if biometric authentication is available
+    _loadSavedBackground(); // Load the saved background image
   }
 
   // Check if biometric authentication is available (Face ID or Fingerprint)
@@ -28,6 +30,17 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
     setState(() {
       _isBiometricAvailable = isAvailable;
     });
+  }
+
+  // Load the saved background image from SharedPreferences
+  void _loadSavedBackground() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedBackground = prefs.getString('background_image');
+    if (savedBackground != null) {
+      setState(() {
+        _backgroundImage = savedBackground; // Use the saved background image
+      });
+    }
   }
 
   // Authenticate the user with biometric authentication (if available)
@@ -115,34 +128,46 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Enter PIN')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextField(
-              keyboardType: TextInputType.number,
-              obscureText: true,  // Hide the PIN as the user types
-              onChanged: (value) {
-                setState(() {
-                  enteredPin = value;  // Update the entered PIN
-                });
-              },
-              decoration: const InputDecoration(
-                labelText: 'Enter your PIN',
-                border: OutlineInputBorder(),
-              ),
-              maxLength: 4,  // Assuming 4-digit PIN
+      body: Stack(
+        children: [
+          // Background Image
+          Positioned.fill(
+            child: Image.asset(
+              _backgroundImage!,
+              fit: BoxFit.cover,
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                _verifyPin(enteredPin); // Verify PIN if entered manually
-              },
-              child: const Text('Verify PIN'),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // PIN input field
+                TextField(
+                  keyboardType: TextInputType.number,
+                  obscureText: true,  // Hide the PIN as the user types
+                  onChanged: (value) {
+                    setState(() {
+                      enteredPin = value;  // Update the entered PIN
+                    });
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Enter your PIN',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLength: 4,  // Assuming 4-digit PIN
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    _verifyPin(enteredPin); // Verify PIN if entered manually
+                  },
+                  child: const Text('Verify PIN'),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
