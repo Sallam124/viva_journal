@@ -90,7 +90,11 @@ class MyApp extends StatelessWidget {
             }
           } else {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             return _buildRoute(const AuthenticationScreen()); // If user is not logged in, go to AuthenticationScreen
+=======
+            return _buildRoute(const SignUpScreen());
+>>>>>>> Stashed changes
 =======
             return _buildRoute(const SignUpScreen());
 >>>>>>> Stashed changes
