@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:viva_journal/theme_provider.dart';
-import 'background_theme.dart'; // ✅ Already imported
+import 'background_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:viva_journal/screens/login_screen.dart';
 
@@ -50,6 +50,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (_savedPasscode != null) {
       prefs.setString('passcode', _savedPasscode!);
     }
+  }
+
+  Future<void> _removePasscode() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('passcode');
+    setState(() {
+      _savedPasscode = null;
+      _authEnabled = false;
+    });
+    await prefs.setBool('authEnabled', false);
   }
 
   void _pickTime(BuildContext context) async {
@@ -173,16 +183,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
               ),
               if (_authEnabled)
-                ElevatedButton(
-                  onPressed: () async {
-                    final newPasscode = await _showPasscodeDialog(context);
-                    if (newPasscode != null) {
-                      setState(() => _savedPasscode = newPasscode);
-                      _savePreferences();
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
-                  child: Text(_savedPasscode == null ? "Set Passcode" : "Change Passcode"),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () async {
+                        final newPasscode = await _showPasscodeDialog(context);
+                        if (newPasscode != null) {
+                          setState(() => _savedPasscode = newPasscode);
+                          _savePreferences();
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
+                      child: Text(_savedPasscode == null ? "Set Passcode" : "Change Passcode"),
+                    ),
+                    const SizedBox(height: 10),
+                    if (_savedPasscode != null)
+                      ElevatedButton(
+                        onPressed: () async {
+                          await _removePasscode();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Passcode removed')),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.grey[800]),
+                        child: const Text("Remove Passcode"),
+                      ),
+                  ],
                 ),
               const SizedBox(height: 40),
               // Logout Button
