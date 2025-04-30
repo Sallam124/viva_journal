@@ -74,7 +74,7 @@ class JournalEntry {
       'content': jsonEncode(content),
       'drawingPoints': jsonEncode(drawingPoints),
       'mediaPaths': jsonEncode(mediaPaths),
-      'color': color.value,
+      'color': color.toARGB32(),
     };
   }
 
