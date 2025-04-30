@@ -14,7 +14,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final DatabaseHelper dbHelper = DatabaseHelper();
   List<double> moodData = [];
   List<DateTime> moodDates = [];
-  final List<String> emojiLabels = ['😢', '😐', '😊', '😄', '🤩'];
+  final List<String> emojiLabels = ['😟', '🤬', '😐', '😊', '😁'];
   bool isLoading = true;
 
   @override
