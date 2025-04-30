@@ -913,7 +913,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
         content: _quillController.document.toDelta().toJson(),
         drawingPoints: _points.map((point) => {
           'position': {'dx': point.position.dx, 'dy': point.position.dy},
-          'color': point.color.value,
+          'color': point.color.toARGB32(),
           'isEraser': point.isEraser,
           'strokeWidth': point.strokeWidth,
           'isRainbow': point.isRainbow,
