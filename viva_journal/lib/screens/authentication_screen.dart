@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart'; // Add the local_auth package
-import 'package:viva_journal/screens/home_screen.dart'; // Main screen after successful authentication
+import 'package:viva_journal/screens/home.dart'; // Main screen after successful authentication
 import 'package:viva_journal/utils/auth_prefs.dart'; // Import AuthPrefs helper class
 
 class PinVerificationScreen extends StatefulWidget {
