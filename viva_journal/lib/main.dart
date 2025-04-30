@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'firebase_options.dart';
 import 'package:viva_journal/theme_provider.dart';
 import 'package:viva_journal/widgets/widgets.dart';
@@ -25,7 +27,6 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Initialize Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -38,10 +39,17 @@ void main() async {
   );
 }
 
+// Class to represent authentication status
+class AuthStatus {
+  final bool isLoggedIn;
+  final bool isPinVerified;
+
+  AuthStatus({required this.isLoggedIn, required this.isPinVerified});
+}
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // Method to wrap screens with background theme container
   Widget _buildRoute(Widget screen) {
     return BackgroundContainer(child: screen);
   }
@@ -67,24 +75,28 @@ class MyApp extends StatelessWidget {
         FlutterQuillLocalizations.delegate,
       ],
       supportedLocales: const [
-        Locale('en'), // Add other supported locales if needed
+        Locale('en'),
       ],
-
-      // Using FutureBuilder to check login status and display AuthenticationScreen if not logged in
-      home: FutureBuilder<User?>(
+      home: FutureBuilder<AuthStatus>(
         future: _checkUserLoginStatus(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return _buildRoute(const LoadingScreen()); // Show loading screen while checking login
-          } else if (snapshot.hasData && snapshot.data != null) {
-            return _buildRoute(const HomeScreen()); // User is logged in, go to HomeScreen
+            return _buildRoute(const LoadingScreen());
+          } else if (snapshot.hasData && snapshot.data!.isLoggedIn) {
+            if (snapshot.data!.isPinVerified) {
+              return _buildRoute(const HomeScreen());
+            } else {
+              return _buildRoute(const PinVerificationScreen());
+            }
           } else {
+<<<<<<< Updated upstream
             return _buildRoute(const AuthenticationScreen()); // If user is not logged in, go to AuthenticationScreen
+=======
+            return _buildRoute(const SignUpScreen());
+>>>>>>> Stashed changes
           }
         },
       ),
-
-      // Define named routes
       routes: {
         '/signUp': (context) => _buildRoute(const SignUpScreen()),
         '/loading': (context) => _buildRoute(const LoadingScreen()),
@@ -106,9 +118,17 @@ class MyApp extends StatelessWidget {
     );
   }
 
-  // Method to check user login status
-  Future<User?> _checkUserLoginStatus() async {
-    return FirebaseAuth.instance.currentUser; // Check if the user is logged in
+  Future<AuthStatus> _checkUserLoginStatus() async {
+    final user = FirebaseAuth.instance.currentUser;
+    final prefs = await SharedPreferences.getInstance();
+
+    // Always reset PIN verification on app start
+    await prefs.setBool('isAuthenticated', false);
+
+    return AuthStatus(
+      isLoggedIn: user != null,
+      isPinVerified: false,
+    );
   }
 }
 
