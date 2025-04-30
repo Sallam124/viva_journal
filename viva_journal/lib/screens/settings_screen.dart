@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:viva_journal/theme_provider.dart';
+import 'background_theme.dart'; // ✅ Already imported
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:viva_journal/screens/login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -89,26 +92,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final currentTheme = themeProvider.themeMode;
 
-    // Define background color for Light/Dark modes
-    Color backgroundColor = currentTheme == ThemeMode.light
-        ? Colors.white
-        : Colors.black; // No more System Mode
-
-    // Define text color for Light/Dark modes
-    Color textColor = currentTheme == ThemeMode.light ? Colors.black : Colors.white;
-
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Settings', style: TextStyle(color: Colors.white)),
+        title: const Text('Settings'),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: backgroundColor, // solid color for Light/Dark modes
+      body: BackgroundContainer(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 100, 20, 20),
           child: Column(
@@ -117,7 +108,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Enable Notifications', style: TextStyle(fontSize: 18, color: textColor)),
+                  const Text('Enable Notifications', style: TextStyle(fontSize: 18, color: Colors.white)),
                   Switch(
                     value: _notificationsEnabled,
                     onChanged: (value) {
@@ -135,7 +126,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Notification Time:', style: TextStyle(fontSize: 16, color: textColor)),
+                    const Text('Notification Time:', style: TextStyle(fontSize: 16, color: Colors.white)),
                     const SizedBox(height: 8),
                     ElevatedButton(
                       onPressed: () => _pickTime(context),
@@ -152,16 +143,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
               const SizedBox(height: 40),
-              Text('Theme Mode:', style: TextStyle(fontSize: 18, color: textColor)),
+              const Text('Theme Mode:', style: TextStyle(fontSize: 18, color: Colors.white)),
               const SizedBox(height: 10),
               ToggleButtons(
-                isSelected: [
-                  currentTheme == ThemeMode.dark,
-                  currentTheme == ThemeMode.light,
-                ],
+                isSelected: [currentTheme == ThemeMode.dark, currentTheme == ThemeMode.system],
                 onPressed: (index) {
                   if (index == 0) themeProvider.setTheme(ThemeMode.dark);
-                  if (index == 1) themeProvider.setTheme(ThemeMode.light);
+                  if (index == 1) themeProvider.setTheme(ThemeMode.system);
                 },
                 borderRadius: BorderRadius.circular(20),
                 selectedColor: Colors.white,
@@ -169,13 +157,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: Colors.white70,
                 children: const [
                   Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text("Dark")),
-                  Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text("Light")),
+                  Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text("System")),
                 ],
               ),
               const SizedBox(height: 40),
-              Text('Authentication', style: TextStyle(fontSize: 18, color: textColor)),
+              const Text('Authentication', style: TextStyle(fontSize: 18, color: Colors.white)),
               SwitchListTile(
-                title: Text('Enable Extra Authentication', style: TextStyle(color: textColor)),
+                title: const Text('Enable Extra Authentication', style: TextStyle(color: Colors.white)),
                 value: _authEnabled,
                 onChanged: (value) {
                   setState(() {
@@ -196,6 +184,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
                   child: Text(_savedPasscode == null ? "Set Passcode" : "Change Passcode"),
                 ),
+              const SizedBox(height: 40),
+              // Logout Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      await FirebaseAuth.instance.signOut();
+                      if (mounted) {
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (context) => const LoginScreen()),
+                              (route) => false,
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Error signing out')),
+                        );
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Logout',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
