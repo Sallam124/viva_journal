@@ -20,9 +20,9 @@ import 'package:viva_journal/screens/calendar_screen.dart';
 import 'package:viva_journal/screens/trackerlog_screen.dart';
 import 'package:viva_journal/screens/settings_screen.dart';
 import 'package:viva_journal/screens/journal_screen.dart';
-import 'package:viva_journal/screens/authentication_screen.dart'; // Import the Authentication Screen
+import 'package:viva_journal/screens/authentication_screen.dart'; // PinVerificationScreen
 
-// Define navigator key globally
+// Global navigator key
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
@@ -39,7 +39,7 @@ void main() async {
   );
 }
 
-// Class to represent authentication status
+// Auth status model
 class AuthStatus {
   final bool isLoggedIn;
   final bool isPinVerified;
@@ -119,26 +119,28 @@ class MyApp extends StatelessWidget {
     final user = FirebaseAuth.instance.currentUser;
     final prefs = await SharedPreferences.getInstance();
 
-    // Always reset PIN verification on app start
+    final savedPasscode = prefs.getString('passcode');
+
+    // Reset PIN verification status on app start
     await prefs.setBool('isAuthenticated', false);
 
     return AuthStatus(
       isLoggedIn: user != null,
-      isPinVerified: false,
+      isPinVerified: savedPasscode == null, // Skip PIN screen if no PIN is saved
     );
   }
 }
 
-// Custom Page Transition - FadePageTransition
+// Optional: Custom Page Transition (not used in current MaterialApp config)
 class FadePageTransition extends PageTransitionsBuilder {
   @override
   Widget buildTransitions<T>(
-    PageRoute<T> route,
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-    Widget child,
-  ) {
+      PageRoute<T> route,
+      BuildContext context,
+      Animation<double> animation,
+      Animation<double> secondaryAnimation,
+      Widget child,
+      ) {
     return FadeTransition(opacity: animation, child: child);
   }
 }
