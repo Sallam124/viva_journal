@@ -1,18 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-import 'package:local_auth/local_auth.dart'; // Add the local_auth package
-import 'package:viva_journal/screens/home_screen.dart'; // Main screen after successful authentication
-import 'package:viva_journal/utils/auth_prefs.dart'; // Import AuthPrefs helper class
-=======
 import 'package:local_auth/local_auth.dart';
 import 'package:viva_journal/screens/home.dart';
->>>>>>> Stashed changes
-=======
-import 'package:local_auth/local_auth.dart';
-import 'package:viva_journal/screens/home.dart';
->>>>>>> Stashed changes
 
 class PinVerificationScreen extends StatefulWidget {
   const PinVerificationScreen({Key? key}) : super(key: key);

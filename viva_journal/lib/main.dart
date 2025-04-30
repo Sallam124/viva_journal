@@ -12,7 +12,7 @@ import 'package:viva_journal/widgets/widgets.dart';
 import 'package:viva_journal/screens/loading_screen.dart';
 import 'package:viva_journal/screens/login_screen.dart';
 import 'package:viva_journal/screens/sign_up_screen.dart';
-import 'package:viva_journal/screens/home_screen.dart';
+import 'package:viva_journal/screens/home.dart';
 import 'package:viva_journal/screens/background_theme.dart';
 import 'package:viva_journal/screens/reset_password.dart';
 import 'package:viva_journal/screens/dashboard_screen.dart';
@@ -89,15 +89,7 @@ class MyApp extends StatelessWidget {
               return _buildRoute(const PinVerificationScreen());
             }
           } else {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-            return _buildRoute(const AuthenticationScreen()); // If user is not logged in, go to AuthenticationScreen
-=======
             return _buildRoute(const SignUpScreen());
->>>>>>> Stashed changes
-=======
-            return _buildRoute(const SignUpScreen());
->>>>>>> Stashed changes
           }
         },
       ),
@@ -111,6 +103,7 @@ class MyApp extends StatelessWidget {
         '/calendar': (context) => _buildRoute(CalendarScreen()),
         '/trackerLog': (context) => _buildRoute(TrackerLogScreen(date: DateTime.now())),
         '/settings': (context) => _buildRoute(const SettingsScreen()),
+        '/authentication': (context) => _buildRoute(const PinVerificationScreen()),
         '/journal': (context) {
           final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
           return _buildRoute(JournalScreen(
