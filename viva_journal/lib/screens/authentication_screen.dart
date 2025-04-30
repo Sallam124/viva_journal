@@ -1,216 +1,148 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart';
-import 'package:viva_journal/database_helper.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:local_auth/local_auth.dart'; // Add the local_auth package
+import 'package:viva_journal/screens/home_screen.dart'; // Replace with your main screen
 
-class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({Key? key}) : super(key: key);
+class PinVerificationScreen extends StatefulWidget {
+  const PinVerificationScreen({Key? key}) : super(key: key);
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  _PinVerificationScreenState createState() => _PinVerificationScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
-  final DatabaseHelper dbHelper = DatabaseHelper();
-  List<double> moodData = [];
-  List<DateTime> moodDates = [];
-  final List<String> emojiLabels = ['😢', '😐', '😊', '😄', '🤩'];
-  bool isLoading = true;
+class _PinVerificationScreenState extends State<PinVerificationScreen> {
+  final LocalAuthentication _localAuth = LocalAuthentication(); // Initialize LocalAuthentication class
+  String enteredPin = ''; // To hold the entered PIN
+  bool _isBiometricAvailable = false;
 
   @override
   void initState() {
     super.initState();
-    loadMoodData();
+    _checkBiometricAvailability(); // Check if biometric authentication is available
   }
 
-  Future<void> loadMoodData() async {
-    try {
-      final allEntries = await dbHelper.getEntriesPastWeek(); // latest 7 days
-
-      setState(() {
-        moodData = allEntries.map((entry) => double.tryParse(entry.mood) ?? 3).toList();
-        moodDates = allEntries.map((entry) => DateTime.tryParse(entry.date) ?? DateTime.now()).toList();
-        isLoading = false;
-      });
-    } catch (e) {
-      print("Error loading mood data: $e");
-      setState(() {
-        isLoading = false;
-      });
-    }
-  }
-
-  String _bestDayOfWeek() {
-    if (moodDates.isEmpty) return "N/A";
-
-    Map<int, List<double>> dayMoodMap = {};
-
-    for (int i = 0; i < moodDates.length; i++) {
-      int weekday = moodDates[i].weekday;
-      dayMoodMap.putIfAbsent(weekday, () => []);
-      dayMoodMap[weekday]!.add(moodData[i]);
-    }
-
-    int bestDay = 1;
-    double bestAvg = 0;
-
-    dayMoodMap.forEach((day, moods) {
-      double avg = moods.reduce((a, b) => a + b) / moods.length;
-      if (avg > bestAvg) {
-        bestAvg = avg;
-        bestDay = day;
-      }
+  // Check if biometric authentication is available (Face ID or Fingerprint)
+  void _checkBiometricAvailability() async {
+    final isAvailable = await _localAuth.canCheckBiometrics;
+    setState(() {
+      _isBiometricAvailable = isAvailable;
     });
+  }
 
-    return DateFormat.E().format(DateTime.utc(2020, 1, bestDay + 5)); // Return the day of the week with the best mood
+  // Authenticate the user with biometric authentication (if available)
+  Future<void> _authenticateWithBiometrics() async {
+    try {
+      bool isAuthenticated = false;
+
+      if (_isBiometricAvailable) {
+        // Try biometric authentication
+        isAuthenticated = await _localAuth.authenticate(
+          localizedReason: 'Authenticate using your biometric credentials',
+          options: const AuthenticationOptions(stickyAuth: true),
+        );
+      }
+
+      if (isAuthenticated) {
+        // If biometric authentication is successful, navigate to the HomeScreen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomeScreen()),
+        );
+      } else {
+        // If biometric authentication fails, prompt for PIN
+        _showPinDialog();
+      }
+    } catch (e) {
+      print("Biometric authentication error: $e");
+      _showPinDialog(); // If biometric authentication fails, fall back to PIN
+    }
+  }
+
+  // Function to show the PIN dialog
+  void _showPinDialog() async {
+    final enteredPin = await _showPasscodeDialog(context);
+    if (enteredPin != null) {
+      _verifyPin(enteredPin);
+    }
+  }
+
+  // Verify the entered PIN
+  void _verifyPin(String enteredPin) async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedPin = prefs.getString('passcode');
+
+    if (savedPin == enteredPin) {
+      // If the entered PIN matches the saved PIN, navigate to the HomeScreen
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomeScreen()),
+      );
+    } else {
+      // Show error if the PIN is incorrect
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Incorrect PIN, please try again!')),
+      );
+    }
+  }
+
+  // Show the PIN input dialog
+  Future<String?> _showPasscodeDialog(BuildContext context) async {
+    TextEditingController controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Enter Passcode"),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          obscureText: true,
+          decoration: const InputDecoration(labelText: '4-digit passcode'),
+          maxLength: 4,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          ElevatedButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text("Save")),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final double avg = moodData.isNotEmpty
-        ? moodData.reduce((a, b) => a + b) / moodData.length
-        : 3;
-    final int avgMood = avg.round().clamp(1, 5);
-    final String avgEmoji = emojiLabels[avgMood - 1];
+    // Attempt biometric authentication when the screen loads
+    _authenticateWithBiometrics();
 
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: Image.asset(
-            'assets/images/background.png',
-            fit: BoxFit.cover,
-          ),
-        ),
-        Scaffold(
-          backgroundColor: Colors.transparent,
-          appBar: AppBar(
-            title: const Text("Dashboard"),
-            backgroundColor: Colors.black87,
-          ),
-          body: isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : Column(
-            children: [
-              // Mood Chart
-              Expanded(
-                flex: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Card(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 4,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: BarChart(
-                        BarChartData(
-                          alignment: BarChartAlignment.spaceAround,
-                          maxY: 5,
-                          minY: 1,
-                          titlesData: FlTitlesData(
-                            leftTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                interval: 1,
-                                getTitlesWidget: (value, _) {
-                                  int mood = value.toInt().clamp(1, 5);
-                                  return Text(
-                                    emojiLabels[mood - 1],
-                                    style: const TextStyle(fontSize: 20),
-                                  );
-                                },
-                              ),
-                            ),
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                interval: 1,
-                                getTitlesWidget: (value, _) {
-                                  int index = value.toInt();
-                                  if (index >= 0 && index < moodDates.length) {
-                                    return Text(DateFormat('E').format(moodDates[index]));
-                                  }
-                                  return const Text('');
-                                },
-                              ),
-                            ),
-                          ),
-                          gridData: FlGridData(show: true),
-                          borderData: FlBorderData(show: false),
-                          barGroups: List.generate(moodData.length, (index) {
-                            return BarChartGroupData(
-                              x: index,
-                              barRods: [
-                                BarChartRodData(
-                                  toY: moodData[index],
-                                  color: Colors.blueAccent,
-                                  width: 16,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ],
-                            );
-                          }),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Enter PIN')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TextField(
+              keyboardType: TextInputType.number,
+              obscureText: true,  // Hide the PIN as the user types
+              onChanged: (value) {
+                setState(() {
+                  enteredPin = value;  // Update the entered PIN
+                });
+              },
+              decoration: const InputDecoration(
+                labelText: 'Enter your PIN',
+                border: OutlineInputBorder(),
               ),
-
-              // Weekly Average + Best Day
-              Expanded(
-                flex: 1,
-                child: Row(
-                  children: [
-                    // Weekly Average
-                    Expanded(
-                      child: Card(
-                        margin: const EdgeInsets.all(16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 4,
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(avgEmoji, style: const TextStyle(fontSize: 48)),
-                              const SizedBox(height: 8),
-                              const Text("Weekly Avg", style: TextStyle(fontSize: 14)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Best Day Highlight
-                    Expanded(
-                      child: Card(
-                        margin: const EdgeInsets.all(16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 4,
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.star, size: 48, color: Colors.amber),
-                              const SizedBox(height: 8),
-                              Text(
-                                "Best Day:\n${_bestDayOfWeek()}",
-                                style: const TextStyle(fontSize: 14),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+              maxLength: 4,  // Assuming 4-digit PIN
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                _verifyPin(enteredPin); // Verify PIN if entered manually
+              },
+              child: const Text('Verify PIN'),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
