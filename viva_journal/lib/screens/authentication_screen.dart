@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart'; // Add the local_auth package
-import 'package:viva_journal/screens/home_screen.dart'; // Replace with your main screen
+import 'package:viva_journal/screens/home_screen.dart'; // Main screen after successful authentication
+import 'package:viva_journal/utils/auth_prefs.dart'; // Import AuthPrefs helper class
 
 class PinVerificationScreen extends StatefulWidget {
   const PinVerificationScreen({Key? key}) : super(key: key);
@@ -69,7 +70,7 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
   // Verify the entered PIN
   void _verifyPin(String enteredPin) async {
     final prefs = await SharedPreferences.getInstance();
-    final savedPin = prefs.getString('passcode');
+    final savedPin = prefs.getString('passcode'); // Getting saved PIN from SharedPreferences
 
     if (savedPin == enteredPin) {
       // If the entered PIN matches the saved PIN, navigate to the HomeScreen
@@ -95,9 +96,9 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
-          obscureText: true,
+          obscureText: true, // Hide the PIN as the user types
           decoration: const InputDecoration(labelText: '4-digit passcode'),
-          maxLength: 4,
+          maxLength: 4, // Assuming 4-digit PIN
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
