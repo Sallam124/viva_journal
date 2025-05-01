@@ -1,170 +1,130 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:viva_journal/utils/auth_prefs.dart';
+import 'package:viva_journal/screens/home.dart';
 
-class AuthenticationScreen extends StatefulWidget {
-  const AuthenticationScreen({super.key});
+class PinVerificationScreen extends StatefulWidget {
+  const PinVerificationScreen({Key? key}) : super(key: key);
 
   @override
-  State<AuthenticationScreen> createState() => _AuthenticationScreenState();
+  _PinVerificationScreenState createState() => _PinVerificationScreenState();
 }
 
-class _AuthenticationScreenState extends State<AuthenticationScreen> {
-  final LocalAuthentication auth = LocalAuthentication();
-  String _enteredCode = '';
-  String? _savedPasscode;
-  // final bool _isAuthenticating = false;
-  String? _error;
+class _PinVerificationScreenState extends State<PinVerificationScreen> {
+  final LocalAuthentication _localAuth = LocalAuthentication();
+  String enteredPin = '';
+  bool _isBiometricAvailable = false;
+  String? _backgroundImage = 'assets/images/background.png';
 
   @override
   void initState() {
     super.initState();
-    _startAuthentication();
+    _checkBiometricAvailability();
+    _loadSavedBackground();
+    _authenticateWithBiometrics(); // Trigger biometric authentication on load
   }
 
-  Future<void> _startAuthentication() async {
-    final bool enabled = await AuthPrefs.isBiometricEnabled();
-    final String? savedCode = await AuthPrefs.getSavedPasscode();
-
+  void _checkBiometricAvailability() async {
+    final isAvailable = await _localAuth.canCheckBiometrics;
     setState(() {
-      _savedPasscode = savedCode;
+      _isBiometricAvailable = isAvailable;
     });
+  }
 
-    if (enabled) {
-      try {
-        bool didAuthenticate = await auth.authenticate(
-          localizedReason: 'Authenticate with your biometrics',
-          options: const AuthenticationOptions(biometricOnly: true),
+  void _loadSavedBackground() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedBackground = prefs.getString('background_image');
+    if (savedBackground != null) {
+      setState(() {
+        _backgroundImage = savedBackground;
+      });
+    }
+  }
+
+  Future<void> _authenticateWithBiometrics() async {
+    try {
+      bool isAuthenticated = false;
+
+      if (_isBiometricAvailable) {
+        isAuthenticated = await _localAuth.authenticate(
+          localizedReason: 'Authenticate using your biometric credentials',
+          options: const AuthenticationOptions(stickyAuth: true),
         );
-
-        if (didAuthenticate) {
-          _goToHome();
-        }
-      } catch (e) {
-        setState(() => _error = "Biometric error: $e");
       }
-    }
-  }
 
-  void _onNumberPressed(String digit) {
-    if (_enteredCode.length < 4) {
-      setState(() {
-        _enteredCode += digit;
-      });
-
-      if (_enteredCode.length == 4) {
-        if (_enteredCode == _savedPasscode) {
-          _goToHome();
-        } else {
-          setState(() {
-            _error = "Incorrect Passcode";
-            _enteredCode = '';
-          });
-        }
+      if (isAuthenticated) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isAuthenticated', true); // Save PIN status
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
       }
+    } catch (e) {
+      print("Biometric authentication error: $e");
     }
   }
 
-  void _onBackspacePressed() {
-    if (_enteredCode.isNotEmpty) {
-      setState(() {
-        _enteredCode = _enteredCode.substring(0, _enteredCode.length - 1);
-      });
-    }
-  }
+  void _verifyPin(String enteredPin) async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedPin = prefs.getString('passcode');
 
-  void _goToHome() {
-    Navigator.pushReplacementNamed(context, '/home');
+    if (savedPin == enteredPin) {
+      await prefs.setBool('isAuthenticated', true); // Save verification status
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Incorrect PIN, please try again!')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black87,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              "Enter Passcode",
-              style: TextStyle(color: Colors.white, fontSize: 24),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                4,
-                    (index) => Container(
-                  margin: const EdgeInsets.all(8),
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: index < _enteredCode.length ? Colors.white : Colors.grey,
-                  ),
-                ),
-              ),
-            ),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Text(
-                  _error!,
-                  style: const TextStyle(color: Colors.red),
-                ),
-              ),
-            const SizedBox(height: 30),
-            _buildNumberPad(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNumberPad() {
-    return SizedBox(
-      width: 240,
-      child: Column(
+      appBar: AppBar(title: const Text('Enter PIN')),
+      body: Stack(
         children: [
-          for (var row in [
-            ['1', '2', '3'],
-            ['4', '5', '6'],
-            ['7', '8', '9'],
-            ['', '0', '<']
-          ])
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: row.map((value) {
-                return _buildKey(value);
-              }).toList(),
+          // Background Image
+          Positioned.fill(
+            child: Image.asset(
+              _backgroundImage!,
+              fit: BoxFit.cover,
             ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextField(
+                  keyboardType: TextInputType.number,
+                  obscureText: true,
+                  onChanged: (value) {
+                    setState(() {
+                      enteredPin = value;
+                    });
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Enter your PIN',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLength: 4,
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    _verifyPin(enteredPin);
+                  },
+                  child: const Text('Verify PIN'),
+                ),
+              ],
+            ),
+          ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildKey(String value) {
-    return GestureDetector(
-      onTap: () {
-        if (value == '<') {
-          _onBackspacePressed();
-        } else if (value.isNotEmpty) {
-          _onNumberPressed(value);
-        }
-      },
-      child: Container(
-        margin: const EdgeInsets.all(8),
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(
-          color: Colors.grey[800],
-          shape: BoxShape.circle,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          value,
-          style: const TextStyle(fontSize: 24, color: Colors.white),
-        ),
       ),
     );
   }

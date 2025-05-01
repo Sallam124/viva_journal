@@ -944,6 +944,47 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
       });
     }
   }
+
+
+
+  void _saveJournalData() {
+    JournalState.saveJournalData(
+      widget.date,
+      JournalData(
+        title: _titleController.text,
+        content: _quillController.document.toDelta().toJson(),
+        drawingPoints: _points.map((point) => {
+          'position': {'dx': point.position.dx, 'dy': point.position.dy},
+          'color': point.color.toARGB32(),
+          'isEraser': point.isEraser,
+          'strokeWidth': point.strokeWidth,
+          'isRainbow': point.isRainbow,
+        }).toList(),
+        attachments: _attachments,
+      ),
+    );
+  }
+
+  Future<void> _loadJournalData() async {
+    final savedData = await JournalState.getJournalData(widget.date);
+    if (savedData != null) {
+      setState(() {
+        _quillController.document = Document.fromDelta(Delta.fromJson(savedData.content));
+        _points.clear();
+        _points.addAll(savedData.drawingPoints.map((point) => DrawingPoint(
+          position: Offset(point['position']['dx'], point['position']['dy']),
+          color: Color(point['color']),
+          isEraser: point['isEraser'],
+          strokeWidth: point['strokeWidth'],
+          isRainbow: point['isRainbow'],
+        )).toList());
+        _attachments.clear();
+        _attachments.addAll(savedData.attachments);
+        _titleController.text = savedData.title;
+      });
+    }
+  }
+
 }
 
 class VideoWidget extends StatefulWidget {

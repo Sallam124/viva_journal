@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'firebase_options.dart';
 import 'package:viva_journal/theme_provider.dart';
 import 'package:viva_journal/widgets/widgets.dart';
@@ -18,9 +20,9 @@ import 'package:viva_journal/screens/calendar_screen.dart';
 import 'package:viva_journal/screens/trackerlog_screen.dart';
 import 'package:viva_journal/screens/settings_screen.dart';
 import 'package:viva_journal/screens/journal_screen.dart';
+import 'package:viva_journal/screens/authentication_screen.dart'; // PinVerificationScreen
 
-// import 'package:viva_journal/screens/authentication_screen.dart';
-
+// Global navigator key
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
@@ -35,6 +37,14 @@ void main() async {
       child: const MyApp(),
     ),
   );
+}
+
+// Auth status model
+class AuthStatus {
+  final bool isLoggedIn;
+  final bool isPinVerified;
+
+  AuthStatus({required this.isLoggedIn, required this.isPinVerified});
 }
 
 class MyApp extends StatelessWidget {
@@ -65,24 +75,24 @@ class MyApp extends StatelessWidget {
         FlutterQuillLocalizations.delegate,
       ],
       supportedLocales: const [
-        Locale('en'), // Add other supported locales if needed
+        Locale('en'),
       ],
-
-      home: FutureBuilder<User?>( // Handling user login status check
+      home: FutureBuilder<AuthStatus>(
         future: _checkUserLoginStatus(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return _buildRoute(const LoadingScreen());
-          } else if (snapshot.hasData && snapshot.data != null) {
-            // If logged in, go to the HomeScreen
-            return _buildRoute(const HomeScreen());
+          } else if (snapshot.hasData && snapshot.data!.isLoggedIn) {
+            if (snapshot.data!.isPinVerified) {
+              return _buildRoute(const HomeScreen());
+            } else {
+              return _buildRoute(const PinVerificationScreen());
+            }
           } else {
-            // If not logged in, go to SignUpScreen
             return _buildRoute(const SignUpScreen());
           }
         },
       ),
-
       routes: {
         '/signUp': (context) => _buildRoute(const SignUpScreen()),
         '/loading': (context) => _buildRoute(const LoadingScreen()),
@@ -93,6 +103,7 @@ class MyApp extends StatelessWidget {
         '/calendar': (context) => _buildRoute(CalendarScreen()),
         '/trackerLog': (context) => _buildRoute(TrackerLogScreen(date: DateTime.now())),
         '/settings': (context) => _buildRoute(const SettingsScreen()),
+        '/authentication': (context) => _buildRoute(const PinVerificationScreen()),
         '/journal': (context) {
           final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
           return _buildRoute(JournalScreen(
@@ -104,11 +115,23 @@ class MyApp extends StatelessWidget {
     );
   }
 
-  Future<User?> _checkUserLoginStatus() async {
-    return FirebaseAuth.instance.currentUser; // Check for current user status
+  Future<AuthStatus> _checkUserLoginStatus() async {
+    final user = FirebaseAuth.instance.currentUser;
+    final prefs = await SharedPreferences.getInstance();
+
+    final savedPasscode = prefs.getString('passcode');
+
+    // Reset PIN verification status on app start
+    await prefs.setBool('isAuthenticated', false);
+
+    return AuthStatus(
+      isLoggedIn: user != null,
+      isPinVerified: savedPasscode == null, // Skip PIN screen if no PIN is saved
+    );
   }
 }
 
+// Optional: Custom Page Transition (not used in current MaterialApp config)
 class FadePageTransition extends PageTransitionsBuilder {
   @override
   Widget buildTransitions<T>(
