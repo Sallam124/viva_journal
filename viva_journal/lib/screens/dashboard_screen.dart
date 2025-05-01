@@ -14,10 +14,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final DatabaseHelper dbHelper = DatabaseHelper();
   List<double> moodData = [];
   List<DateTime> moodDates = [];
-<<<<<<< Updated upstream
-=======
   Entry? highlightEntry;
->>>>>>> Stashed changes
   final List<String> emojiLabels = ['😟', '🤬', '😐', '😊', '😁'];
   bool isLoading = true;
 
@@ -31,18 +28,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final allEntries = await dbHelper.getEntriesPastWeek();
 
-<<<<<<< Updated upstream
-      setState(() {
-        moodData = allEntries.map((entry) {
-          // Map the mood string to a number (ensure it's a valid double)
-          return double.tryParse(entry.mood) ?? 3; // Default to 3 if parsing fails
-        }).toList();
-
-        moodDates = allEntries.map((entry) {
-          // Parse date (ensure the date format is consistent with your data)
-          return DateTime.tryParse(entry.date) ?? DateTime.now();
-        }).toList();
-=======
       if (allEntries.isEmpty) {
         setState(() {
           isLoading = false;
@@ -69,7 +54,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         return 3.0;
       }).toList();
->>>>>>> Stashed changes
 
       List<DateTime> tempDates = allEntries.map((e) => e.date).toList();
 
@@ -94,49 +78,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-<<<<<<< Updated upstream
-  /// Method to calculate the average mood
-  double _calculateAverageMood() {
-    return moodData.isNotEmpty
-        ? moodData.reduce((a, b) => a + b) / moodData.length
-        : 3; // Default to 3 if no data
-  }
-
-  /// Method to get the best day of the week based on mood
-  String _bestDayOfWeek() {
-    if (moodDates.isEmpty) return "N/A";
-
-    Map<int, List<double>> dayMoodMap = {};
-
-    for (int i = 0; i < moodDates.length; i++) {
-      int weekday = moodDates[i].weekday;
-      dayMoodMap.putIfAbsent(weekday, () => []);
-      dayMoodMap[weekday]!.add(moodData[i]);
-    }
-
-    int bestDay = 1;
-    double bestAvg = 0;
-
-    dayMoodMap.forEach((day, moods) {
-      double avg = moods.reduce((a, b) => a + b) / moods.length;
-      if (avg > bestAvg) {
-        bestAvg = avg;
-        bestDay = day;
-      }
-    });
-
-    return DateFormat.E().format(DateTime.utc(2020, 1, bestDay + 5)); // Return the day of the week with the best mood
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final double avg = _calculateAverageMood();
-=======
   @override
   Widget build(BuildContext context) {
     final double avg =
     moodData.isNotEmpty ? moodData.reduce((a, b) => a + b) / moodData.length : 3.0;
->>>>>>> Stashed changes
     final int avgMood = avg.round().clamp(1, 5);
     final String avgEmoji = emojiLabels[avgMood - 1];
 
@@ -229,11 +174,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
 
-<<<<<<< Updated upstream
-              /// Highlights: Weekly Average + Best Day
-=======
               /// Weekly Avg Mood
->>>>>>> Stashed changes
               Expanded(
                 flex: 1,
                 child: Row(
@@ -260,27 +201,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
 
-<<<<<<< Updated upstream
-                    /// Best Day Highlight
-                    Expanded(
-                      child: Card(
-                        margin: const EdgeInsets.all(16),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16)),
-                        elevation: 4,
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.star, size: 48, color: Colors.amber),
-                              const SizedBox(height: 8),
-                              Text(
-                                "Best Day:\n${_bestDayOfWeek()}",
-                                style: const TextStyle(fontSize: 14),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-=======
               /// Highlights Section
               Expanded(
                 flex: 1, // Reduced size here for highlights section
@@ -301,7 +221,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
->>>>>>> Stashed changes
                           ),
                           const SizedBox(height: 8),
                           if (highlightEntry == null)
