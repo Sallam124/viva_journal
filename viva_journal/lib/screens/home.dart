@@ -297,6 +297,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         margin: const EdgeInsets.only(right: 8),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
+                          // ignore: deprecated_member_use
                           color: _selectedMoodFilter == 'all' ? Colors.black : Colors.grey.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
@@ -366,6 +367,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   margin: const EdgeInsets.only(top: 8),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
+                    // ignore: deprecated_member_use
                     color: Colors.grey.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
@@ -528,7 +530,10 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                         duration: Duration(seconds: 2),
                                                       ),
                                                     );
-                                                    setState(() {});
+                                                    // Update streak, total entries, and average mood
+                                                    await _loadStreakData();
+                                                    await _loadTotalEntries();
+                                                    await _loadAverageMood();
                                                   }
                                                 }
                                               } catch (e) {

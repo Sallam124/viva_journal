@@ -47,7 +47,7 @@ class Entry {
       'content': content != null ? jsonEncode(content) : null,
       'drawingPoints': drawingPoints != null ? jsonEncode(drawingPoints) : null,
       'mediaPaths': mediaPaths != null ? jsonEncode(mediaPaths) : null,
-      'color': color?.value,
+      'color': color?.toARGB32(),
     };
   }
 
