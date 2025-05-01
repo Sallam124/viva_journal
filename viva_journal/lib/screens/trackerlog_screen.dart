@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -10,13 +9,7 @@ import 'package:viva_journal/database/database.dart';
 
 class TrackerLogScreen extends StatefulWidget {
   final DateTime date;
-  final Entry? initialEntry;
-
-  TrackerLogScreen({
-    super.key,
-    DateTime? date,
-    this.initialEntry,
-  }) : date = date ?? DateTime.now();
+  TrackerLogScreen({super.key, DateTime? date}) : date = date ?? DateTime.now();
 
   @override
   TrackerLogScreenState createState() => TrackerLogScreenState();
@@ -24,11 +17,8 @@ class TrackerLogScreen extends StatefulWidget {
 
 class TrackerLogScreenState extends State<TrackerLogScreen> {
   int _currentIndex = 0;
-  Set<String> selectedTags = {};
-  List<int> emotionLevels = [1, 1, 1, 1, 1];
-  String? _selectedMood;
-  JournalData? _journalData;
-  final CarouselSliderController _carouselController = CarouselSliderController();
+  Set<String> selectedTags = {};  // Changed from single String to Set for multiple selection
+  List<int> emotionLevels = [1, 1, 1, 1, 1]; // Track intensity levels for each emotion
 
   final List<List<String>> emotionProgressions = [
     ["Ecstatic", "Cheerful", "Excited", "Thrilled", "Overjoyed"],
@@ -67,54 +57,6 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
   }
 
   List<String> tags = ["Work", "Music", "Family Time", "Exercise"];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadInitialData();
-  }
-
-  void _loadInitialData() async {
-    if (widget.initialEntry != null) {
-      final entry = widget.initialEntry!;
-      _selectedMood = entry.mood;
-
-      // Find the index of the mood in the emotion progressions
-      for (int i = 0; i < emotionProgressions.length; i++) {
-        if (emotionProgressions[i].contains(entry.mood)) {
-          _currentIndex = i;
-          // Find the level of the mood
-          emotionLevels[i] = emotionProgressions[i].indexOf(entry.mood!) + 1;
-          break;
-        }
-      }
-
-      // Load tags
-      if (entry.tags != null) {
-        selectedTags = Set<String>.from(entry.tags!);
-      }
-
-      // Load journal data
-      if (entry.content != null && entry.title != null) {
-        _journalData = JournalData(
-          title: entry.title!,
-          content: entry.content!,
-          drawingPoints: entry.drawingPoints ?? [],
-          attachments: entry.mediaPaths?.map((path) => InteractiveMedia(
-            file: File(path),
-            isVideo: path.toLowerCase().endsWith('.mp4'),
-            position: const Offset(100, 100),
-            size: 200.0,
-            angle: 0.0,
-          )).toList() ?? [],
-        );
-        JournalState.saveJournalData(widget.date, _journalData!);
-      }
-
-      // Update the state to reflect the loaded data
-      setState(() {});
-    }
-  }
 
   void _increaseEmotionLevel(int index) {
     setState(() {
@@ -196,7 +138,6 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
                     ),
                   ),
                   CarouselSlider.builder(
-                    carouselController: _carouselController,
                     itemCount: emotions.length,
                     options: CarouselOptions(
                       height: 220,
@@ -205,7 +146,6 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
                       enableInfiniteScroll: true,
                       viewportFraction: 0.6,
                       enlargeStrategy: CenterPageEnlargeStrategy.zoom,
-                      initialPage: _currentIndex,
                       onPageChanged: (index, reason) {
                         setState(() {
                           _currentIndex = index;
@@ -318,14 +258,9 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
                       builder: (context) => JournalScreen(
                         date: widget.date,
                         color: colors[_currentIndex],
-                        initialData: _journalData,
                       ),
                     ),
-                  ).then((_) async {
-                    // Refresh journal data after returning from JournalScreen
-                    _journalData = await JournalState.getJournalData(widget.date);
-                    setState(() {});
-                  });
+                  );
                 },
                 child: Container(
                   height: 150,
@@ -473,27 +408,18 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
       return;
     }
 
-    final entry = Entry(
-      type: 'journal',
+    final entry = JournalEntry(
       date: widget.date,
-      mood: emotions[_currentIndex],
       tags: selectedTags.toList(),
       title: journalData.title,
       content: journalData.content,
       drawingPoints: journalData.drawingPoints,
       mediaPaths: journalData.attachments.map((a) => a.file.path).toList(),
       color: colors[_currentIndex],
+      mood: emotions[_currentIndex],
     );
 
-    final db = DatabaseHelper();
-
-    // Check if an entry already exists for this date
-    final existingEntry = await db.getEntryForDate(widget.date);
-    if (existingEntry != null) {
-      await db.updateEntry(entry);
-    } else {
-      await db.insertEntry(entry);
-    }
+    await DatabaseHelper().insertJournal(entry);
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Journal entry saved successfully!')),

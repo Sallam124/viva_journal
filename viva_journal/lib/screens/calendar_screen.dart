@@ -92,9 +92,9 @@ class DayCell extends StatelessWidget {
             )
                 : isWeekend // Highlight weekends with a different color
                 ? BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color.fromARGB(102, 255, 255, 255)
-            )//            )
+              shape: BoxShape.circle,
+              color: const Color.fromARGB(102, 255, 255, 255)
+              )//            )
                 : null,
             child: Text(
               '$day', // Display the day number
@@ -175,19 +175,30 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
 
   // Fetch mood for the day from the database
   Future<String> getMoodForDayFromDb(int day, {required int month, required int year}) async {
-    DateTime date = DateTime(year, month, day);
-    final entry = await DatabaseHelper().getEntryForDate(date);
-    return entry?.mood ?? 'NoMood';
+    final String dateStr = DateFormat('d-M-yyyy').format(DateTime(year, month, day));
+    final moodEntry = await DatabaseHelper().getMoodForDay(dateStr);
+    if (moodEntry != null) {
+      return moodEntry.mood;
+    }
+    return 'NoMood';
   }
 
   // Determine mood icon based on the stored mood
-  String getMoodAsset(String mood) {
-    if (mood == 'NoMood') return 'assets/images/Star0.png';
-    if (emotionProgressions[0].contains(mood)) return 'assets/images/Star1.png';
-    if (emotionProgressions[1].contains(mood)) return 'assets/images/Star2.png';
-    if (emotionProgressions[2].contains(mood)) return 'assets/images/Star3.png';
-    if (emotionProgressions[3].contains(mood)) return 'assets/images/Star4.png';
-    if (emotionProgressions[4].contains(mood)) return 'assets/images/Star5.png';
+  String getMoodForDay(String mood) {
+    if (mood == 'NoMood') {
+      return 'assets/images/Star0.png';
+    }
+    if (emotionProgressions[0].contains(mood)) {
+      return 'assets/images/Star1.png';
+    } else if (emotionProgressions[1].contains(mood)) {
+      return 'assets/images/Star2.png';
+    } else if (emotionProgressions[2].contains(mood)) {
+      return 'assets/images/Star3.png';
+    } else if (emotionProgressions[3].contains(mood)) {
+      return 'assets/images/Star4.png';
+    } else if (emotionProgressions[4].contains(mood)) {
+      return 'assets/images/Star5.png';
+    }
     return 'assets/images/Star0.png';
   }
 
@@ -205,21 +216,10 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
 
   // Fetch moods and store them in the cache
   Future<void> _fetchMoods() async {
-    List<Future<String>> futures = [];
-    for (int day = 1; day <= _getDaysInMonth(_selectedMonth, _selectedYear); day++) {
-      futures.add(getMoodForDayFromDb(day, month: _selectedMonth, year: _selectedYear));
-    }
-
-    List<String> moods = await Future.wait(futures);
-    if (mounted) {
-      setState(() {
-        String currentKey = '$_selectedYear-$_selectedMonth';
-        _cachedMoodData[currentKey] = {};
-        for (int day = 1; day <= _getDaysInMonth(_selectedMonth, _selectedYear); day++) {
-          _cachedMoodData[currentKey]![day] = moods[day - 1];
-        }
-      });
-    }
+    final data = await _getMoodsForMonthData(month: _selectedMonth, year: _selectedYear);
+    setState(() {
+      _cachedMoodData[currentKey] = data;
+    });
   }
 
   // Prefetch mood data for adjacent months
@@ -296,19 +296,6 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
       _selectedYear = DateTime.now().year;
     });
     _fetchAndPrefetch();
-  }
-
-  Future<void> _fetchMoodForDate(DateTime date) async {
-    final entry = await DatabaseHelper().getEntryForDate(date);
-    if (mounted) {
-      setState(() {
-        String currentKey = '${date.year}-${date.month}';
-        if (!_cachedMoodData.containsKey(currentKey)) {
-          _cachedMoodData[currentKey] = {};
-        }
-        _cachedMoodData[currentKey]![date.day] = entry?.mood ?? 'NoMood';
-      });
-    }
   }
 
   // Build the UI
@@ -491,14 +478,14 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
                       return DayCell(
                         day: day,
                         isToday: isToday,
-                        moodAsset: getMoodAsset(_cachedMoodData[currentKey]?[day] ?? 'NoMood'),
+                        moodAsset: getMoodForDay(_cachedMoodData[currentKey]?[day] ?? 'NoMood'),
                         onTap: () async {
                           final result = await Navigator.push(
                             context,
                             MaterialPageRoute(builder: (_) => TrackerLogScreen(date: DateTime(_selectedYear, _selectedMonth, day))),
                           );
                           if (result == true) {
-                            await _fetchMoodForDate(DateTime(_selectedYear, _selectedMonth, day));
+                            await _fetchMoods();
                           }
                         },
                         isWeekend: isWeekend,
@@ -515,4 +502,3 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
     );
   }
 }
-

@@ -15,7 +15,7 @@ class MiniCalendar extends StatefulWidget {
 
 class MiniCalendarState extends State<MiniCalendar> {
   late List<DateTime> _weekDates;
-  final Map<DateTime, Entry> _entryData = {};
+  final Map<DateTime, String> _moodData = {};
   final DatabaseHelper _db = DatabaseHelper();
   late Timer _rotationTimer;
   double _rotationAngle = 0.0;
@@ -32,7 +32,7 @@ class MiniCalendarState extends State<MiniCalendar> {
   void initState() {
     super.initState();
     _initializeWeekDates();
-    _fetchEntriesForWeek();
+    _fetchMoodsForWeek();
 
     _rotationTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
       if (mounted) {
@@ -59,30 +59,20 @@ class MiniCalendarState extends State<MiniCalendar> {
     _weekDates = List.generate(7, (index) => sunday.add(Duration(days: index)));
   }
 
-  Future<void> _fetchEntriesForWeek() async {
-    try {
-      for (DateTime date in _weekDates) {
-        final entry = await _db.getEntryForDate(date);
-        if (mounted) {
-          setState(() {
-            if (entry != null) {
-              _entryData[date] = entry;
-            } else {
-              _entryData.remove(date);
-            }
-          });
-        }
+  Future<void> _fetchMoodsForWeek() async {
+    for (DateTime date in _weekDates) {
+      String dateStr = DateFormat('d-M-yyyy').format(date);
+      final moodEntry = await _db.getMoodForDay(dateStr);
+      if (mounted) {
+        setState(() {
+          _moodData[date] = moodEntry?.mood ?? 'NoMood';
+        });
       }
-    } catch (e) {
-      print('Error fetching entries: $e');
     }
   }
 
-  String getMoodAsset(DateTime date) {
-    final entry = _entryData[date];
-    if (entry == null || entry.mood == null) return 'assets/images/Star0.png';
-
-    final mood = entry.mood!;
+  String getMoodAsset(String mood) {
+    if (mood == 'NoMood') return 'assets/images/Star0.png';
     if (emotionProgressions[0].contains(mood)) return 'assets/images/Star1.png';
     if (emotionProgressions[1].contains(mood)) return 'assets/images/Star2.png';
     if (emotionProgressions[2].contains(mood)) return 'assets/images/Star3.png';
@@ -91,11 +81,8 @@ class MiniCalendarState extends State<MiniCalendar> {
     return 'assets/images/Star0.png';
   }
 
-  Color getMoodColor(DateTime date) {
-    final entry = _entryData[date];
-    if (entry == null || entry.mood == null) return const Color(0xFF2F2F2F);
-
-    final mood = entry.mood!;
+  Color getMoodColor(String mood) {
+    if (mood == 'NoMood') return const Color(0xFF2F2F2F);
     if (emotionProgressions[0].contains(mood)) return const Color(0xFFFFE100);
     if (emotionProgressions[1].contains(mood)) return const Color(0xFFFFC917);
     if (emotionProgressions[2].contains(mood)) return const Color(0xFFF8650C);
@@ -123,17 +110,15 @@ class MiniCalendarState extends State<MiniCalendar> {
               date.month == now.month &&
               date.day == now.day;
           bool isFuture = date.isAfter(now);
-          final entry = _entryData[date];
-          final hasEntry = entry != null;
-          Color moodColor = getMoodColor(date);
+          String mood = _moodData[date] ?? 'NoMood';
+          Color moodColor = getMoodColor(mood);
 
-          Widget calendarDay = !hasEntry && !isFuture
+          Widget calendarDay = mood == 'NoMood' && !isFuture
               ? Container(
             width: 45,
             height: 80,
             margin: const EdgeInsets.symmetric(horizontal: 4),
             decoration: BoxDecoration(
-              color: !isToday ? const Color(0xFF2F2F2F) : null,
               borderRadius: BorderRadius.circular(12),
               gradient: isToday
                   ? SweepGradient(
@@ -150,6 +135,7 @@ class MiniCalendarState extends State<MiniCalendar> {
                 transform: GradientRotation(_rotationAngle),
               )
                   : null,
+              color: !isToday ? const Color(0xFF2F2F2F) : null,
               boxShadow: isToday
                   ? [
                 BoxShadow(
@@ -189,7 +175,7 @@ class MiniCalendarState extends State<MiniCalendar> {
                     ),
                     const SizedBox(height: 2),
                     Image.asset(
-                      getMoodAsset(date),
+                      getMoodAsset(mood),
                       width: 18,
                       height: 18,
                       color: isFuture ? Colors.transparent : null,
@@ -200,8 +186,32 @@ class MiniCalendarState extends State<MiniCalendar> {
             ),
           )
               : Stack(
-            clipBehavior: Clip.hardEdge,
+            clipBehavior: Clip.none,
             children: [
+              if (isToday)
+                Transform.rotate(
+                  angle: _rotationAngle,
+                  child: Container(
+                    width: 45,
+                    height: 80,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      gradient: SweepGradient(
+                        colors: [
+                          const Color(0xFFFFE100),
+                          const Color(0xFFFFC917),
+                          const Color(0xFFF8650C),
+                          const Color(0xFFF00000),
+                          const Color(0xFF8C0000),
+                          const Color(0xFFFFE100),
+                        ],
+                        stops: const [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
+                        center: Alignment.center,
+                      ),
+                    ),
+                  ),
+                ),
               Container(
                 width: 45,
                 height: 80,
@@ -209,21 +219,6 @@ class MiniCalendarState extends State<MiniCalendar> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   color: !isToday ? const Color(0xFF2F2F2F) : Colors.transparent,
-                  gradient: isToday
-                      ? SweepGradient(
-                    colors: [
-                      const Color(0xFFFFE100),
-                      const Color(0xFFFFC917),
-                      const Color(0xFFF8650C),
-                      const Color(0xFFF00000),
-                      const Color(0xFF8C0000),
-                      const Color(0xFFFFE100),
-                    ],
-                    stops: const [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
-                    center: Alignment.center,
-                    transform: GradientRotation(_rotationAngle),
-                  )
-                      : null,
                   border: Border.all(
                     color: isFuture ? Colors.white24 : moodColor,
                     width: 1.8,
@@ -262,7 +257,7 @@ class MiniCalendarState extends State<MiniCalendar> {
                       ),
                       const SizedBox(height: 2),
                       Image.asset(
-                        getMoodAsset(date),
+                        getMoodAsset(mood),
                         width: 18,
                         height: 18,
                         color: isFuture ? Colors.transparent : null,
@@ -280,15 +275,9 @@ class MiniCalendarState extends State<MiniCalendar> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => TrackerLogScreen(
-                      date: date,
-                      initialEntry: entry,
-                    ),
+                    builder: (context) => TrackerLogScreen(date: date),
                   ),
-                ).then((_) {
-                  // Refresh the data when returning from TrackerLogScreen
-                  _fetchEntriesForWeek();
-                });
+                );
               }
             },
             child: calendarDay,

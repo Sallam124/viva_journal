@@ -7,64 +7,88 @@ import 'package:logger/logger.dart';
 
 final logger = Logger();
 
-// Define the model for the entry
-class Entry {
+// Define the model for the mood entry
+class MoodEntry {
   int? id;
-  String type; // 'mood' or 'journal'
-  String? mood;
-  DateTime date;
-  String? input;
-  List<String>? tags;
-  String? title;
-  List<Map<String, dynamic>>? content;
-  List<Map<String, dynamic>>? drawingPoints;
-  List<String>? mediaPaths;
-  Color? color;
+  String mood;
+  String date;
+  String input;
 
-  Entry({
+  MoodEntry({
     this.id,
-    required this.type,
-    this.mood,
+    required this.mood,
     required this.date,
-    this.input,
-    this.tags,
-    this.title,
-    this.content,
-    this.drawingPoints,
-    this.mediaPaths,
-    this.color,
+    required this.input,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'type': type,
       'mood': mood,
-      'date': DateFormat('yyyy-MM-dd').format(date),
+      'date': date,
       'input': input,
-      'tags': tags != null ? jsonEncode(tags) : null,
-      'title': title,
-      'content': content != null ? jsonEncode(content) : null,
-      'drawingPoints': drawingPoints != null ? jsonEncode(drawingPoints) : null,
-      'mediaPaths': mediaPaths != null ? jsonEncode(mediaPaths) : null,
-      'color': color?.value,
-
     };
   }
 
-  factory Entry.fromMap(Map<String, dynamic> map) {
-    return Entry(
+  factory MoodEntry.fromMap(Map<String, dynamic> map) {
+    return MoodEntry(
       id: map['id'],
-      type: map['type'],
       mood: map['mood'],
-      date: DateFormat('yyyy-MM-dd').parse(map['date']),
+      date: map['date'],
       input: map['input'],
-      tags: map['tags'] != null ? List<String>.from(jsonDecode(map['tags'])) : null,
+    );
+  }
+}
+
+// Define the model for the journal entry
+class JournalEntry {
+  int? id;
+  DateTime date;
+  String mood;
+  List<String> tags;
+  String title;
+  List<Map<String, dynamic>> content;
+  List<Map<String, dynamic>> drawingPoints;
+  List<String> mediaPaths;
+  Color color;
+
+  JournalEntry({
+    this.id,
+    required this.date,
+    required this.mood,
+    required this.tags,
+    required this.title,
+    required this.content,
+    required this.drawingPoints,
+    required this.mediaPaths,
+    required this.color,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'date': date.toIso8601String(),
+      'mood': mood,
+      'tags': jsonEncode(tags),
+      'title': title,
+      'content': jsonEncode(content),
+      'drawingPoints': jsonEncode(drawingPoints),
+      'mediaPaths': jsonEncode(mediaPaths),
+      'color': color.toARGB32(),
+    };
+  }
+
+  factory JournalEntry.fromMap(Map<String, dynamic> map) {
+    return JournalEntry(
+      id: map['id'],
+      date: DateTime.parse(map['date']),
+      mood: map['mood'],
+      tags: List<String>.from(jsonDecode(map['tags'])),
       title: map['title'],
-      content: map['content'] != null ? List<Map<String, dynamic>>.from(jsonDecode(map['content'])) : null,
-      drawingPoints: map['drawingPoints'] != null ? List<Map<String, dynamic>>.from(jsonDecode(map['drawingPoints'])) : null,
-      mediaPaths: map['mediaPaths'] != null ? List<String>.from(jsonDecode(map['mediaPaths'])) : null,
-      color: map['color'] != null ? Color(map['color']) : null,
+      content: List<Map<String, dynamic>>.from(jsonDecode(map['content'])),
+      drawingPoints: List<Map<String, dynamic>>.from(jsonDecode(map['drawingPoints'])),
+      mediaPaths: List<String>.from(jsonDecode(map['mediaPaths'])),
+      color: Color(map['color']),
     );
   }
 }
@@ -91,7 +115,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 5, // Increment version to force migration
+      version: 4, // bumped from 3 to 4
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -99,12 +123,19 @@ class DatabaseHelper {
 
   Future<void> _onCreate(Database db, int version) async {
     await db.execute('''
-      CREATE TABLE entries(
+      CREATE TABLE moods(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        type TEXT NOT NULL,
         mood TEXT,
         date TEXT,
-        input TEXT,
+        input TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE journals(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT,
+        mood TEXT,
         tags TEXT,
         title TEXT,
         content TEXT,
@@ -116,63 +147,13 @@ class DatabaseHelper {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 5) {
-      // Drop old tables if they exist
-      await db.execute('DROP TABLE IF EXISTS moods');
-      await db.execute('DROP TABLE IF EXISTS journals');
-
-      // Create new table
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS entries(
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          type TEXT NOT NULL,
-          mood TEXT,
-          date TEXT,
-          input TEXT,
-          tags TEXT,
-          title TEXT,
-          content TEXT,
-          drawingPoints TEXT,
-          mediaPaths TEXT,
-          color INTEGER
-        )
-      ''');
-
-      // Migrate data from old tables if they exist
-      try {
-        // Migrate moods data
-        final List<Map<String, dynamic>> oldMoods = await db.query('moods');
-        for (var mood in oldMoods) {
-          await db.insert('entries', {
-            'type': 'mood',
-            'mood': mood['mood'],
-            'date': mood['date'],
-            'input': mood['input'],
-          });
-        }
-
-        // Migrate journals data
-        final List<Map<String, dynamic>> oldJournals = await db.query('journals');
-        for (var journal in oldJournals) {
-          await db.insert('entries', {
-            'type': 'journal',
-            'mood': journal['mood'],
-            'date': journal['date'],
-            'tags': journal['tags'],
-            'title': journal['title'],
-            'content': journal['content'],
-            'drawingPoints': journal['drawingPoints'],
-            'mediaPaths': journal['mediaPaths'],
-            'color': journal['color'],
-          });
-        }
-      } catch (e) {
-        logger.e('Error during migration: $e');
-      }
+    if (oldVersion < 4) {
+      await db.execute('ALTER TABLE journals ADD COLUMN tags TEXT');
+      await db.execute('ALTER TABLE journals ADD COLUMN drawingPoints TEXT');
     }
   }
 
-  Future<List<Entry>> getEntriesPastWeek() async {
+  Future<List<MoodEntry>> getEntriesPastWeek() async {
     try {
       final db = await database;
       DateTime currentDate = DateTime.now();
@@ -181,116 +162,142 @@ class DatabaseHelper {
       String formattedSevenDaysAgo = DateFormat('yyyy-MM-dd').format(sevenDaysAgo);
 
       final List<Map<String, dynamic>> maps = await db.query(
-        'entries',
+        'moods',
         where: 'date BETWEEN ? AND ?',
         whereArgs: [formattedSevenDaysAgo, formattedCurrentDate],
         orderBy: 'date DESC',
       );
 
-      return List.generate(maps.length, (i) => Entry.fromMap(maps[i]));
+      return List.generate(maps.length, (i) => MoodEntry.fromMap(maps[i]));
     } catch (e) {
       logger.e('Error fetching entries for the past week: $e');
       return [];
     }
   }
 
-  Future<Entry?> getEntryForDate(DateTime date) async {
+  Future<MoodEntry?> getMoodForDay(String date) async {
     try {
       final db = await database;
-      String formattedDate = DateFormat('yyyy-MM-dd').format(date);
       final List<Map<String, dynamic>> maps = await db.query(
-        'entries',
+        'moods',
         where: 'date = ?',
-        whereArgs: [formattedDate],
+        whereArgs: [date],
       );
-
       if (maps.isNotEmpty) {
-        return Entry.fromMap(maps.first);
+        return MoodEntry.fromMap(maps.first);
+      } else {
+        return null;
       }
-      return null;
     } catch (e) {
-      logger.e('Error getting entry: $e');
+      logger.e('Error fetching mood for day $date: $e');
       return null;
     }
   }
 
-  Future<int> insertEntry(Entry entry) async {
+  Future<int> insertMood(MoodEntry moodEntry) async {
     try {
       final db = await database;
-      Map<String, dynamic> entryMap = entry.toMap();
-      entryMap['date'] = DateFormat('yyyy-MM-dd').format(entry.date);
-      return await db.insert('entries', entryMap);
+      return await db.insert('moods', moodEntry.toMap());
     } catch (e) {
-      logger.e('Error inserting entry: $e');
+      logger.e('Error inserting mood: $e');
       rethrow;
     }
   }
 
-  Future<int> updateEntry(Entry entry) async {
+  Future<int> updateMood(MoodEntry moodEntry) async {
     try {
       final db = await database;
-      Map<String, dynamic> entryMap = entry.toMap();
-      entryMap.remove('id');
-      entryMap['date'] = DateFormat('yyyy-MM-dd').format(entry.date);
       return await db.update(
-        'entries',
-        entryMap,
+        'moods',
+        moodEntry.toMap(),
         where: 'date = ?',
-        whereArgs: [DateFormat('yyyy-MM-dd').format(entry.date)],
+        whereArgs: [moodEntry.date],
       );
     } catch (e) {
-      logger.e('Error updating entry: $e');
+      logger.e('Error updating mood: $e');
       return 0;
     }
   }
 
-  Future<int> deleteEntry(DateTime date) async {
+  Future<int> deleteMood(String date) async {
     try {
       final db = await database;
-      String formattedDate = DateFormat('yyyy-MM-dd').format(date);
-      logger.i('Attempting to delete entry for date: $formattedDate');
+      return await db.delete(
+        'moods',
+        where: 'date = ?',
+        whereArgs: [date],
+      );
+    } catch (e) {
+      logger.e('Error deleting mood: $e');
+      return 0;
+    }
+  }
 
-      // First check if the entry exists using date-only comparison
-      final List<Map<String, dynamic>> existing = await db.query(
-        'entries',
-        where: "date(date) = date(?)",
-        whereArgs: [formattedDate],
+  Future<JournalEntry?> getJournalForDate(DateTime date) async {
+    try {
+      final db = await database;
+      final List<Map<String, dynamic>> maps = await db.query(
+        'journals',
+        where: 'date = ?',
+        whereArgs: [date.toIso8601String()],
       );
 
-      logger.i('Found ${existing.length} entries matching the date');
-
-      if (existing.isEmpty) {
-        // Let's see what dates are actually in the database
-        final allEntries = await db.query('entries');
-        logger.i('All entries in database:');
-        for (var entry in allEntries) {
-          logger.i('Entry date: ${entry['date']}, type: ${entry['type']}');
-        }
-        logger.w('No entry found for date: $formattedDate');
-        return 0;
+      if (maps.isNotEmpty) {
+        return JournalEntry.fromMap(maps.first);
       }
-
-      final result = await db.delete(
-        'entries',
-        where: "date(date) = date(?)",
-        whereArgs: [formattedDate],
-      );
-
-      logger.i('Delete operation result: $result');
-      return result;
+      return null;
     } catch (e) {
-      logger.e('Error deleting entry: $e');
+      logger.e('Error getting journal: $e');
+      return null;
+    }
+  }
+
+  Future<int> insertJournal(JournalEntry entry) async {
+    try {
+      final db = await database;
+      return await db.insert('journals', entry.toMap());
+    } catch (e) {
+      logger.e('Error inserting journal: $e');
+      rethrow;
+    }
+  }
+
+  Future<int> updateJournal(JournalEntry entry) async {
+    try {
+      final db = await database;
+      return await db.update(
+        'journals',
+        entry.toMap(),
+        where: 'date = ?',
+        whereArgs: [entry.date.toIso8601String()],
+      );
+    } catch (e) {
+      logger.e('Error updating journal: $e');
       return 0;
     }
   }
 
-  Future<List<Entry>> getAllEntries() async {
+  Future<int> deleteJournal(DateTime date) async {
     try {
       final db = await database;
-      final List<Map<String, dynamic>> maps = await db.query('entries');
-      return List.generate(maps.length, (i) => Entry.fromMap(maps[i]));
+      return await db.delete(
+        'journals',
+        where: 'date = ?',
+        whereArgs: [date.toIso8601String()],
+      );
     } catch (e) {
-      logger.e('Error getting all entries: $e');
+      logger.e('Error deleting journal: $e');
+      return 0;
+    }
+  }
+
+  Future<List<JournalEntry>> getAllJournals() async {
+    try {
+      final db = await database;
+      final List<Map<String, dynamic>> maps = await db.query('journals');
+      return List.generate(maps.length, (i) => JournalEntry.fromMap(maps[i]));
+    } catch (e) {
+      logger.e('Error getting all journals: $e');
       return [];
     }
   }

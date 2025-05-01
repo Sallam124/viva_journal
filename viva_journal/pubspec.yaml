@@ -38,10 +38,6 @@ dependencies:
   fl_chart: ^0.71.0
   flutter_quill: ^11.2.0
   flutter_quill_extensions: ^11.0.0
-  share_plus: ^11.0.0
-  pdf: ^3.11.3
-  printing: ^5.14.2
-
 
 
 dev_dependencies:

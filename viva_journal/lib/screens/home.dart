@@ -6,20 +6,6 @@ import 'package:viva_journal/screens/trackerlog_screen.dart';
 import 'package:viva_journal/widgets/mini_calendar.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
-import 'package:viva_journal/database/database.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:viva_journal/screens/journal_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:flutter/rendering.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
-import 'dart:typed_data';
-import 'dart:ui' as ui;
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 
 /// Home screen with a bottom navigation bar and a floating action button.
 class HomeScreen extends StatefulWidget {
@@ -32,8 +18,6 @@ class HomeScreen extends StatefulWidget {
 
 class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _selectedIndex = 0;
-  String _selectedMoodFilter = 'all';
-  String _selectedTagFilter = 'all';
   late AnimationController _glowController;
   late AnimationController _splashController;
   late Animation<double> _glowAnimation;
@@ -46,37 +30,13 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String? _username;
   String? _profilePictureUrl;  // Add profile picture URL
   bool _hasNotifications = false;  // Add notification state
-  int _streakCount = 0;
-  double _averageMoodPercentage = 0.0;
-  int _totalEntries = 0;
-  Color _averageMoodColor = const Color(0xFFF8650C); // Default to Neutral
 
-  final List<Map<String, dynamic>> moodGroups = [
-    {
-      'name': 'Group',
-      'moods': ["Ecstatic", "Cheerful", "Excited", "Thrilled", "Overjoyed"],
-      'color': const Color(0xFFFFE100),
-    },
-    {
-      'name': 'Group',
-      'moods': ["Happy", "Content", "Pleasant", "Cheerful", "Delighted"],
-      'color': const Color(0xFFFFC917),
-    },
-    {
-      'name': 'Group',
-      'moods': ["Neutral", "Fine", "Satisfied", "Meh", "Indifferent"],
-      'color': const Color(0xFFF8650C),
-    },
-    {
-      'name': 'Group',
-      'moods': ["Angry", "Irritated", "Stressed", "Frustrated", "Fuming"],
-      'color': const Color(0xFFF00000),
-    },
-    {
-      'name': 'Group',
-      'moods': ["Down", "Distressed", "Anxious", "Defeated", "Exhausted"],
-      'color': const Color(0xFF8C0000),
-    },
+  final List<Color> _glowColors = [
+    const Color(0xFFFFE100), // Yellow
+    const Color(0xFFFFC917), // Light Orange
+    const Color(0xFFF8650C), // Orange
+    const Color(0xFFF00000), // Red
+    const Color(0xFF8C0000), // Dark Red
   ];
 
   /// time-based greeting
@@ -111,10 +71,6 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   /// Method to build home content
   Widget _buildHomeContent() {
-    final streakKey = GlobalKey();
-    final totalEntriesKey = GlobalKey();
-    final averageMoodKey = GlobalKey();
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
@@ -124,78 +80,73 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Flexible(
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        image: DecorationImage(
-                          image: _profilePictureUrl != null
-                              ? NetworkImage(_profilePictureUrl!)
-                              : const AssetImage('assets/images/pfp.png') as ImageProvider,
-                          fit: BoxFit.cover,
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      image: DecorationImage(
+                        image: _profilePictureUrl != null
+                            ? NetworkImage(_profilePictureUrl!)
+                            : const AssetImage('assets/images/pfp.png') as ImageProvider,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Row(
+                    children: [
+                      Text(
+                        _getGreeting(),
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.normal,
+                          color: Colors.black,
+                          fontFamily: 'SF Pro Display',
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Flexible(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _getGreeting(),
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.normal,
-                              color: Colors.black,
-                              fontFamily: 'SF Pro Display',
+                      if (_username != null) ...[
+                        const SizedBox(width: 8),
+                        Row(
+                          children: [
+                            Text(
+                              _username!,
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                                fontFamily: 'SF Pro Display',
+                              ),
                             ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (_username != null)
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    _username!,
-                                    style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const Text(
-                                  ' ✨',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.normal,
-                                    color: Colors.black,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              ],
+                            const Text(
+                              ' ✨',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.normal,
+                                color: Colors.black,
+                                fontFamily: 'SF Pro Display',
+                              ),
                             ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
               ),
               GestureDetector(
                 onTap: () {
+                  // Handle notification tap
                   setState(() {
                     _hasNotifications = false;
                   });
+                  // TODO: Navigate to notifications screen
                 },
                 child: Stack(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.notifications_outlined,
                       size: 28,
                       color: Colors.black,
@@ -225,19 +176,20 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildBigBlock(
-                key: streakKey,
-                title: "Streak",
-                color: const Color(0xFFF8650C),
-                leftImage: Image.asset(
-                  'assets/images/streak.gif',
-                  width: 80,
-                  height: 80,
+              Expanded(
+                flex: 2,
+                child: _buildBigBlock(
+                  title: "Streak",
+                  color: Color(0xFFF8650C), // Orange-ish
+                  leftImage: Image.asset(
+                    'assets/images/streak.gif', // Place your gif in assets/images and update pubspec.yaml
+                    width: 80,
+                    height: 80,
+                  ),
+                  onTap: () {
+                    // TODO: Handle Streak block tap
+                  },
                 ),
-                percentage: "$_streakCount",
-                onTap: () {
-                  // TODO: Handle Streak block tap
-                },
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -245,22 +197,18 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 child: Column(
                   children: [
                     _buildSmallBlock(
-                      key: totalEntriesKey,
-                      title: "Total Entries",
+                      title: "\n On this same day",
                       color: Colors.white,
-                      iconPath: 'assets/images/your_calendar_icon.png',
-                      subtitle: "$_totalEntries",
+                      iconPath: 'assets/images/your_calendar_icon.png', // Change accordingly
                       onTap: () {
-                        // TODO: Handle Total Entries tap
+                        // TODO: Handle On this same day tap
                       },
                     ),
                     const SizedBox(height: 12),
                     _buildSmallBlock(
-                      key: averageMoodKey,
-                      title: "Average Mood",
-                      color: _averageMoodColor,
-                      iconPath: 'assets/images/your_mood_icon.png',
-                      subtitle: "${_averageMoodPercentage.toStringAsFixed(0)}%",
+                      title: "\n Average mood",
+                      color: Color(0xFF8C0000), // Dark red
+                      iconPath: 'assets/images/your_mood_icon.png', // Change accordingly
                       onTap: () {
                         // TODO: Handle Average mood tap
                       },
@@ -269,367 +217,6 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 24),
-          // Add Entries List Section with Filters
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Recent Entries',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                  fontFamily: 'SF Pro Display',
-                ),
-              ),
-              const SizedBox(height: 8),
-              // Mood Group Filters
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    // All moods filter
-                    GestureDetector(
-                      onTap: () => setState(() => _selectedMoodFilter = 'all'),
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _selectedMoodFilter == 'all' ? Colors.black : Colors.grey.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: _selectedMoodFilter == 'all' ? Colors.black : Colors.grey,
-                            width: 1,
-                          ),
-                        ),
-                        child: Text(
-                          'All Moods',
-                          style: TextStyle(
-                            color: _selectedMoodFilter == 'all' ? Colors.white : Colors.grey,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Mood group filters
-                    ...moodGroups.map((group) => GestureDetector(
-                      onTap: () => setState(() => _selectedMoodFilter = group['name']),
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _selectedMoodFilter == group['name']
-                              ? group['color']
-                              : group['color'].withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: group['color'],
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: SvgPicture.asset(
-                                "assets/images/Star.svg",
-                                colorFilter: ColorFilter.mode(
-                                    _selectedMoodFilter == group['name'] ? Colors.white : group['color'],
-                                    BlendMode.srcIn
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              group['name'],
-                              style: TextStyle(
-                                color: _selectedMoodFilter == group['name'] ? Colors.white : group['color'],
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              // Tag Filter
-              if (_selectedTagFilter != 'all')
-                Container(
-                  margin: const EdgeInsets.only(top: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Colors.grey,
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.tag, size: 16, color: Colors.grey),
-                      const SizedBox(width: 4),
-                      Text(
-                        _selectedTagFilter,
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      GestureDetector(
-                        onTap: () => setState(() => _selectedTagFilter = 'all'),
-                        child: const Icon(Icons.close, size: 16, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () async {
-                setState(() {});
-              },
-              child: FutureBuilder<List<Entry>>(
-                future: DatabaseHelper().getAllEntries(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const Center(
-                      child: Text(
-                        'No entries yet',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey,
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                    );
-                  }
-
-                  // Apply filters
-                  var filteredEntries = snapshot.data!;
-                  if (_selectedMoodFilter != 'all') {
-                    final selectedGroup = moodGroups.firstWhere(
-                          (group) => group['name'] == _selectedMoodFilter,
-                      orElse: () => {'moods': []},
-                    );
-                    filteredEntries = filteredEntries.where((entry) =>
-                        selectedGroup['moods'].contains(entry.mood)
-                    ).toList();
-                  }
-                  if (_selectedTagFilter != 'all') {
-                    filteredEntries = filteredEntries.where((entry) =>
-                    entry.tags != null && entry.tags!.contains(_selectedTagFilter)
-                    ).toList();
-                  }
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.only(bottom: 100), // Add padding for the home bar
-                    itemCount: filteredEntries.length,
-                    itemBuilder: (context, index) {
-                      final entry = filteredEntries[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Date, Mood, and Menu
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    DateFormat('MMM dd, yyyy').format(entry.date),
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey,
-                                      fontFamily: 'SF Pro Display',
-                                    ),
-                                  ),
-                                  Row(
-                                    children: [
-                                      if (entry.mood != null) ...[
-                                        SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child: SvgPicture.asset(
-                                            "assets/images/Star.svg",
-                                            colorFilter: ColorFilter.mode(
-                                                entry.color ?? Colors.grey,
-                                                BlendMode.srcIn
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          entry.mood!,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.black,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                      ],
-                                      PopupMenuButton<String>(
-                                        icon: const Icon(Icons.more_vert),
-                                        onSelected: (value) async {
-                                          if (value == 'delete') {
-                                            final confirmed = await showDialog<bool>(
-                                              context: context,
-                                              builder: (context) => AlertDialog(
-                                                title: const Text('Delete Entry'),
-                                                content: const Text('Are you sure you want to delete this entry?'),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed: () => Navigator.pop(context, false),
-                                                    child: const Text('Cancel'),
-                                                  ),
-                                                  TextButton(
-                                                    onPressed: () => Navigator.pop(context, true),
-                                                    child: const Text('Delete'),
-                                                  ),
-                                                ],
-                                              ),
-                                            );
-
-                                            if (confirmed == true) {
-                                              try {
-                                                await JournalState.deleteJournalData(entry.date);
-                                                final formattedDate = DateFormat('yyyy-MM-dd').format(entry.date);
-                                                logger.i('Deleting entry with formatted date: $formattedDate');
-                                                final result = await DatabaseHelper().deleteEntry(entry.date);
-
-                                                if (result > 0) {
-                                                  if (mounted) {
-                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                      const SnackBar(
-                                                        content: Text('Entry deleted successfully'),
-                                                        duration: Duration(seconds: 2),
-                                                      ),
-                                                    );
-                                                    setState(() {});
-                                                  }
-                                                }
-                                              } catch (e) {
-                                                if (mounted) {
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    SnackBar(
-                                                      content: Text('Error deleting entry: $e'),
-                                                      backgroundColor: Colors.red,
-                                                    ),
-                                                  );
-                                                }
-                                              }
-                                            }
-                                          } else if (value == 'share') {
-                                            await _shareJournalAsPDF(entry);
-                                          }
-                                        },
-                                        itemBuilder: (context) => [
-                                          const PopupMenuItem(
-                                            value: 'share',
-                                            child: Row(
-                                              children: [
-                                                Icon(Icons.share),
-                                                SizedBox(width: 8),
-                                                Text('Share as PDF'),
-                                              ],
-                                            ),
-                                          ),
-                                          const PopupMenuItem(
-                                            value: 'delete',
-                                            child: Row(
-                                              children: [
-                                                Icon(Icons.delete, color: Colors.red),
-                                                SizedBox(width: 8),
-                                                Text('Delete', style: TextStyle(color: Colors.red)),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              if (entry.title != null && entry.title!.isNotEmpty)
-                                Text(
-                                  entry.title!,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              if (entry.content != null && entry.content!.isNotEmpty) ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  entry.content!.first['insert'] ?? '',
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.black87,
-                                    fontFamily: 'SF Pro Display',
-                                  ),
-                                ),
-                              ],
-                              if (entry.tags != null && entry.tags!.isNotEmpty) ...[
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 8,
-                                  children: entry.tags!.map((tag) => Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: (entry.color ?? Colors.grey).withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: entry.color ?? Colors.grey,
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      tag,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.black,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  )).toList(),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
           ),
         ],
       ),
@@ -640,10 +227,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
-    _fetchUserData();
-    _loadStreakData();
-    _loadAverageMood();
-    _loadTotalEntries();
+    _fetchUserData();  // Changed from _fetchUsername to _fetchUserData
 
     _glowController = AnimationController(
       duration: const Duration(milliseconds: 3000),
@@ -720,14 +304,14 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Color _getGlowColor(double value) {
-    final colorCount = moodGroups.length;
+    final colorCount = _glowColors.length;
     final position = (value * colorCount).floor();
     final nextPosition = (position + 1) % colorCount;
     final progress = (value * colorCount) - position;
 
     return Color.lerp(
-      moodGroups[position]['color'],
-      moodGroups[nextPosition]['color'],
+      _glowColors[position],
+      _glowColors[nextPosition],
       progress,
     )!;
   }
@@ -920,105 +504,48 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildBigBlock({
     required String title,
     required Color color,
-    Widget? leftImage,
+    Widget? leftImage, // New optional parameter for left-aligned image/gif
     required VoidCallback onTap,
-    String? subtitle,
-    String? percentage,
-    required GlobalKey key,
   }) {
-    return RepaintBoundary(
-      key: key,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          height: 160,
-          width: 180,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Color.fromARGB(76, color.red, color.green, color.blue),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              if (leftImage != null)
-                Positioned(
-                  left: 16,
-                  top: 50, // Moved down to center the GIF
-                  child: SizedBox(
-                    width: 80,
-                    height: 80,
-                    child: leftImage,
-                  ),
-                ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 160,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Stack(
+          children: [
+            if (leftImage != null)
               Positioned(
-                top: 16,
                 left: 16,
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'SF Pro Display',
-                  ),
+                top: 32,
+                bottom: 32,
+                child: SizedBox(
+                  width: 80,
+                  child: leftImage,
                 ),
               ),
-              if (percentage != null)
-                Positioned(
-                  left: 110,
-                  top: 50,
-                  child: Text(
-                    percentage,
-                    style: const TextStyle(
-                      fontSize: 32,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'SF Pro Display',
-                    ),
-                  ),
-                ),
-              Positioned(
-                top: 16,
-                right: 16,
-                child: PopupMenuButton<String>(
-                  icon: const Icon(Icons.open_in_new, color: Colors.white),
-                  onSelected: (value) async {
-                    if (value == 'share') {
-                      final RenderBox box = key.currentContext!.findRenderObject() as RenderBox;
-                      final image = await _captureWidget(box);
-                      if (image != null) {
-                        final tempDir = await getTemporaryDirectory();
-                        final file = await File('${tempDir.path}/share.png').create();
-                        await file.writeAsBytes(image);
-                        await Share.shareXFiles(
-                          [XFile(file.path)],
-                          text: "Check out my ${title.toLowerCase()} on Viva Journal! 📝✨",
-                        );
-                      }
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'share',
-                      child: Row(
-                        children: [
-                          Icon(Icons.share),
-                          SizedBox(width: 8),
-                          Text('Share Block'),
-                        ],
-                      ),
-                    ),
-                  ],
+            Positioned(
+              top: 16,
+              left: leftImage != null ? 110 : 16, // Move title right if image present
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 20,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'SF Pro Display',
                 ),
               ),
-            ],
-          ),
+            ),
+            Positioned(
+              top: 16,
+              right: 16,
+              child: Icon(Icons.open_in_new, color: Colors.white),
+            ),
+          ],
         ),
       ),
     );
@@ -1030,299 +557,53 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     required Color color,
     required String iconPath,
     required VoidCallback onTap,
-    String? subtitle,
-    required GlobalKey key,
+
   }) {
-    return RepaintBoundary(
-      key: key,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          height: 70,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Color.fromARGB(76, color.red, color.green, color.blue),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              Positioned(
-                top: 10,
-                left: 12,
-                right: 12,
-                child: Column(
-                  children: [
-                    Text(
-                      title,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: color == Colors.white ? Colors.black : Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: color == Colors.white ? Colors.black : Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                    ],
-                  ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 70,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 6,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              top: 10,
+              left: 12,
+              right: 12,
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: color == Colors.white ? Colors.black : Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'SF Pro Display',
                 ),
               ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: PopupMenuButton<String>(
-                  icon: Icon(
-                    Icons.open_in_new,
-                    size: 16,
-                    color: color == Colors.white ? Colors.black : Colors.white,
-                  ),
-                  onSelected: (value) async {
-                    if (value == 'share') {
-                      final RenderBox box = key.currentContext!.findRenderObject() as RenderBox;
-                      final image = await _captureWidget(box);
-                      if (image != null) {
-                        final tempDir = await getTemporaryDirectory();
-                        final file = await File('${tempDir.path}/share.png').create();
-                        await file.writeAsBytes(image);
-                        await Share.shareXFiles(
-                          [XFile(file.path)],
-                          text: "Check out my ${title.toLowerCase()} on Viva Journal! 📝✨",
-                        );
-                      }
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'share',
-                      child: Row(
-                        children: [
-                          Icon(Icons.share),
-                          SizedBox(width: 8),
-                          Text('Share Block'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Icon(
+                Icons.open_in_new,
+                size: 16,
+                color: color == Colors.white ? Colors.black : Colors.white,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
-  }
-
-  Future<Uint8List?> _captureWidget(RenderBox box) async {
-    try {
-      final boundary = box as RenderRepaintBoundary;
-      final image = await boundary.toImage(pixelRatio: 3.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      return byteData?.buffer.asUint8List();
-    } catch (e) {
-      logger.e('Error capturing widget: $e');
-      return null;
-    }
-  }
-
-  Future<void> _loadStreakData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final lastOpened = prefs.getString('last_opened');
-    final currentStreak = prefs.getInt('streak_count') ?? 0;
-
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    if (lastOpened != null) {
-      final lastDate = DateTime.parse(lastOpened);
-      final lastDay = DateTime(lastDate.year, lastDate.month, lastDate.day);
-
-      if (lastDay.isBefore(today)) {
-        // If last opened was yesterday, increment streak
-        if (lastDay.isAtSameMomentAs(today.subtract(const Duration(days: 1)))) {
-          setState(() {
-            _streakCount = currentStreak + 1;
-          });
-          await prefs.setInt('streak_count', _streakCount);
-        } else {
-          // If more than one day has passed, reset streak
-          setState(() {
-            _streakCount = 1;
-          });
-          await prefs.setInt('streak_count', 1);
-        }
-      } else {
-        setState(() {
-          _streakCount = currentStreak;
-        });
-      }
-    } else {
-      setState(() {
-        _streakCount = 1;
-      });
-      await prefs.setInt('streak_count', 1);
-    }
-
-    await prefs.setString('last_opened', today.toIso8601String());
-  }
-
-  Future<void> _loadAverageMood() async {
-    final entries = await DatabaseHelper().getAllEntries();
-    if (entries.isEmpty) return;
-
-    int totalMoodValue = 0;
-    for (var entry in entries) {
-      final moodIndex = moodGroups.indexWhere((group) =>
-          group['moods'].contains(entry.mood)
-      );
-      if (moodIndex != -1) {
-        totalMoodValue += moodIndex;
-      }
-    }
-
-    final averageMoodIndex = totalMoodValue / entries.length;
-    setState(() {
-      _averageMoodPercentage = (averageMoodIndex / (moodGroups.length - 1)) * 100;
-      _averageMoodColor = moodGroups[averageMoodIndex.round()]['color'];
-    });
-  }
-
-  Future<void> _loadTotalEntries() async {
-    final entries = await DatabaseHelper().getAllEntries();
-    setState(() {
-      _totalEntries = entries.length;
-    });
-  }
-
-  Future<void> _shareJournalAsPDF(Entry entry) async {
-    try {
-      // Create a PDF document
-      final pdf = pw.Document();
-
-      // Add a page to the PDF
-      pdf.addPage(
-        pw.Page(
-          pageFormat: PdfPageFormat.a4,
-          build: (pw.Context context) {
-            return pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                // Header with date and mood
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text(
-                      DateFormat('MMM dd, yyyy').format(entry.date),
-                      style: pw.TextStyle(
-                        fontSize: 14,
-                        color: PdfColors.grey,
-                      ),
-                    ),
-                    if (entry.mood != null)
-                      pw.Row(
-                        children: [
-                          pw.Text(
-                            entry.mood!,
-                            style: pw.TextStyle(
-                              fontSize: 14,
-                              fontWeight: pw.FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-                pw.SizedBox(height: 20),
-
-                // Title
-                if (entry.title != null && entry.title!.isNotEmpty)
-                  pw.Text(
-                    entry.title!,
-                    style: pw.TextStyle(
-                      fontSize: 24,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                pw.SizedBox(height: 10),
-
-                // Content
-                if (entry.content != null && entry.content!.isNotEmpty)
-                  pw.Text(
-                    entry.content!.first['insert'] ?? '',
-                    style: pw.TextStyle(
-                      fontSize: 14,
-                    ),
-                  ),
-                pw.SizedBox(height: 20),
-
-                // Tags
-                if (entry.tags != null && entry.tags!.isNotEmpty)
-                  pw.Wrap(
-                    spacing: 8,
-                    children: entry.tags!.map((tag) =>
-                        pw.Container(
-                          padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: pw.BoxDecoration(
-                            color: PdfColors.grey100,
-                            borderRadius: pw.BorderRadius.circular(20),
-                            border: pw.Border.all(
-                              color: PdfColors.grey,
-                              width: 1,
-                            ),
-                          ),
-                          child: pw.Text(
-                            tag,
-                            style: pw.TextStyle(
-                              fontSize: 12,
-                              color: PdfColors.black,
-                            ),
-                          ),
-                        ),
-                    ).toList(),
-                  ),
-              ],
-            );
-          },
-        ),
-      );
-
-      // Save the PDF to a temporary file
-      final tempDir = await getTemporaryDirectory();
-      final file = File('${tempDir.path}/journal_entry.pdf');
-      await file.writeAsBytes(await pdf.save());
-
-      // Share the PDF file
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        text: "My journal entry from ${DateFormat('MMM dd, yyyy').format(entry.date)} 📝",
-      );
-    } catch (e) {
-      logger.e('Error generating PDF: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error generating PDF: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
   }
 }
 
