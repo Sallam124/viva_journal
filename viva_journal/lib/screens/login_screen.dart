@@ -62,14 +62,13 @@
           password: password,
         );
 
-        // ✅ Clear previous session data
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.clear();  // Clear any cached preferences
 
         if (userCredential.user != null && !userCredential.user!.emailVerified) {
           setState(() => errorMessage = "Please verify your email before logging in!");
         } else {
-          // ✅ Store new session data
+
           await prefs.setBool('loggedInViaLoginScreen', true);
 
           // ignore: use_build_context_synchronously
