@@ -1,15 +1,22 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'calendar_screen.dart';
-import 'package:viva_journal/screens/home.dart';  // Update import for HomeScreen
-import 'package:viva_journal/screens/journal_screen.dart';  // Added import for JournalScreen
+import 'package:viva_journal/screens/home.dart';
+import 'package:viva_journal/screens/journal_screen.dart';
 import 'package:viva_journal/database/database.dart';
 
 class TrackerLogScreen extends StatefulWidget {
   final DateTime date;
-  TrackerLogScreen({super.key, DateTime? date}) : date = date ?? DateTime.now();
+  final Entry? initialEntry;
+
+  TrackerLogScreen({
+    super.key,
+    DateTime? date,
+    this.initialEntry,
+  }) : date = date ?? DateTime.now();
 
   @override
   TrackerLogScreenState createState() => TrackerLogScreenState();
@@ -17,8 +24,10 @@ class TrackerLogScreen extends StatefulWidget {
 
 class TrackerLogScreenState extends State<TrackerLogScreen> {
   int _currentIndex = 0;
-  Set<String> selectedTags = {};  // Changed from single String to Set for multiple selection
-  List<int> emotionLevels = [1, 1, 1, 1, 1]; // Track intensity levels for each emotion
+  Set<String> selectedTags = {};
+  List<int> emotionLevels = [1, 1, 1, 1, 1];
+  JournalData? _journalData;
+  final CarouselSliderController _carouselController = CarouselSliderController();
 
   final List<List<String>> emotionProgressions = [
     ["Ecstatic", "Cheerful", "Excited", "Thrilled", "Overjoyed"],
@@ -29,42 +38,75 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
   ];
 
   final List<Color> baseColors = [
-    Color(0xFFFFE100), // Bright Yellow
-    Color(0xFFFFC917), // Yellow
-    Color(0xFFF8650C), // Orange
-    Color(0xFFF00000), // Red
-    Color(0xFF8C0000), // Dark Red
+    Color(0xFFFFE100),
+    Color(0xFFFFC917),
+    Color(0xFFF8650C),
+    Color(0xFFF00000),
+    Color(0xFF8C0000),
   ];
 
   List<String> get emotions {
     return List.generate(emotionProgressions.length, (index) {
-      return emotionProgressions[index][emotionLevels[index] - 1]; // Changed to -1 to avoid index out of bounds
+      return emotionProgressions[index][emotionLevels[index] - 1];
     });
   }
 
   List<Color> get colors {
     return baseColors.asMap().map((index, color) {
-      // For yellow and light yellow, make it brighter instead of darker
-      if (index == 0 || index == 1) {
-        double factor = 0.15 * (emotionLevels[index] - 1);
-        return MapEntry(index, Color.lerp(color, Colors.white, factor)!);
-      } else {
-        // For other colors, keep the darkening effect
-        double factor = 0.15 * (emotionLevels[index] - 1);
-        return MapEntry(index, Color.lerp(color, Colors.black, factor)!);
-      }
+      double factor = 0.15 * (emotionLevels[index] - 1);
+      return MapEntry(index, index <= 1
+          ? Color.lerp(color, Colors.white, factor)!
+          : Color.lerp(color, Colors.black, factor)!);
     }).values.toList();
   }
 
   List<String> tags = ["Work", "Music", "Family Time", "Exercise"];
 
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialData();
+  }
+
+  void _loadInitialData() async {
+    if (widget.initialEntry != null) {
+      final entry = widget.initialEntry!;
+
+      for (int i = 0; i < emotionProgressions.length; i++) {
+        if (emotionProgressions[i].contains(entry.mood)) {
+          _currentIndex = i;
+          emotionLevels[i] = emotionProgressions[i].indexOf(entry.mood!) + 1;
+          break;
+        }
+      }
+
+      if (entry.tags != null) {
+        selectedTags = Set<String>.from(entry.tags!);
+      }
+
+      if (entry.content != null && entry.title != null) {
+        _journalData = JournalData(
+          title: entry.title!,
+          content: entry.content!,
+          drawingPoints: entry.drawingPoints ?? [],
+          attachments: entry.mediaPaths?.map((path) => InteractiveMedia(
+            file: File(path),
+            isVideo: path.toLowerCase().endsWith('.mp4'),
+            position: const Offset(100, 100),
+            size: 200.0,
+            angle: 0.0,
+          )).toList() ?? [],
+        );
+        JournalState.saveJournalData(widget.date, _journalData!);
+      }
+
+      setState(() {});
+    }
+  }
+
   void _increaseEmotionLevel(int index) {
     setState(() {
-      if (emotionLevels[index] < 5) {
-        emotionLevels[index]++; // Increase level up to 5
-      } else {
-        emotionLevels[index] = 1; // Reset to 1 if it reaches 5
-      }
+      emotionLevels[index] = emotionLevels[index] < 5 ? emotionLevels[index] + 1 : 1;
     });
   }
 
@@ -93,10 +135,8 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
             onPressed: () {
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const HomeScreen(initialIndex: 1),  // 1 is the calendar index
-                ),
-                    (route) => false,  // Remove all previous routes
+                MaterialPageRoute(builder: (context) => const HomeScreen(initialIndex: 1)),
+                    (route) => false,
               );
             },
             icon: const Icon(Icons.calendar_today, color: Colors.white),
@@ -110,27 +150,21 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 20),
-              const Text(
-                "How you feeling today",
-                style: TextStyle(color: Colors.white, fontSize: 18),
-              ),
+              const Text("How you feeling today", style: TextStyle(color: Colors.white, fontSize: 18)),
               const SizedBox(height: 10),
-
-              /// **Carousel Slider with Background Blur Circle**
               Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Big blur circle in the background
                   AnimatedContainer(
                     duration: Duration(milliseconds: 300),
                     height: 1,
                     width: 1,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: selectedColor.withAlpha(51),  // 0.2 * 255 ≈ 51
+                      color: selectedColor.withAlpha(51),
                       boxShadow: [
                         BoxShadow(
-                          color: selectedColor.withAlpha(102),  // 0.4 * 255 ≈ 102
+                          color: selectedColor.withAlpha(102),
                           blurRadius: 50,
                           spreadRadius: 120,
                         ),
@@ -138,6 +172,7 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
                     ),
                   ),
                   CarouselSlider.builder(
+                    carouselController: _carouselController,
                     itemCount: emotions.length,
                     options: CarouselOptions(
                       height: 220,
@@ -146,6 +181,7 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
                       enableInfiniteScroll: true,
                       viewportFraction: 0.6,
                       enlargeStrategy: CenterPageEnlargeStrategy.zoom,
+                      initialPage: _currentIndex,
                       onPageChanged: (index, reason) {
                         setState(() {
                           _currentIndex = index;
@@ -175,22 +211,16 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
               ),
               const SizedBox(height: 10),
               const Text("Tap to increase emotion", style: TextStyle(color: Colors.white)),
-
               const SizedBox(height: 20),
-
-              /// **"What were you doing?" Section**
               const Align(
                 alignment: Alignment.centerLeft,
                 child: Text("What were you doing?", style: TextStyle(color: Colors.white, fontSize: 16)),
               ),
               const SizedBox(height: 10),
-
-              /// **Scrollable Tags List with Custom Tag Option**
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    /// **"Add Custom Tag" Button** - Moved to the left
                     GestureDetector(
                       onTap: _showCustomTagDialog,
                       child: Container(
@@ -209,7 +239,6 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
                         ),
                       ),
                     ),
-
                     ...tags.map((tag) {
                       bool isSelected = selectedTags.contains(tag);
                       return GestureDetector(
@@ -240,16 +269,12 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 20),
-
-              /// **"Do you have something in mind?" Input**
               const Align(
                 alignment: Alignment.centerLeft,
                 child: Text("Do you have something in mind?", style: TextStyle(color: Colors.white, fontSize: 16)),
               ),
               const SizedBox(height: 20),
-
               GestureDetector(
                 onTap: () {
                   Navigator.push(
@@ -258,9 +283,13 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
                       builder: (context) => JournalScreen(
                         date: widget.date,
                         color: colors[_currentIndex],
+                        initialData: _journalData,
                       ),
                     ),
-                  );
+                  ).then((_) async {
+                    _journalData = await JournalState.getJournalData(widget.date);
+                    setState(() {});
+                  });
                 },
                 child: Container(
                   height: 150,
@@ -291,7 +320,6 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
                         );
                       }
 
-                      // Show preview of the content
                       return Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(16.0),
@@ -327,10 +355,7 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 20),
-
-              /// **Submit Button**
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -351,7 +376,6 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
     );
   }
 
-  /// **Show Custom Tag Dialog**
   void _showCustomTagDialog() {
     TextEditingController customTagController = TextEditingController();
 
@@ -408,18 +432,25 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
       return;
     }
 
-    final entry = JournalEntry(
+    final entry = Entry(
+      type: 'journal',
       date: widget.date,
+      mood: emotions[_currentIndex],
       tags: selectedTags.toList(),
       title: journalData.title,
       content: journalData.content,
       drawingPoints: journalData.drawingPoints,
       mediaPaths: journalData.attachments.map((a) => a.file.path).toList(),
       color: colors[_currentIndex],
-      mood: emotions[_currentIndex],
     );
 
-    await DatabaseHelper().insertJournal(entry);
+    final db = DatabaseHelper();
+    final existingEntry = await db.getEntryForDate(widget.date);
+    if (existingEntry != null) {
+      await db.updateEntry(entry);
+    } else {
+      await db.insertEntry(entry);
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Journal entry saved successfully!')),
@@ -433,7 +464,6 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
   }
 }
 
-/// **Emotion Star Widget**
 class EmotionStar extends StatelessWidget {
   final String emotion;
   final Color color;
@@ -451,15 +481,12 @@ class EmotionStar extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          /// **SVG Star Shape**
           SvgPicture.asset(
             "assets/images/Star.svg",
             height: isSelected ? 180 : 120,
             width: isSelected ? 180 : 120,
             colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
           ),
-
-          /// **Emotion Label**
           Text(
             emotion.toUpperCase(),
             style: TextStyle(

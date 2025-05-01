@@ -81,7 +81,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final double avg =
-    moodData.isNotEmpty ? moodData.reduce((a, b) => a + b) / moodData.length : 3.0;
+        moodData.isNotEmpty ? moodData.reduce((a, b) => a + b) / moodData.length : 3.0;
     final int avgMood = avg.round().clamp(1, 5);
     final String avgEmoji = emojiLabels[avgMood - 1];
 
@@ -102,145 +102,145 @@ class _DashboardScreenState extends State<DashboardScreen> {
           body: isLoading
               ? const Center(child: CircularProgressIndicator())
               : Column(
-            children: [
-              /// Mood Graph
-              Expanded(
-                flex: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Card(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                    elevation: 4,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: LineChart(
-                        LineChartData(
-                          minY: 1,
-                          maxY: 5,
-                          titlesData: FlTitlesData(
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                interval: 1,
-                                getTitlesWidget: (value, _) {
-                                  final index = value.toInt();
-                                  if (index >= 0 && index < moodDates.length) {
-                                    return Text(DateFormat('MM/dd').format(moodDates[index]));
-                                  }
-                                  return const Text('');
-                                },
-                              ),
-                            ),
-                            leftTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                interval: 1,
-                                getTitlesWidget: (value, _) {
-                                  int mood = value.toInt().clamp(1, 5);
-                                  return Text(
-                                    emojiLabels[mood - 1],
-                                    style: const TextStyle(fontSize: 20),
-                                  );
-                                },
+                  children: [
+                    /// Mood Graph
+                    Expanded(
+                      flex: 2,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Card(
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16)),
+                          elevation: 4,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: LineChart(
+                              LineChartData(
+                                minY: 1,
+                                maxY: 5,
+                                titlesData: FlTitlesData(
+                                  bottomTitles: AxisTitles(
+                                    sideTitles: SideTitles(
+                                      showTitles: true,
+                                      interval: 1,
+                                      getTitlesWidget: (value, _) {
+                                        final index = value.toInt();
+                                        if (index >= 0 && index < moodDates.length) {
+                                          return Text(DateFormat('MM/dd').format(moodDates[index]));
+                                        }
+                                        return const Text('');
+                                      },
+                                    ),
+                                  ),
+                                  leftTitles: AxisTitles(
+                                    sideTitles: SideTitles(
+                                      showTitles: true,
+                                      interval: 1,
+                                      getTitlesWidget: (value, _) {
+                                        int mood = value.toInt().clamp(1, 5);
+                                        return Text(
+                                          emojiLabels[mood - 1],
+                                          style: const TextStyle(fontSize: 20),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                                gridData: FlGridData(show: true),
+                                borderData: FlBorderData(show: true),
+                                lineBarsData: [
+                                  LineChartBarData(
+                                    spots: List.generate(
+                                      moodData.length,
+                                      (index) => FlSpot(
+                                        index.toDouble(),
+                                        moodData[index],
+                                      ),
+                                    ),
+                                    isCurved: true,
+                                    color: Colors.blue,
+                                    barWidth: 3,
+                                    dotData: FlDotData(show: true),
+                                    belowBarData: BarAreaData(
+                                      show: true,
+                                      color: Colors.blue.withOpacity(0.3),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                          gridData: FlGridData(show: true),
-                          borderData: FlBorderData(show: true),
-                          lineBarsData: [
-                            LineChartBarData(
-                              spots: List.generate(
-                                moodData.length,
-                                    (index) => FlSpot(
-                                  index.toDouble(),
-                                  moodData[index],
-                                ),
-                              ),
-                              isCurved: true,
-                              color: Colors.blue,
-                              barWidth: 3,
-                              dotData: FlDotData(show: true),
-                              belowBarData: BarAreaData(
-                                show: true,
-                                color: Colors.blue.withOpacity(0.3),
-                              ),
-                            ),
-                          ],
                         ),
                       ),
                     ),
-                  ),
-                ),
-              ),
 
-              /// Weekly Avg Mood
-              Expanded(
-                flex: 1,
-                child: Row(
-                  children: [
+                    /// Weekly Avg Mood
                     Expanded(
-                      child: Card(
-                        margin: const EdgeInsets.all(16),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16)),
-                        elevation: 4,
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(avgEmoji, style: const TextStyle(fontSize: 48)),
-                              const SizedBox(height: 8),
-                              const Text("Weekly Avg", style: TextStyle(fontSize: 14)),
-                            ],
+                      flex: 1,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Card(
+                              margin: const EdgeInsets.all(16),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16)),
+                              elevation: 4,
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(avgEmoji, style: const TextStyle(fontSize: 48)),
+                                    const SizedBox(height: 8),
+                                    const Text("Weekly Avg", style: TextStyle(fontSize: 14)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    /// Highlights Section
+                    Expanded(
+                      flex: 1, // Reduced size here for highlights section
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Card(
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16)),
+                          elevation: 4,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  "Happiest Day of the Week",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                if (highlightEntry == null)
+                                  const Text("No data available for highlights."),
+                                if (highlightEntry != null) ...[
+                                  Text(
+                                    "Date: ${DateFormat('yyyy-MM-dd').format(highlightEntry!.date)}",
+                                    style: const TextStyle(fontStyle: FontStyle.italic),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text("Mood: ${highlightEntry!.mood ?? 'No Mood'}"),
+                                ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ],
                 ),
-              ),
-
-              /// Highlights Section
-              Expanded(
-                flex: 1, // Reduced size here for highlights section
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Card(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                    elevation: 4,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "Happiest Day of the Week",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          if (highlightEntry == null)
-                            const Text("No data available for highlights."),
-                          if (highlightEntry != null) ...[
-                            Text(
-                              "Date: ${DateFormat('yyyy-MM-dd').format(highlightEntry!.date)}",
-                              style: const TextStyle(fontStyle: FontStyle.italic),
-                            ),
-                            const SizedBox(height: 8),
-                            Text("Mood: ${highlightEntry!.mood ?? 'No Mood'}"),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
       ],
     );
