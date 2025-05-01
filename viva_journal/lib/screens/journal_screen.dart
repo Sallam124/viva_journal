@@ -45,10 +45,7 @@ class JournalState {
         'title': value.title,
         'content': value.content,
         'drawingPoints': value.drawingPoints,
-        'attachments': value.attachments.map((a) {
-          print('Saving media: ${a.file.path}, position: ${a.position}, size: ${a.size}, angle: ${a.angle}');
-          return a.toJson();
-        }).toList(),
+        'attachments': value.attachments.map((a) => a.toJson()).toList(),
       }),
     ));
     await prefs.setString('journalData', jsonEncode(encodedData));
@@ -62,18 +59,13 @@ class JournalState {
       _journalData.clear();
       decodedData.forEach((key, value) {
         final entry = jsonDecode(value);
-        final attachments = List<Map<String, dynamic>>.from(entry['attachments'])
-            .map((a) {
-          final media = InteractiveMedia.fromJson(a);
-          print('Loading media: ${media.file.path}, position: ${media.position}, size: ${media.size}, angle: ${media.angle}');
-          return media;
-        })
-            .toList();
         _journalData[DateTime.parse(key)] = JournalData(
           title: entry['title'],
           content: entry['content'],
           drawingPoints: List<Map<String, dynamic>>.from(entry['drawingPoints']),
-          attachments: attachments,
+          attachments: List<Map<String, dynamic>>.from(entry['attachments'])
+              .map((a) => InteractiveMedia.fromJson(a))
+              .toList(),
         );
       });
     }
@@ -129,7 +121,7 @@ class Media {
   double size;
   double angle;
   bool isVideo;
-  double? _lastRotation;
+
 
   Media({
     required this.file,
@@ -142,18 +134,12 @@ class Media {
 
 class InteractiveMedia extends Media {
   InteractiveMedia({
-    required File file,
-    bool isVideo = false,
-    Offset position = Offset.zero,
-    double size = 1.0,
-    double angle = 0.0,
-  }) : super(
-    file: file,
-    isVideo: isVideo,
-    position: position,
-    size: size,
-    angle: angle,
-  );
+    required super.file,
+    super.isVideo = false,
+    super.position = Offset.zero,
+    super.size = 1.0,
+    super.angle = 0.0,
+  });
 
   InteractiveMedia.fromMedia(Media media) : super(
     file: media.file,
@@ -196,8 +182,8 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
   int _pencilIndex = 0;
   bool _isEraserActive = false;
   double _strokeWidth = 3.0;
-  double _minStrokeWidth = 1.0;
-  double _maxStrokeWidth = 20.0;
+  final double _minStrokeWidth = 1.0;
+  final double _maxStrokeWidth = 20.0;
   final double _eraserWidth = 30.0;
   bool _isDrawingMode = false;
   late AnimationController _eraserAnimationController;
@@ -209,10 +195,8 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
   bool _isPencilActive = false;
   final GlobalKey _pageKey = GlobalKey();
   late QuillController _controller;
-  bool _isControllerInitialized = false; // Add this line
+  bool _isControllerInitialized = false;
   String _title = '';
-  List<Map<String, dynamic>> _content = [];
-  List<Map<String, dynamic>> _drawingPoints = [];
   final FocusNode _editorFocusNode = FocusNode();
   final ScrollController _editorScrollController = ScrollController();
   final stt.SpeechToText _speech = stt.SpeechToText();
@@ -297,7 +281,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
         });
       }
     } catch (e) {
-      print('Error loading data: $e');
+      debugPrint('Error loading data: $e');
       setState(() {
         _isControllerInitialized = true;
       });
@@ -310,7 +294,6 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
       setState(() {
         _title = data.title;
         _titleController.text = data.title;
-        _content = data.content;
         _attachments = data.attachments;
 
         // Load drawing points
@@ -332,7 +315,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
         _isControllerInitialized = true;
       });
     } catch (e) {
-      print('Error initializing: $e');
+      debugPrint('Error initializing: $e');
       setState(() {
         _isControllerInitialized = true;
       });
@@ -423,7 +406,6 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
       _selectedMedia = null;
     });
   }
-
 
   void _toggleLines() {
     setState(() {
@@ -552,7 +534,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
 
   void _initSpeech() async {
     bool available = await _speech.initialize();
-    if (available) {
+    if (available && mounted) {
       setState(() {});
     }
   }
@@ -560,10 +542,11 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
   void _startListening() async {
     if (!_isListening) {
       bool available = await _speech.initialize();
-      if (available) {
+      if (available && mounted) {
         setState(() => _isListening = true);
         _speech.listen(
           onResult: (result) {
+            if (!mounted) return;
             setState(() {
               _text = result.recognizedWords;
               if (result.finalResult) {
@@ -579,13 +562,22 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
         );
       }
     } else {
-      setState(() => _isListening = false);
+      if (mounted) {
+        setState(() => _isListening = false);
+      }
       _speech.stop();
     }
   }
 
   Future<void> _pickMedia() async {
     final ImagePicker picker = ImagePicker();
+    final mediaSize = MediaQuery.of(context).size;
+    final messenger = ScaffoldMessenger.of(context);
+    final position = Offset(
+      mediaSize.width / 2 - 100,
+      mediaSize.height / 2 - 100,
+    );
+
     final XFile? pickedFile = await picker.pickImage(
       source: ImageSource.gallery,
     );
@@ -598,21 +590,21 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
           throw Exception('Selected image does not exist');
         }
 
+        if (!mounted) return;
+
         setState(() {
           _attachments.add(InteractiveMedia(
             file: file,
             isVideo: false,
-            position: Offset(
-              MediaQuery.of(context).size.width / 2 - 100,
-              MediaQuery.of(context).size.height / 2 - 100,
-            ),
+            position: position,
             size: 200.0,
             angle: 0.0,
           ));
         });
       } catch (e) {
-        print('Error picking image: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
+        debugPrint('Error picking image: $e');
+        if (!mounted) return;
+        messenger.showSnackBar(
           SnackBar(
             content: Text('Error loading image: ${e.toString()}'),
             backgroundColor: Colors.red,
@@ -624,6 +616,13 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
 
   Future<void> _pickVideo() async {
     final ImagePicker picker = ImagePicker();
+    final mediaSize = MediaQuery.of(context).size;
+    final messenger = ScaffoldMessenger.of(context);
+    final position = Offset(
+      mediaSize.width / 2 - 100,
+      mediaSize.height / 2 - 100,
+    );
+
     final XFile? pickedFile = await picker.pickVideo(
       source: ImageSource.gallery,
     );
@@ -645,21 +644,21 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
           throw Exception('Invalid video file');
         }
 
+        if (!mounted) return;
+
         setState(() {
           _attachments.add(InteractiveMedia(
             file: file,
             isVideo: true,
-            position: Offset(
-              MediaQuery.of(context).size.width / 2 - 100,
-              MediaQuery.of(context).size.height / 2 - 100,
-            ),
+            position: position,
             size: 200.0,
             angle: 0.0,
           ));
         });
       } catch (e) {
-        print('Error picking video: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
+        debugPrint('Error picking video: $e');
+        if (!mounted) return;
+        messenger.showSnackBar(
           SnackBar(
             content: Text('Error loading video: ${e.toString()}'),
             backgroundColor: Colors.red,
@@ -877,7 +876,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
                               children: [
                                 CustomPaint(
                                   size: Size.infinite,
-                                  painter: _SmoothDrawingPainter(
+                                  painter: SmoothDrawingPainter(
                                     points: _points,
                                     showLines: _showLines,
                                   ),
@@ -1155,19 +1154,19 @@ class MediaWidget extends StatefulWidget {
   final bool isEditingMode;
 
   const MediaWidget({
+    super.key,
     required this.media,
     required this.isSelected,
     required this.onTap,
     required this.onUpdate,
     required this.isEditingMode,
-    Key? key,
-  }) : super(key: key);
+  });
 
   @override
-  _MediaWidgetState createState() => _MediaWidgetState();
+  MediaWidgetState createState() => MediaWidgetState();
 }
 
-class _MediaWidgetState extends State<MediaWidget> {
+class MediaWidgetState extends State<MediaWidget> {
   bool _isInEditMode = false;
   double _initialAngle = 0;
   double _initialScale = 1.0;
@@ -1247,13 +1246,16 @@ class _MediaWidgetState extends State<MediaWidget> {
 class VideoWidget extends StatefulWidget {
   final File file;
 
-  const VideoWidget({Key? key, required this.file}) : super(key: key);
+  const VideoWidget({
+    super.key,
+    required this.file,
+  });
 
   @override
-  _VideoWidgetState createState() => _VideoWidgetState();
+  VideoWidgetState createState() => VideoWidgetState();
 }
 
-class _VideoWidgetState extends State<VideoWidget> {
+class VideoWidgetState extends State<VideoWidget> {
   late VideoPlayerController _controller;
   bool _isInitialized = false;
   bool _hasError = false;
@@ -1285,7 +1287,7 @@ class _VideoWidgetState extends State<VideoWidget> {
         });
       }
     } catch (e) {
-      print('Error initializing video: $e');
+      debugPrint('Error initializing video: $e');
       if (mounted) {
         setState(() {
           _isInitialized = false;
@@ -1346,11 +1348,11 @@ class _VideoWidgetState extends State<VideoWidget> {
   }
 }
 
-class _SmoothDrawingPainter extends CustomPainter {
+class SmoothDrawingPainter extends CustomPainter {
   final List<DrawingPoint> points;
   final bool showLines;
 
-  _SmoothDrawingPainter({
+  SmoothDrawingPainter({
     required this.points,
     required this.showLines,
   });
@@ -1400,7 +1402,7 @@ class _SmoothDrawingPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _SmoothDrawingPainter oldDelegate) {
+  bool shouldRepaint(covariant SmoothDrawingPainter oldDelegate) {
     return true;
   }
 }

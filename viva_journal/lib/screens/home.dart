@@ -52,6 +52,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Color _averageMoodColor = const Color(0xFFF8650C); // Default to Neutral
   bool _isNavigating = false;  // Add flag to prevent multiple navigations
   Entry? _currentEntry;  // Add this field to store the current entry
+  final GlobalKey<MiniCalendarState> _miniCalendarKey = GlobalKey<MiniCalendarState>();
 
   final List<Map<String, dynamic>> moodGroups = [
     {
@@ -221,7 +222,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ],
           ),
           const SizedBox(height: 16),
-          MiniCalendar(key: const ValueKey('mini_calendar')),
+          MiniCalendar(calendarKey: _miniCalendarKey),
           const SizedBox(height: 32), // Increased space between calendar and blocks
           // Blocks Section
           Row(
@@ -238,7 +239,6 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 percentage: "$_streakCount",
                 onTap: () {
-                  // TODO: Handle Streak block tap
                 },
               ),
               const SizedBox(width: 12),
@@ -253,7 +253,6 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       iconPath: 'assets/images/your_calendar_icon.png',
                       subtitle: "$_totalEntries",
                       onTap: () {
-                        // TODO: Handle Total Entries tap
                       },
                     ),
                     const SizedBox(height: 12),
@@ -264,7 +263,6 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       iconPath: 'assets/images/your_mood_icon.png',
                       subtitle: "${_averageMoodPercentage.toStringAsFixed(0)}%",
                       onTap: () {
-                        // TODO: Handle Average mood tap
                       },
                     ),
                   ],
@@ -496,6 +494,9 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       PopupMenuButton<String>(
                                         icon: const Icon(Icons.more_vert),
                                         onSelected: (value) async {
+                                          final context = this.context;
+                                          final messenger = ScaffoldMessenger.of(context);
+
                                           if (value == 'delete') {
                                             final confirmed = await showDialog<bool>(
                                               context: context,
@@ -524,7 +525,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
                                                 if (result > 0) {
                                                   if (mounted) {
-                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                    messenger.showSnackBar(
                                                       const SnackBar(
                                                         content: Text('Entry deleted successfully'),
                                                         duration: Duration(seconds: 2),
@@ -534,11 +535,15 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                     await _loadStreakData();
                                                     await _loadTotalEntries();
                                                     await _loadAverageMood();
+                                                    // Refresh the mini calendar
+                                                    setState(() {
+                                                      _miniCalendarKey.currentState?.refresh();
+                                                    });
                                                   }
                                                 }
                                               } catch (e) {
                                                 if (mounted) {
-                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                  messenger.showSnackBar(
                                                     SnackBar(
                                                       content: Text('Error deleting entry: $e'),
                                                       backgroundColor: Colors.red,
@@ -1212,6 +1217,9 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _shareJournalAsPDF(Entry entry) async {
     if (!mounted) return;
 
+    final context = this.context;
+    final messenger = ScaffoldMessenger.of(context);
+
     try {
       // Create a PDF document
       final pdf = pw.Document();
@@ -1318,8 +1326,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     } catch (e) {
       logger.e('Error generating PDF: $e');
       if (!mounted) return;
-      final context = this.context;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text('Error generating PDF: $e'),
           backgroundColor: Colors.red,
@@ -1331,18 +1338,32 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _shareBlock(GlobalKey key, String title) async {
     if (!mounted) return;
 
+    final context = this.context;
+    final messenger = ScaffoldMessenger.of(context);
+
     final box = key.currentContext?.findRenderObject() as RenderBox?;
     if (box == null) return;
 
-    final image = await _captureWidget(box);
-    if (image != null) {
-      final tempDir = await getTemporaryDirectory();
-      final file = await File('${tempDir.path}/share.png').create();
-      await file.writeAsBytes(image);
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(file.path)],
-          text: "Check out my ${title.toLowerCase()} on Viva Journal! 📝✨",
+    try {
+      final image = await _captureWidget(box);
+      if (image != null) {
+        final tempDir = await getTemporaryDirectory();
+        final file = await File('${tempDir.path}/share.png').create();
+        await file.writeAsBytes(image);
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(file.path)],
+            text: "Check out my ${title.toLowerCase()} on Viva Journal! 📝✨",
+          ),
+        );
+      }
+    } catch (e) {
+      logger.e('Error sharing block: $e');
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Error sharing block: $e'),
+          backgroundColor: Colors.red,
         ),
       );
     }

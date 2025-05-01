@@ -26,7 +26,6 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
   int _currentIndex = 0;
   Set<String> selectedTags = {};
   List<int> emotionLevels = [1, 1, 1, 1, 1];
-  String? _selectedMood;
   JournalData? _journalData;
   final CarouselSliderController _carouselController = CarouselSliderController();
 
@@ -77,7 +76,6 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
   void _loadInitialData() async {
     if (widget.initialEntry != null) {
       final entry = widget.initialEntry!;
-      _selectedMood = entry.mood;
 
       // Find the index of the mood in the emotion progressions
       for (int i = 0; i < emotionProgressions.length; i++) {
@@ -315,8 +313,9 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
 
               GestureDetector(
                 onTap: () {
+                  final currentContext = context;
                   Navigator.push(
-                    context,
+                    currentContext,
                     MaterialPageRoute(
                       builder: (context) => JournalScreen(
                         date: widget.date,
@@ -324,10 +323,9 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
                         initialData: _journalData,
                       ),
                     ),
-                  ).then((_) async {
-                    // Refresh journal data after returning from JournalScreen
-                    _journalData = await JournalState.getJournalData(widget.date);
-                    setState(() {});
+                  ).then((_) {
+                    if (!mounted) return;
+                    _refreshJournalData();
                   });
                 },
                 child: Container(
@@ -467,12 +465,19 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
     );
   }
 
-  void _handleSubmit() async {
+  Future<void> _refreshJournalData() async {
+    final updatedJournalData = await JournalState.getJournalData(widget.date);
+    if (!mounted) return;
+    setState(() {
+      _journalData = updatedJournalData;
+    });
+  }
+
+  Future<void> _handleSubmit() async {
     final journalData = await JournalState.getJournalData(widget.date);
     if (journalData == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please write something in your journal first')),
-      );
+      if (!mounted) return;
+      _showErrorSnackBar();
       return;
     }
 
@@ -507,10 +512,22 @@ class TrackerLogScreenState extends State<TrackerLogScreen> {
       await db.insertEntry(entry);
     }
 
+    if (!mounted) return;
+    _showSuccessSnackBarAndNavigate();
+  }
+
+  void _showErrorSnackBar() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please write something in your journal first')),
+    );
+  }
+
+  void _showSuccessSnackBarAndNavigate() {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Journal entry saved successfully!')),
     );
-
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => const HomeScreen()),

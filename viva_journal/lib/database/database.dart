@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:flutter/painting.dart';
 import 'package:logger/logger.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 final logger = Logger();
 
@@ -69,28 +70,37 @@ class Entry {
 }
 
 class DatabaseHelper {
-  static final DatabaseHelper _instance = DatabaseHelper._internal();
-  factory DatabaseHelper() => _instance;
-  static Database? _database;
+  static final Map<String, DatabaseHelper> _instances = {};
+  static final Map<String, Database> _databases = {};
+  final String _userId;
 
-  DatabaseHelper._internal();
+  factory DatabaseHelper() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('No user logged in');
+    }
+    return _instances.putIfAbsent(user.uid, () => DatabaseHelper._internal(user.uid));
+  }
+
+  DatabaseHelper._internal(this._userId);
 
   Future<Database> get database async {
-    if (_database != null) {
-      return _database!;
+    if (_databases.containsKey(_userId)) {
+      return _databases[_userId]!;
     } else {
-      _database = await _initDatabase();
-      return _database!;
+      final db = await _initDatabase();
+      _databases[_userId] = db;
+      return db;
     }
   }
 
   Future<Database> _initDatabase() async {
     final directory = await getApplicationDocumentsDirectory();
-    final path = '${directory.path}/journal.db';
+    final path = '${directory.path}/journal_$_userId.db';
 
     return await openDatabase(
       path,
-      version: 6, // Increment version for media changes
+      version: 6,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -271,5 +281,14 @@ class DatabaseHelper {
       logger.e('Error getting all entries: $e');
       return [];
     }
+  }
+
+  // Add a method to clear the database when user logs out
+  static Future<void> clearUserDatabase(String userId) async {
+    if (_databases.containsKey(userId)) {
+      await _databases[userId]?.close();
+      _databases.remove(userId);
+    }
+    _instances.remove(userId);
   }
 }
