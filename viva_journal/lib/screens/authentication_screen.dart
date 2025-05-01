@@ -21,6 +21,7 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
     super.initState();
     _checkBiometricAvailability();
     _loadSavedBackground();
+    _clearPreviousUserData();  // Add this line to clear old data
     _authenticateWithBiometrics(); // Trigger biometric authentication on load
   }
 
@@ -39,6 +40,13 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
         _backgroundImage = savedBackground;
       });
     }
+  }
+
+  // ✅ Clear old session data
+  void _clearPreviousUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('passcode');  // Clear old PIN
+    await prefs.remove('isAuthenticated');  // Reset authentication status
   }
 
   Future<void> _authenticateWithBiometrics() async {

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:viva_journal/database/database.dart';
 import 'package:viva_journal/screens/trackerlog_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MonthSelector extends StatelessWidget {
   final int selectedMonth;
@@ -424,8 +425,8 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
                             child: FloatingActionButton(
                               onPressed: _goHome,
                               mini: true,
-                              backgroundColor: Colors.blue,
-                              child: const Icon(Icons.home, size: 20),
+                              backgroundColor: Colors.white,
+                              child: const Icon(Icons.home, size: 20, color: Colors.black),
                             ),
                           ),
                           Row(
