@@ -30,13 +30,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       setState(() {
         moodData = allEntries.map((entry) {
-          // Map the mood string to a number (ensure it's a valid double)
-          return double.tryParse(entry.mood) ?? 3; // Default to 3 if parsing fails
+          // Convert mood string to a number based on emotion progressions
+          if (entry.mood == null) return 3.0;
+
+          final List<List<String>> emotionProgressions = [
+            ["Ecstatic", "Cheerful", "Excited", "Thrilled", "Overjoyed"],
+            ["Happy", "Content", "Pleasant", "Cheerful", "Delighted"],
+            ["Neutral", "Fine", "Satisfied", "Meh", "Indifferent"],
+            ["Angry", "Irritated", "Stressed", "Frustrated", "Fuming"],
+            ["Down", "Distressed", "Anxious", "Defeated", "Exhausted"],
+          ];
+
+          for (int i = 0; i < emotionProgressions.length; i++) {
+            if (emotionProgressions[i].contains(entry.mood)) {
+              return (i + 1).toDouble();
+            }
+          }
+          return 3.0; // Default to neutral if mood not found
         }).toList();
 
         moodDates = allEntries.map((entry) {
-          // Parse date (ensure the date format is consistent with your data)
-          return DateTime.tryParse(entry.date) ?? DateTime.now();
+          // Use the entry's date directly since it's already a DateTime
+          return entry.date;
         }).toList();
 
         isLoading = false;
@@ -80,6 +95,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
 
     return DateFormat.E().format(DateTime.utc(2020, 1, bestDay + 5)); // Return the day of the week with the best mood
+  }
+
+  Future<double> _getMoodValue(Entry entry) async {
+    if (entry.mood == null) return 3.0;
+
+    // Convert mood string to a numeric value based on emotion progressions
+    final List<List<String>> emotionProgressions = [
+      ["Ecstatic", "Cheerful", "Excited", "Thrilled", "Overjoyed"],
+      ["Happy", "Content", "Pleasant", "Cheerful", "Delighted"],
+      ["Neutral", "Fine", "Satisfied", "Meh", "Indifferent"],
+      ["Angry", "Irritated", "Stressed", "Frustrated", "Fuming"],
+      ["Down", "Distressed", "Anxious", "Defeated", "Exhausted"],
+    ];
+
+    for (int i = 0; i < emotionProgressions.length; i++) {
+      if (emotionProgressions[i].contains(entry.mood)) {
+        return (i + 1).toDouble();
+      }
+    }
+    return 3.0; // Default to neutral if mood not found
+  }
+
+  Future<DateTime> _getEntryDate(Entry entry) async {
+    return entry.date;
   }
 
   @override

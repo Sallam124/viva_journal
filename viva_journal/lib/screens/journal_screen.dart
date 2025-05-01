@@ -26,6 +26,10 @@ class JournalState {
   static Future<JournalData?> getJournalData(DateTime date) async {
     return _journalData[date];
   }
+
+  static Future<void> deleteJournalData(DateTime date) async {
+    _journalData.remove(date);
+  }
 }
 
 class JournalData {
@@ -45,11 +49,13 @@ class JournalData {
 class JournalScreen extends StatefulWidget {
   final DateTime date;
   final Color color;
+  final JournalData? initialData;
 
   const JournalScreen({
     super.key,
     required this.date,
     required this.color,
+    this.initialData,
   });
 
   @override
@@ -92,7 +98,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
   final List<DrawingPoint> _points = [];
   final List<List<DrawingPoint>> _drawingHistory = [];
   final List<List<DrawingPoint>> _redoHistory = [];
-  final List<InteractiveMedia> _attachments = [];
+  List<InteractiveMedia> _attachments = [];
   FlutterSoundRecorder? _recorder;
   bool _showLines = false;
   Color _currentColor = Colors.black;
@@ -109,7 +115,10 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
   late Animation<double> _pencilAnimation;
   bool _isPencilActive = false;
   final GlobalKey _pageKey = GlobalKey();
-  final QuillController _quillController = QuillController.basic();
+  late QuillController _controller;
+  String _title = '';
+  List<Map<String, dynamic>> _content = [];
+  List<Map<String, dynamic>> _drawingPoints = [];
   final FocusNode _editorFocusNode = FocusNode();
   final ScrollController _editorScrollController = ScrollController();
   final stt.SpeechToText _speech = stt.SpeechToText();
@@ -134,13 +143,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
     _titleController.text = "Untitled Journal";
     _currentColor = widget.color;
 
-    // Initialize with empty document
-    _quillController.document = Document.fromJson([
-      {"insert": "\n", "attributes": {"block": "normal"}}
-    ]);
-
-    // Load saved journal data if exists
-    _loadJournalData();
+    _loadInitialData();
 
     _initializeAnimations();
   }
@@ -148,8 +151,8 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
   @override
   void dispose() {
     // Save journal data before disposing
-    _saveJournalData();
-    _quillController.dispose();
+    _saveJournal();
+    _controller.dispose();
     _editorFocusNode.dispose();
     _editorScrollController.dispose();
     _titleController.dispose();
@@ -431,9 +434,9 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
               _text = result.recognizedWords;
               if (result.finalResult) {
                 // Get the current selection
-                final selection = _quillController.selection;
+                final selection = _controller.selection;
                 // Insert the text at the current selection
-                _quillController.document.insert(
+                _controller.document.insert(
                   selection.baseOffset,
                   '$_text ',
                 );
@@ -449,6 +452,36 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
     }
   }
 
+  void _loadInitialData() async {
+    if (widget.initialData != null) {
+      setState(() {
+        _title = widget.initialData!.title;
+        _content = widget.initialData!.content;
+        _drawingPoints = widget.initialData!.drawingPoints;
+        _attachments = widget.initialData!.attachments;
+      });
+      _controller = QuillController(
+        document: Document.fromJson(_content),
+        selection: const TextSelection.collapsed(offset: 0),
+      );
+    } else {
+      _controller = QuillController(
+        document: Document(),
+        selection: const TextSelection.collapsed(offset: 0),
+      );
+    }
+  }
+
+  void _saveJournal() {
+    final journalData = JournalData(
+      title: _title,
+      content: _controller.document.toDelta().toJson(),
+      drawingPoints: _drawingPoints,
+      attachments: _attachments,
+    );
+    JournalState.saveJournalData(widget.date, journalData);
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
@@ -458,7 +491,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
       canPop: true,
       onPopInvoked: (didPop) async {
         if (didPop) {
-          _saveJournalData();
+          _saveJournal();
         }
       },
       child: Scaffold(
@@ -490,7 +523,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
             textAlign: TextAlign.center,
             onChanged: (value) {
               setState(() {
-                // Update title if needed
+                _title = value;
               });
             },
           ),
@@ -506,6 +539,13 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
                 onPressed: _deleteSelectedMedia,
                 tooltip: 'Delete Selected Media',
               ),
+            IconButton(
+              icon: const Icon(Icons.save, color: Colors.white),
+              onPressed: () {
+                _saveJournal();
+                Navigator.pop(context);
+              },
+            ),
           ],
         ),
         body: Stack(
@@ -541,7 +581,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
                         ),
                         child: _isDrawingMode
                             ? QuillEditor(
-                          controller: _quillController,
+                          controller: _controller,
                           scrollController: _editorScrollController,
                           focusNode: _editorFocusNode,
                           config: QuillEditorConfig(
@@ -550,7 +590,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
                           ),
                         )
                             : QuillEditor(
-                          controller: _quillController,
+                          controller: _controller,
                           scrollController: _editorScrollController,
                           focusNode: _editorFocusNode,
                           config: QuillEditorConfig(
@@ -648,50 +688,50 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
                         ),
                         VerticalDivider(thickness: 1, width: 8, color: Colors.white24),
                         _buildToolbarButton(Icons.undo, () {
-                          _quillController.undo();
+                          _controller.undo();
                           _editorFocusNode.requestFocus();
                         }),
                         _buildToolbarButton(Icons.redo, () {
-                          _quillController.redo();
+                          _controller.redo();
                           _editorFocusNode.requestFocus();
                         }),
                         VerticalDivider(thickness: 1, width: 8, color: Colors.white24),
                         _buildToolbarButton(Icons.format_bold, () {
-                          _quillController.formatSelection(Attribute.bold);
+                          _controller.formatSelection(Attribute.bold);
                           _editorFocusNode.requestFocus();
                         }),
                         _buildToolbarButton(Icons.format_italic, () {
-                          _quillController.formatSelection(Attribute.italic);
+                          _controller.formatSelection(Attribute.italic);
                           _editorFocusNode.requestFocus();
                         }),
                         _buildToolbarButton(Icons.format_underline, () {
-                          _quillController.formatSelection(Attribute.underline);
+                          _controller.formatSelection(Attribute.underline);
                           _editorFocusNode.requestFocus();
                         }),
                         _buildToolbarButton(Icons.format_strikethrough, () {
-                          _quillController.formatSelection(Attribute.strikeThrough);
+                          _controller.formatSelection(Attribute.strikeThrough);
                           _editorFocusNode.requestFocus();
                         }),
                         VerticalDivider(thickness: 1, width: 8, color: Colors.white24),
                         _buildToolbarButton(Icons.format_align_left, () {
-                          _quillController.formatSelection(Attribute.blockQuote);
+                          _controller.formatSelection(Attribute.blockQuote);
                           _editorFocusNode.requestFocus();
                         }),
                         _buildToolbarButton(Icons.format_align_center, () {
-                          _quillController.formatSelection(Attribute.centerAlignment);
+                          _controller.formatSelection(Attribute.centerAlignment);
                           _editorFocusNode.requestFocus();
                         }),
                         _buildToolbarButton(Icons.format_align_right, () {
-                          _quillController.formatSelection(Attribute.rightAlignment);
+                          _controller.formatSelection(Attribute.rightAlignment);
                           _editorFocusNode.requestFocus();
                         }),
                         VerticalDivider(thickness: 1, width: 8, color: Colors.white24),
                         _buildToolbarButton(Icons.format_list_bulleted, () {
-                          _quillController.formatSelection(Attribute.ul);
+                          _controller.formatSelection(Attribute.ul);
                           _editorFocusNode.requestFocus();
                         }),
                         _buildToolbarButton(Icons.format_list_numbered, () {
-                          _quillController.formatSelection(Attribute.ol);
+                          _controller.formatSelection(Attribute.ol);
                           _editorFocusNode.requestFocus();
                         }),
                         VerticalDivider(thickness: 1, width: 8, color: Colors.white24),
@@ -858,9 +898,9 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
     );
 
     if (link != null && link.isNotEmpty) {
-      final index = _quillController.selection.baseOffset;
-      final length = _quillController.selection.extentOffset - index;
-      _quillController.formatText(index, length, LinkAttribute(link));
+      final index = _controller.selection.baseOffset;
+      final length = _controller.selection.extentOffset - index;
+      _controller.formatText(index, length, LinkAttribute(link));
     }
   }
 
@@ -905,6 +945,8 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
     }
   }
 
+
+
   void _saveJournalData() {
     JournalState.saveJournalData(
       widget.date,
@@ -942,6 +984,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
       });
     }
   }
+
 }
 
 class VideoWidget extends StatefulWidget {
