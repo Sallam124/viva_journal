@@ -14,7 +14,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final DatabaseHelper dbHelper = DatabaseHelper();
   List<double> moodData = [];
   List<DateTime> moodDates = [];
-  final List<String> emojiLabels = ['😟', '🤬', '😐', '😊', '😁'];
+  final List<String> emojiLabels = ['😢', '😐', '😊', '😄', '🤩'];
   bool isLoading = true;
 
   @override
@@ -64,37 +64,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  /// Method to calculate the average mood
-  double _calculateAverageMood() {
-    return moodData.isNotEmpty
-        ? moodData.reduce((a, b) => a + b) / moodData.length
-        : 3; // Default to 3 if no data
-  }
+  int _calculateStreak() {
+    if (moodDates.isEmpty) return 0;
 
-  /// Method to get the best day of the week based on mood
-  String _bestDayOfWeek() {
-    if (moodDates.isEmpty) return "N/A";
+    moodDates.sort((a, b) => b.compareTo(a)); // Sort from newest to oldest
+    int streak = 1;
 
-    Map<int, List<double>> dayMoodMap = {};
-
-    for (int i = 0; i < moodDates.length; i++) {
-      int weekday = moodDates[i].weekday;
-      dayMoodMap.putIfAbsent(weekday, () => []);
-      dayMoodMap[weekday]!.add(moodData[i]);
+    for (int i = 1; i < moodDates.length; i++) {
+      final current = moodDates[i - 1];
+      final next = moodDates[i];
+      if (current.difference(next).inDays == 1) {
+        streak++;
+      } else {
+        break;
+      }
     }
 
-    int bestDay = 1;
-    double bestAvg = 0;
-
-    dayMoodMap.forEach((day, moods) {
-      double avg = moods.reduce((a, b) => a + b) / moods.length;
-      if (avg > bestAvg) {
-        bestAvg = avg;
-        bestDay = day;
-      }
-    });
-
-    return DateFormat.E().format(DateTime.utc(2020, 1, bestDay + 5)); // Return the day of the week with the best mood
+    return streak;
   }
 
   Future<double> _getMoodValue(Entry entry) async {
@@ -123,7 +109,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final double avg = _calculateAverageMood();
+    final double avg = moodData.isNotEmpty
+        ? moodData.reduce((a, b) => a + b) / moodData.length
+        : 3;
     final int avgMood = avg.round().clamp(1, 5);
     final String avgEmoji = emojiLabels[avgMood - 1];
 
@@ -151,8 +139,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Card(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     elevation: 4,
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -213,7 +200,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
 
-              /// Highlights: Weekly Average + Best Day
+              /// Mood Avg + Streak Tracker
               Expanded(
                 flex: 1,
                 child: Row(
@@ -222,8 +209,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Expanded(
                       child: Card(
                         margin: const EdgeInsets.all(16),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         elevation: 4,
                         child: Center(
                           child: Column(
@@ -238,21 +224,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
 
-                    /// Best Day Highlight
+                    /// 🔥 Streak Tracker
                     Expanded(
                       child: Card(
                         margin: const EdgeInsets.all(16),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         elevation: 4,
                         child: Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.star, size: 48, color: Colors.amber),
+                              const Text("🔥", style: TextStyle(fontSize: 48)),
                               const SizedBox(height: 8),
                               Text(
-                                "Best Day:\n${_bestDayOfWeek()}",
+                                "Current Streak:\n${_calculateStreak()} days",
                                 style: const TextStyle(fontSize: 14),
                                 textAlign: TextAlign.center,
                               ),

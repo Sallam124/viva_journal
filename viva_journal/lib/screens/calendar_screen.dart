@@ -515,4 +515,3 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
     );
   }
 }
-
