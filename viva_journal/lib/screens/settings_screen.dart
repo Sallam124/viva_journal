@@ -14,7 +14,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _notificationsEnabled = false;
+  bool _remindersEnabled = false; // Changed variable name
   TimeOfDay? _selectedTime;
   bool _authEnabled = false;
   String? _savedPasscode;
@@ -28,11 +28,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _notificationsEnabled = prefs.getBool('notificationsEnabled') ?? false;
+      _remindersEnabled = prefs.getBool('remindersEnabled') ?? false; // Changed variable name
       _authEnabled = prefs.getBool('authEnabled') ?? false;
       _savedPasscode = prefs.getString('passcode');
-      final hour = prefs.getInt('notificationHour');
-      final minute = prefs.getInt('notificationMinute');
+      final hour = prefs.getInt('reminderHour'); // Changed key name
+      final minute = prefs.getInt('reminderMinute'); // Changed key name
       if (hour != null && minute != null) {
         _selectedTime = TimeOfDay(hour: hour, minute: minute);
       }
@@ -41,11 +41,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _savePreferences() async {
     final prefs = await SharedPreferences.getInstance();
-    prefs.setBool('notificationsEnabled', _notificationsEnabled);
+    prefs.setBool('remindersEnabled', _remindersEnabled); // Changed key name
     prefs.setBool('authEnabled', _authEnabled);
     if (_selectedTime != null) {
-      prefs.setInt('notificationHour', _selectedTime!.hour);
-      prefs.setInt('notificationMinute', _selectedTime!.minute);
+      prefs.setInt('reminderHour', _selectedTime!.hour); // Changed key name
+      prefs.setInt('reminderMinute', _selectedTime!.minute); // Changed key name
     }
     if (_savedPasscode != null) {
       prefs.setString('passcode', _savedPasscode!);
@@ -118,12 +118,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Enable Notifications', style: TextStyle(fontSize: 18, color: Colors.white)),
+                  const Text('Enable Reminders', style: TextStyle(fontSize: 18, color: Colors.white)), // Changed text
                   Switch(
-                    value: _notificationsEnabled,
+                    value: _remindersEnabled, // Changed variable name
                     onChanged: (value) {
                       setState(() {
-                        _notificationsEnabled = value;
+                        _remindersEnabled = value; // Changed variable name
                         if (!value) _selectedTime = null;
                       });
                       _savePreferences();
@@ -132,11 +132,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              if (_notificationsEnabled)
+              if (_remindersEnabled) // Changed variable name
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Notification Time:', style: TextStyle(fontSize: 16, color: Colors.white)),
+                    const Text('Reminder Time:', style: TextStyle(fontSize: 16, color: Colors.white)), // Changed text
                     const SizedBox(height: 8),
                     ElevatedButton(
                       onPressed: () => _pickTime(context),

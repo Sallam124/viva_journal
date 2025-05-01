@@ -14,6 +14,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final DatabaseHelper dbHelper = DatabaseHelper();
   List<double> moodData = [];
   List<DateTime> moodDates = [];
+<<<<<<< Updated upstream
+=======
+  Entry? highlightEntry;
+>>>>>>> Stashed changes
   final List<String> emojiLabels = ['😟', '🤬', '😐', '😊', '😁'];
   bool isLoading = true;
 
@@ -25,9 +29,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> loadMoodData() async {
     try {
-      // Fetch entries from the past week using the getEntriesPastWeek method
       final allEntries = await dbHelper.getEntriesPastWeek();
 
+<<<<<<< Updated upstream
       setState(() {
         moodData = allEntries.map((entry) {
           // Map the mood string to a number (ensure it's a valid double)
@@ -38,7 +42,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
           // Parse date (ensure the date format is consistent with your data)
           return DateTime.tryParse(entry.date) ?? DateTime.now();
         }).toList();
+=======
+      if (allEntries.isEmpty) {
+        setState(() {
+          isLoading = false;
+        });
+        return;
+      }
 
+      List<double> tempMoodData = allEntries.map((entry) {
+        if (entry.mood == null) return 3.0;
+
+        final List<List<String>> emotionProgressions = [
+          ["Down", "Distressed", "Anxious", "Defeated", "Exhausted"],
+          ["Angry", "Irritated", "Stressed", "Frustrated", "Fuming"],
+          ["Neutral", "Fine", "Satisfied", "Meh", "Indifferent"],
+          ["Happy", "Content", "Pleasant", "Cheerful", "Delighted"],
+          ["Ecstatic", "Cheerful", "Excited", "Thrilled", "Overjoyed"],
+        ];
+
+        for (int i = 0; i < emotionProgressions.length; i++) {
+          if (emotionProgressions[i].contains(entry.mood)) {
+            return (i + 1).toDouble();
+          }
+        }
+
+        return 3.0;
+      }).toList();
+>>>>>>> Stashed changes
+
+      List<DateTime> tempDates = allEntries.map((e) => e.date).toList();
+
+      int maxIndex = 0;
+      for (int i = 1; i < tempMoodData.length; i++) {
+        if (tempMoodData[i] > tempMoodData[maxIndex]) {
+          maxIndex = i;
+        }
+      }
+
+      setState(() {
+        moodData = tempMoodData;
+        moodDates = tempDates;
+        highlightEntry = allEntries[maxIndex];
         isLoading = false;
       });
     } catch (e) {
@@ -49,6 +94,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+<<<<<<< Updated upstream
   /// Method to calculate the average mood
   double _calculateAverageMood() {
     return moodData.isNotEmpty
@@ -85,6 +131,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final double avg = _calculateAverageMood();
+=======
+  @override
+  Widget build(BuildContext context) {
+    final double avg =
+    moodData.isNotEmpty ? moodData.reduce((a, b) => a + b) / moodData.length : 3.0;
+>>>>>>> Stashed changes
     final int avgMood = avg.round().clamp(1, 5);
     final String avgEmoji = emojiLabels[avgMood - 1];
 
@@ -126,7 +178,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               sideTitles: SideTitles(
                                 showTitles: true,
                                 interval: 1,
-                                getTitlesWidget: (value, meta) {
+                                getTitlesWidget: (value, _) {
                                   final index = value.toInt();
                                   if (index >= 0 && index < moodDates.length) {
                                     return Text(DateFormat('MM/dd').format(moodDates[index]));
@@ -139,7 +191,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               sideTitles: SideTitles(
                                 showTitles: true,
                                 interval: 1,
-                                getTitlesWidget: (value, meta) {
+                                getTitlesWidget: (value, _) {
                                   int mood = value.toInt().clamp(1, 5);
                                   return Text(
                                     emojiLabels[mood - 1],
@@ -155,7 +207,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             LineChartBarData(
                               spots: List.generate(
                                 moodData.length,
-                                    (index) => FlSpot(index.toDouble(), moodData[index]),
+                                    (index) => FlSpot(
+                                  index.toDouble(),
+                                  moodData[index],
+                                ),
                               ),
                               isCurved: true,
                               color: Colors.blue,
@@ -174,12 +229,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
 
+<<<<<<< Updated upstream
               /// Highlights: Weekly Average + Best Day
+=======
+              /// Weekly Avg Mood
+>>>>>>> Stashed changes
               Expanded(
                 flex: 1,
                 child: Row(
                   children: [
-                    /// Weekly Avg Mood
                     Expanded(
                       child: Card(
                         margin: const EdgeInsets.all(16),
@@ -198,7 +256,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                     ),
+                  ],
+                ),
+              ),
 
+<<<<<<< Updated upstream
                     /// Best Day Highlight
                     Expanded(
                       child: Card(
@@ -218,11 +280,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 textAlign: TextAlign.center,
                               ),
                             ],
+=======
+              /// Highlights Section
+              Expanded(
+                flex: 1, // Reduced size here for highlights section
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Card(
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                    elevation: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Happiest Day of the Week",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+>>>>>>> Stashed changes
                           ),
-                        ),
+                          const SizedBox(height: 8),
+                          if (highlightEntry == null)
+                            const Text("No data available for highlights."),
+                          if (highlightEntry != null) ...[
+                            Text(
+                              "Date: ${DateFormat('yyyy-MM-dd').format(highlightEntry!.date)}",
+                              style: const TextStyle(fontStyle: FontStyle.italic),
+                            ),
+                            const SizedBox(height: 8),
+                            Text("Mood: ${highlightEntry!.mood ?? 'No Mood'}"),
+                          ],
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],
