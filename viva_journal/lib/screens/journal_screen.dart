@@ -45,7 +45,10 @@ class JournalState {
         'title': value.title,
         'content': value.content,
         'drawingPoints': value.drawingPoints,
-        'attachments': value.attachments.map((a) => a.toJson()).toList(),
+        'attachments': value.attachments.map((a) {
+          print('Saving media: ${a.file.path}, position: ${a.position}, size: ${a.size}, angle: ${a.angle}');
+          return a.toJson();
+        }).toList(),
       }),
     ));
     await prefs.setString('journalData', jsonEncode(encodedData));
@@ -59,13 +62,18 @@ class JournalState {
       _journalData.clear();
       decodedData.forEach((key, value) {
         final entry = jsonDecode(value);
+        final attachments = List<Map<String, dynamic>>.from(entry['attachments'])
+            .map((a) {
+          final media = InteractiveMedia.fromJson(a);
+          print('Loading media: ${media.file.path}, position: ${media.position}, size: ${media.size}, angle: ${media.angle}');
+          return media;
+        })
+            .toList();
         _journalData[DateTime.parse(key)] = JournalData(
           title: entry['title'],
           content: entry['content'],
           drawingPoints: List<Map<String, dynamic>>.from(entry['drawingPoints']),
-          attachments: List<Map<String, dynamic>>.from(entry['attachments'])
-              .map((a) => InteractiveMedia.fromJson(a))
-              .toList(),
+          attachments: attachments,
         );
       });
     }
@@ -115,14 +123,37 @@ class JournalPage {
         drawingPoints = drawingPoints ?? [];
 }
 
+class Media {
+  File file;
+  Offset position;
+  double size;
+  double angle;
+  bool isVideo;
+  double? _lastRotation;
+
+  Media({
+    required this.file,
+    this.position = Offset.zero,
+    this.size = 1.0,
+    this.angle = 0.0,
+    this.isVideo = false,
+  });
+}
+
 class InteractiveMedia extends Media {
   InteractiveMedia({
-    required super.file,
-    super.isVideo,
-    super.position,
-    super.size,
-    super.angle,
-  });
+    required File file,
+    bool isVideo = false,
+    Offset position = Offset.zero,
+    double size = 1.0,
+    double angle = 0.0,
+  }) : super(
+    file: file,
+    isVideo: isVideo,
+    position: position,
+    size: size,
+    angle: angle,
+  );
 
   InteractiveMedia.fromMedia(Media media) : super(
     file: media.file,
@@ -164,7 +195,9 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
   Color _currentColor = Colors.black;
   int _pencilIndex = 0;
   bool _isEraserActive = false;
-  final double _strokeWidth = 3.0;
+  double _strokeWidth = 3.0;
+  double _minStrokeWidth = 1.0;
+  double _maxStrokeWidth = 20.0;
   final double _eraserWidth = 30.0;
   bool _isDrawingMode = false;
   late AnimationController _eraserAnimationController;
@@ -391,14 +424,6 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
     });
   }
 
-  void _clearDrawing() {
-    setState(() {
-      _drawingHistory.add(List.from(_points));
-      _points.clear();
-      _redoHistory.clear();
-      _selectedMedia = null;
-    });
-  }
 
   void _toggleLines() {
     setState(() {
@@ -516,27 +541,6 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
     });
   }
 
-  void _handleMediaPanUpdate(ScaleUpdateDetails details, Media media) {
-    setState(() {
-      media.position += details.focalPointDelta;
-    });
-  }
-
-  void _handleMediaScaleUpdate(ScaleUpdateDetails details, InteractiveMedia media) {
-    setState(() {
-      double newSize = media.size * details.scale;
-      media.size = newSize.clamp(50.0, 500.0);
-    });
-  }
-
-  void _handleRotateMedia(DragUpdateDetails details) {
-    if (_selectedMedia != null) {
-      setState(() {
-        _selectedMedia!.angle += details.delta.dx * 0.01;
-      });
-    }
-  }
-
   void _deleteSelectedMedia() {
     if (_selectedMedia != null) {
       setState(() {
@@ -544,19 +548,6 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
         _selectedMedia = null;
       });
     }
-  }
-
-  void _handleScaleUpdate(ScaleUpdateDetails details, InteractiveMedia media) {
-    setState(() {
-      media.position += details.focalPointDelta;
-      media.size = (media.size * details.scale).clamp(50.0, 500.0);
-
-      if (details.rotation != 0) {
-        double newAngle = (details.rotation * 180 / 3.14159265359) / 15.0;
-        newAngle = newAngle.round() * 15.0;
-        media.angle = newAngle * 3.14159265359 / 180;
-      }
-    });
   }
 
   void _initSpeech() async {
@@ -595,22 +586,86 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
 
   Future<void> _pickMedia() async {
     final ImagePicker picker = ImagePicker();
-    final XFile? pickedFile = await picker.pickMedia(
-      requestFullMetadata: false,
+    final XFile? pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
     );
 
     if (pickedFile != null) {
-      bool isVideo = pickedFile.mimeType?.startsWith('video/') ?? false;
+      try {
+        final file = File(pickedFile.path);
 
-      setState(() {
-        _attachments.add(InteractiveMedia(
-          file: File(pickedFile.path),
-          isVideo: isVideo,
-          position: Offset(100, 100),
-          size: 200.0,
-          angle: 0.0,
-        ));
-      });
+        if (!file.existsSync()) {
+          throw Exception('Selected image does not exist');
+        }
+
+        setState(() {
+          _attachments.add(InteractiveMedia(
+            file: file,
+            isVideo: false,
+            position: Offset(
+              MediaQuery.of(context).size.width / 2 - 100,
+              MediaQuery.of(context).size.height / 2 - 100,
+            ),
+            size: 200.0,
+            angle: 0.0,
+          ));
+        });
+      } catch (e) {
+        print('Error picking image: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading image: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickVideo() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? pickedFile = await picker.pickVideo(
+      source: ImageSource.gallery,
+    );
+
+    if (pickedFile != null) {
+      try {
+        final file = File(pickedFile.path);
+
+        if (!file.existsSync()) {
+          throw Exception('Selected video does not exist');
+        }
+
+        // Verify the video can be played
+        final videoController = VideoPlayerController.file(file);
+        try {
+          await videoController.initialize();
+          videoController.dispose();
+        } catch (e) {
+          throw Exception('Invalid video file');
+        }
+
+        setState(() {
+          _attachments.add(InteractiveMedia(
+            file: file,
+            isVideo: true,
+            position: Offset(
+              MediaQuery.of(context).size.width / 2 - 100,
+              MediaQuery.of(context).size.height / 2 - 100,
+            ),
+            size: 200.0,
+            angle: 0.0,
+          ));
+        });
+      } catch (e) {
+        print('Error picking video: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading video: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -761,34 +816,51 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
                   child: Stack(
                     children: [
                       Container(
-                        padding: EdgeInsets.only(
-                          left: 20,
-                          right: 20,
-                          top: 20,
-                          bottom: isKeyboardVisible ? bottomInset + 80 : 20,
-                        ),
-                        child: _isDrawingMode
-                            ? QuillEditor(
-                          controller: _controller,
-                          scrollController: _editorScrollController,
-                          focusNode: _editorFocusNode,
-                          config: QuillEditorConfig(
-                            placeholder: 'Start writing your notes...',
-                            padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.only(
+                            left: 20,
+                            right: 20,
+                            top: 20,
+                            bottom: isKeyboardVisible ? bottomInset + 80 : 20,
                           ),
-                        ):
-                        _isControllerInitialized
-                            ? QuillEditor(
-                          controller: _controller,
-                          scrollController: _editorScrollController,
-                          focusNode: _editorFocusNode,
-                          config: QuillEditorConfig(
-                            placeholder: 'Start writing your notes...',
-                            padding: const EdgeInsets.all(16),
-                          ),
-                        )
-                            : const Center(child: CircularProgressIndicator())
+                          child: _isDrawingMode
+                              ? QuillEditor(
+                            controller: _controller,
+                            scrollController: _editorScrollController,
+                            focusNode: _editorFocusNode,
+                            config: QuillEditorConfig(
+                              placeholder: 'Start writing your notes...',
+                              padding: const EdgeInsets.all(16),
+                            ),
+                          ):
+                          _isControllerInitialized
+                              ? QuillEditor(
+                            controller: _controller,
+                            scrollController: _editorScrollController,
+                            focusNode: _editorFocusNode,
+                            config: QuillEditorConfig(
+                              placeholder: 'Start writing your notes...',
+                              padding: const EdgeInsets.all(16),
+                            ),
+                          )
+                              : const Center(child: CircularProgressIndicator())
                       ),
+                      ..._attachments.map((media) => MediaWidget(
+                        media: media,
+                        isSelected: _selectedMedia == media,
+                        onTap: () => _handleMediaTap(media),
+                        onUpdate: (updatedMedia) {
+                          setState(() {
+                            final index = _attachments.indexOf(media);
+                            if (index != -1) {
+                              _attachments[index] = updatedMedia;
+                              if (_selectedMedia == media) {
+                                _selectedMedia = _attachments[index];
+                              }
+                            }
+                          });
+                        },
+                        isEditingMode: true,
+                      )),
                       IgnorePointer(
                         ignoring: !_isDrawingMode,
                         child: GestureDetector(
@@ -810,33 +882,6 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
                                     showLines: _showLines,
                                   ),
                                 ),
-                                ..._attachments.map((media) => Positioned(
-                                  left: media.position.dx,
-                                  top: media.position.dy,
-                                  child: Transform.scale(
-                                    scale: media.size / 200.0,
-                                    child: Transform.rotate(
-                                      angle: media.angle,
-                                      child: MediaWidget(
-                                        media: media,
-                                        isSelected: _selectedMedia == media,
-                                        onTap: () => _handleMediaTap(media),
-                                        onUpdate: (updatedMedia) {
-                                          setState(() {
-                                            final index = _attachments.indexOf(media);
-                                            if (index != -1) {
-                                              _attachments[index] = InteractiveMedia.fromMedia(updatedMedia);
-                                              if (_selectedMedia == media) {
-                                                _selectedMedia = _attachments[index];
-                                              }
-                                            }
-                                          });
-                                        },
-                                        isEditingMode: !_isDrawingMode,
-                                      ),
-                                    ),
-                                  ),
-                                )),
                               ],
                             ),
                           ),
@@ -885,6 +930,18 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
                           _controller.redo();
                           _editorFocusNode.requestFocus();
                         }),
+                        _buildToolbarButton(Icons.image, () {
+                          _pickMedia();
+                          _editorFocusNode.requestFocus();
+                        }),
+                        _buildToolbarButton(Icons.video_library, () {
+                          _pickVideo();
+                          _editorFocusNode.requestFocus();
+                        }),
+                        _buildToolbarButton(Icons.link, () {
+                          _showLinkDialog();
+                          _editorFocusNode.requestFocus();
+                        }),
                         VerticalDivider(thickness: 1, width: 8, color: Colors.white24),
                         _buildToolbarButton(Icons.format_bold, () {
                           _controller.formatSelection(Attribute.bold);
@@ -922,15 +979,6 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
                         }),
                         _buildToolbarButton(Icons.format_list_numbered, () {
                           _controller.formatSelection(Attribute.ol);
-                          _editorFocusNode.requestFocus();
-                        }),
-                        VerticalDivider(thickness: 1, width: 8, color: Colors.white24),
-                        _buildToolbarButton(Icons.link, () {
-                          _showLinkDialog();
-                          _editorFocusNode.requestFocus();
-                        }),
-                        _buildToolbarButton(Icons.image, () {
-                          _pickMedia();
                           _editorFocusNode.requestFocus();
                         }),
                       ],
@@ -972,7 +1020,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
                     color: _drawingHistory.isEmpty ? Colors.grey : Colors.white,
                     size: toolbarHeight * 0.3,
                   ),
-                  onPressed: _drawingHistory.isEmpty ? null : _clearDrawing,
+                  onPressed: _drawingHistory.isEmpty ? null : _undo,
                 ),
                 IconButton(
                   icon: Icon(
@@ -980,7 +1028,7 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
                     color: _redoHistory.isEmpty ? Colors.grey : Colors.white,
                     size: toolbarHeight * 0.3,
                   ),
-                  onPressed: _redoHistory.isEmpty ? null : _clearDrawing,
+                  onPressed: _redoHistory.isEmpty ? null : _redo,
                 ),
                 GestureDetector(
                   onTap: _togglePencil,
@@ -1027,13 +1075,49 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
                     },
                   ),
                 ),
-                IconButton(
-                  icon: Icon(
-                    Icons.image,
-                    color: Colors.white,
-                    size: toolbarHeight * 0.3,
+                Container(
+                  width: toolbarHeight * 1.5,
+                  height: toolbarHeight * 0.4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  onPressed: _pickMedia,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.brush,
+                        color: Colors.white,
+                        size: toolbarHeight * 0.25,
+                      ),
+                      Expanded(
+                        child: SliderTheme(
+                          data: SliderThemeData(
+                            activeTrackColor: Colors.white,
+                            inactiveTrackColor: Colors.white.withOpacity(0.3),
+                            thumbColor: Colors.white,
+                            overlayColor: Colors.white.withOpacity(0.1),
+                            trackHeight: 2.0,
+                            thumbShape: RoundSliderThumbShape(
+                              enabledThumbRadius: toolbarHeight * 0.1,
+                            ),
+                            overlayShape: RoundSliderOverlayShape(
+                              overlayRadius: toolbarHeight * 0.15,
+                            ),
+                          ),
+                          child: Slider(
+                            value: _strokeWidth,
+                            min: _minStrokeWidth,
+                            max: _maxStrokeWidth,
+                            onChanged: (value) {
+                              setState(() {
+                                _strokeWidth = value;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 IconButton(
                   icon: Icon(
@@ -1063,10 +1147,107 @@ class _JournalScreenState extends State<JournalScreen> with TickerProviderStateM
   }
 }
 
+class MediaWidget extends StatefulWidget {
+  final InteractiveMedia media;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final Function(InteractiveMedia) onUpdate;
+  final bool isEditingMode;
+
+  const MediaWidget({
+    required this.media,
+    required this.isSelected,
+    required this.onTap,
+    required this.onUpdate,
+    required this.isEditingMode,
+    Key? key,
+  }) : super(key: key);
+
+  @override
+  _MediaWidgetState createState() => _MediaWidgetState();
+}
+
+class _MediaWidgetState extends State<MediaWidget> {
+  bool _isInEditMode = false;
+  double _initialAngle = 0;
+  double _initialScale = 1.0;
+  Offset _initialPosition = Offset.zero;
+  Offset _dragStartPosition = Offset.zero;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: widget.media.position.dx,
+      top: widget.media.position.dy,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        onDoubleTap: () {
+          setState(() {
+            _isInEditMode = !_isInEditMode;
+          });
+        },
+        onScaleStart: _isInEditMode
+            ? (details) {
+          _initialAngle = widget.media.angle;
+          _initialScale = widget.media.size / 200.0;
+          _initialPosition = widget.media.position;
+          _dragStartPosition = details.focalPoint;
+        }
+            : null,
+        onScaleUpdate: _isInEditMode
+            ? (details) {
+          final offsetDelta = details.focalPoint - _dragStartPosition;
+          final newPosition = _initialPosition + offsetDelta;
+
+          final newAngle = _initialAngle + details.rotation;
+          final newScale = (_initialScale * details.scale).clamp(0.25, 4.0);
+
+          widget.onUpdate(InteractiveMedia(
+            file: widget.media.file,
+            isVideo: widget.media.isVideo,
+            position: newPosition,
+            size: newScale * 200.0,
+            angle: newAngle,
+          ));
+        }
+            : null,
+        child: Transform.rotate(
+          angle: widget.media.angle,
+          child: Transform.scale(
+            scale: widget.media.size / 200.0,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                border: _isInEditMode
+                    ? Border.all(
+                    color: Colors.green,
+                    width: 2)
+                    : null,
+              ),
+              child: widget.media.isVideo
+                  ? VideoWidget(file: widget.media.file)
+                  : Image.file(
+                widget.media.file,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Center(
+                    child: Icon(Icons.error, color: Colors.red),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class VideoWidget extends StatefulWidget {
   final File file;
 
-  const VideoWidget({super.key, required this.file});
+  const VideoWidget({Key? key, required this.file}) : super(key: key);
 
   @override
   _VideoWidgetState createState() => _VideoWidgetState();
@@ -1074,20 +1255,44 @@ class VideoWidget extends StatefulWidget {
 
 class _VideoWidgetState extends State<VideoWidget> {
   late VideoPlayerController _controller;
-  bool _isPlaying = false;
   bool _isInitialized = false;
+  bool _hasError = false;
 
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.file(widget.file)
-      ..initialize().then((_) {
-        if (mounted) {
-          setState(() {
-            _isInitialized = true;
-          });
-        }
-      });
+    _initializeVideo();
+  }
+
+  Future<void> _initializeVideo() async {
+    try {
+      if (!widget.file.existsSync()) {
+        throw Exception('Video file does not exist');
+      }
+
+      _controller = VideoPlayerController.file(widget.file)
+        ..addListener(() {
+          if (mounted) {
+            setState(() {});
+          }
+        });
+
+      await _controller.initialize();
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+          _hasError = false;
+        });
+      }
+    } catch (e) {
+      print('Error initializing video: $e');
+      if (mounted) {
+        setState(() {
+          _isInitialized = false;
+          _hasError = true;
+        });
+      }
+    }
   }
 
   @override
@@ -1095,33 +1300,46 @@ class _VideoWidgetState extends State<VideoWidget> {
     _controller.dispose();
     super.dispose();
   }
+
   @override
   Widget build(BuildContext context) {
+    if (_hasError) {
+      return const Center(
+        child: Icon(Icons.error, color: Colors.red),
+      );
+    }
+
+    if (!_isInitialized) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
     return GestureDetector(
       onTap: () {
-        if (!_isInitialized) return;
-
         setState(() {
-          _isPlaying = !_isPlaying;
-          if (_isPlaying) {
-            _controller.play();
-          } else {
+          if (_controller.value.isPlaying) {
             _controller.pause();
+          } else {
+            _controller.play();
           }
         });
       },
       child: Stack(
         alignment: Alignment.center,
         children: [
-          if (_isInitialized)
-            AspectRatio(
-              aspectRatio: _controller.value.aspectRatio,
-              child: VideoPlayer(_controller),
-            )
-          else
-            const CircularProgressIndicator(),
-          if (!_isPlaying && _isInitialized)
-            const Icon(Icons.play_arrow, size: 50, color: Colors.white),
+          AspectRatio(
+            aspectRatio: _controller.value.aspectRatio,
+            child: VideoPlayer(_controller),
+          ),
+          if (!_controller.value.isPlaying)
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.3),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.play_arrow, size: 50, color: Colors.white),
+            ),
         ],
       ),
     );
@@ -1139,6 +1357,23 @@ class _SmoothDrawingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Draw dot grid background if showLines is true
+    if (showLines) {
+      final dotPaint = Paint()
+        ..color = Colors.grey.withOpacity(0.3)
+        ..style = PaintingStyle.fill;
+
+      const dotSpacing = 20.0; // Space between dots
+      const dotSize = 2.0; // Size of each dot
+
+      // Draw dots in a grid pattern
+      for (double x = 0; x < size.width; x += dotSpacing) {
+        for (double y = 0; y < size.height; y += dotSpacing) {
+          canvas.drawCircle(Offset(x, y), dotSize, dotPaint);
+        }
+      }
+    }
+
     Paint paint = Paint()
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;

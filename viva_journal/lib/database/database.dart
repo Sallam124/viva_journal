@@ -18,7 +18,7 @@ class Entry {
   String? title;
   List<Map<String, dynamic>>? content;
   List<Map<String, dynamic>>? drawingPoints;
-  List<String>? mediaPaths;
+  List<Map<String, dynamic>>? media;
   Color? color;
 
   Entry({
@@ -31,7 +31,7 @@ class Entry {
     this.title,
     this.content,
     this.drawingPoints,
-    this.mediaPaths,
+    this.media,
     this.color,
   });
 
@@ -46,8 +46,8 @@ class Entry {
       'title': title,
       'content': content != null ? jsonEncode(content) : null,
       'drawingPoints': drawingPoints != null ? jsonEncode(drawingPoints) : null,
-      'mediaPaths': mediaPaths != null ? jsonEncode(mediaPaths) : null,
-      'color': color?.toARGB32(),
+      'media': media != null ? jsonEncode(media) : null,
+      'color': color?.value,
     };
   }
 
@@ -62,7 +62,7 @@ class Entry {
       title: map['title'],
       content: map['content'] != null ? List<Map<String, dynamic>>.from(jsonDecode(map['content'])) : null,
       drawingPoints: map['drawingPoints'] != null ? List<Map<String, dynamic>>.from(jsonDecode(map['drawingPoints'])) : null,
-      mediaPaths: map['mediaPaths'] != null ? List<String>.from(jsonDecode(map['mediaPaths'])) : null,
+      media: map['media'] != null ? List<Map<String, dynamic>>.from(jsonDecode(map['media'])) : null,
       color: map['color'] != null ? Color(map['color']) : null,
     );
   }
@@ -90,7 +90,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 5, // Increment version to force migration
+      version: 6, // Increment version for media changes
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -108,65 +108,44 @@ class DatabaseHelper {
         title TEXT,
         content TEXT,
         drawingPoints TEXT,
-        mediaPaths TEXT,
+        media TEXT,
         color INTEGER
       )
     ''');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 5) {
-      // Drop old tables if they exist
-      await db.execute('DROP TABLE IF EXISTS moods');
-      await db.execute('DROP TABLE IF EXISTS journals');
+    if (oldVersion < 6) {
+      // Add new media column if it doesn't exist
+      await db.execute('ALTER TABLE entries ADD COLUMN media TEXT');
 
-      // Create new table
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS entries(
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          type TEXT NOT NULL,
-          mood TEXT,
-          date TEXT,
-          input TEXT,
-          tags TEXT,
-          title TEXT,
-          content TEXT,
-          drawingPoints TEXT,
-          mediaPaths TEXT,
-          color INTEGER
-        )
-      ''');
-
-      // Migrate data from old tables if they exist
+      // Migrate existing mediaPaths to new media format
       try {
-        // Migrate moods data
-        final List<Map<String, dynamic>> oldMoods = await db.query('moods');
-        for (var mood in oldMoods) {
-          await db.insert('entries', {
-            'type': 'mood',
-            'mood': mood['mood'],
-            'date': mood['date'],
-            'input': mood['input'],
-          });
+        final List<Map<String, dynamic>> entries = await db.query('entries');
+        for (var entry in entries) {
+          if (entry['mediaPaths'] != null) {
+            List<String> mediaPaths = List<String>.from(jsonDecode(entry['mediaPaths']));
+            List<Map<String, dynamic>> newMedia = mediaPaths.map((path) => {
+              'filePath': path,
+              'isVideo': path.toLowerCase().endsWith('.mp4'),
+              'position': {'dx': 0.0, 'dy': 0.0},
+              'size': 200.0,
+              'angle': 0.0,
+            }).toList();
+
+            await db.update(
+              'entries',
+              {'media': jsonEncode(newMedia)},
+              where: 'id = ?',
+              whereArgs: [entry['id']],
+            );
+          }
         }
 
-        // Migrate journals data
-        final List<Map<String, dynamic>> oldJournals = await db.query('journals');
-        for (var journal in oldJournals) {
-          await db.insert('entries', {
-            'type': 'journal',
-            'mood': journal['mood'],
-            'date': journal['date'],
-            'tags': journal['tags'],
-            'title': journal['title'],
-            'content': journal['content'],
-            'drawingPoints': journal['drawingPoints'],
-            'mediaPaths': journal['mediaPaths'],
-            'color': journal['color'],
-          });
-        }
+        // Drop the old mediaPaths column
+        await db.execute('ALTER TABLE entries DROP COLUMN mediaPaths');
       } catch (e) {
-        logger.e('Error during migration: $e');
+        logger.e('Error during media migration: $e');
       }
     }
   }

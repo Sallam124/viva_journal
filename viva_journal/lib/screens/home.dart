@@ -50,6 +50,8 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   double _averageMoodPercentage = 0.0;
   int _totalEntries = 0;
   Color _averageMoodColor = const Color(0xFFF8650C); // Default to Neutral
+  bool _isNavigating = false;  // Add flag to prevent multiple navigations
+  Entry? _currentEntry;  // Add this field to store the current entry
 
   final List<Map<String, dynamic>> moodGroups = [
     {
@@ -297,8 +299,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         margin: const EdgeInsets.only(right: 8),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          // ignore: deprecated_member_use
-                          color: _selectedMoodFilter == 'all' ? Colors.black : Colors.grey.withOpacity(0.1),
+                          color: _selectedMoodFilter == 'all' ? Colors.black : Colors.grey.withAlpha((0.1 * 255).round()),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: _selectedMoodFilter == 'all' ? Colors.black : Colors.grey,
@@ -324,7 +325,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         decoration: BoxDecoration(
                           color: _selectedMoodFilter == group['name']
                               ? group['color']
-                              : group['color'].withOpacity(0.1),
+                              : group['color'].withAlpha((0.1 * 255).round()),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: group['color'],
@@ -367,8 +368,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   margin: const EdgeInsets.only(top: 8),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    // ignore: deprecated_member_use
-                    color: Colors.grey.withOpacity(0.1),
+                    color: Colors.grey.withAlpha((0.1 * 255).round()),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: Colors.grey,
@@ -608,7 +608,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   children: entry.tags!.map((tag) => Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                     decoration: BoxDecoration(
-                                      color: (entry.color ?? Colors.grey).withOpacity(0.1),
+                                      color: (entry.color ?? Colors.grey).withAlpha((0.1 * 255).round()),
                                       borderRadius: BorderRadius.circular(20),
                                       border: Border.all(
                                         color: entry.color ?? Colors.grey,
@@ -672,15 +672,19 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     _glowController.repeat();
 
-    _splashController.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
+    _splashController.addStatusListener((status) async {
+      if (status == AnimationStatus.completed && !_isNavigating) {
+        _isNavigating = true;
         // Delay the navigation slightly to ensure smooth transition
         Future.delayed(const Duration(milliseconds: 50), () {
           if (mounted) {
             Navigator.push(
               context,
               PageRouteBuilder(
-                pageBuilder: (context, animation, secondaryAnimation) => TrackerLogScreen(date: DateTime.now()),
+                pageBuilder: (context, animation, secondaryAnimation) => TrackerLogScreen(
+                  date: DateTime.now(),
+                  initialEntry: _currentEntry,
+                ),
                 transitionDuration: Duration.zero,
                 reverseTransitionDuration: Duration.zero,
               ),
@@ -690,6 +694,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   _isSplashAnimating = false;
                   _homeBarOpacity = 1.0;
                   _floatingButtonOpacity = 1.0;
+                  _isNavigating = false;
                 });
               }
             });
@@ -714,8 +719,15 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   /// Triggers animation and navigates to the tracker log screen.
-  void _onFloatingButtonPressed(TapDownDetails details) {
+  void _onFloatingButtonPressed(TapDownDetails details) async {
+    if (_isNavigating) return;  // Prevent multiple taps while navigating
+
+    // Check for existing entry for today
+    final today = DateTime.now();
+    final existingEntry = await DatabaseHelper().getEntryForDate(today);
+
     setState(() {
+      _currentEntry = existingEntry;  // Store the entry
       _isSplashAnimating = true;
       _splashPosition = details.globalPosition;
       _homeBarOpacity = 0.0;  // Start fade out
@@ -927,7 +939,6 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     required Color color,
     Widget? leftImage,
     required VoidCallback onTap,
-    String? subtitle,
     String? percentage,
     required GlobalKey key,
   }) {
@@ -943,7 +954,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Color.fromARGB(76, color.red, color.green, color.blue),
+                color: Color.fromARGB(76, color.r.round(), color.g.round(), color.b.round()),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -954,7 +965,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               if (leftImage != null)
                 Positioned(
                   left: 16,
-                  top: 50, // Moved down to center the GIF
+                  top: 50,
                   child: SizedBox(
                     width: 80,
                     height: 80,
@@ -978,34 +989,28 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 Positioned(
                   left: 110,
                   top: 50,
-                  child: Text(
-                    percentage,
-                    style: const TextStyle(
-                      fontSize: 32,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'SF Pro Display',
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Text(
+                      percentage,
+                      style: const TextStyle(
+                        fontSize: 48,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'SF Pro Display',
+                      ),
                     ),
                   ),
                 ),
               Positioned(
-                top: 16,
-                right: 16,
+                top: 8,
+                right: 8,
                 child: PopupMenuButton<String>(
                   icon: const Icon(Icons.open_in_new, color: Colors.white),
                   onSelected: (value) async {
                     if (value == 'share') {
-                      final RenderBox box = key.currentContext!.findRenderObject() as RenderBox;
-                      final image = await _captureWidget(box);
-                      if (image != null) {
-                        final tempDir = await getTemporaryDirectory();
-                        final file = await File('${tempDir.path}/share.png').create();
-                        await file.writeAsBytes(image);
-                        await Share.shareXFiles(
-                          [XFile(file.path)],
-                          text: "Check out my ${title.toLowerCase()} on Viva Journal! 📝✨",
-                        );
-                      }
+                      if (!mounted) return;
+                      await _shareBlock(key, title);
                     }
                   },
                   itemBuilder: (context) => [
@@ -1035,7 +1040,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     required Color color,
     required String iconPath,
     required VoidCallback onTap,
-    String? subtitle,
+    required String subtitle,
     required GlobalKey key,
   }) {
     return RepaintBoundary(
@@ -1049,7 +1054,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Color.fromARGB(76, color.red, color.green, color.blue),
+                color: Color.fromARGB(76, color.r.round(), color.g.round(), color.b.round()),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
@@ -1073,19 +1078,17 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         fontFamily: 'SF Pro Display',
                       ),
                     ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: color == Colors.white ? Colors.black : Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'SF Pro Display',
-                        ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: color == Colors.white ? Colors.black : Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'SF Pro Display',
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
@@ -1100,17 +1103,8 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   onSelected: (value) async {
                     if (value == 'share') {
-                      final RenderBox box = key.currentContext!.findRenderObject() as RenderBox;
-                      final image = await _captureWidget(box);
-                      if (image != null) {
-                        final tempDir = await getTemporaryDirectory();
-                        final file = await File('${tempDir.path}/share.png').create();
-                        await file.writeAsBytes(image);
-                        await Share.shareXFiles(
-                          [XFile(file.path)],
-                          text: "Check out my ${title.toLowerCase()} on Viva Journal! 📝✨",
-                        );
-                      }
+                      if (!mounted) return;
+                      await _shareBlock(key, title);
                     }
                   },
                   itemBuilder: (context) => [
@@ -1216,6 +1210,8 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _shareJournalAsPDF(Entry entry) async {
+    if (!mounted) return;
+
     try {
       // Create a PDF document
       final pdf = pw.Document();
@@ -1313,20 +1309,42 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       await file.writeAsBytes(await pdf.save());
 
       // Share the PDF file
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        text: "My journal entry from ${DateFormat('MMM dd, yyyy').format(entry.date)} 📝",
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          text: "My journal entry from ${DateFormat('MMM dd, yyyy').format(entry.date)} 📝",
+        ),
       );
     } catch (e) {
       logger.e('Error generating PDF: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error generating PDF: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!mounted) return;
+      final context = this.context;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error generating PDF: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _shareBlock(GlobalKey key, String title) async {
+    if (!mounted) return;
+
+    final box = key.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+
+    final image = await _captureWidget(box);
+    if (image != null) {
+      final tempDir = await getTemporaryDirectory();
+      final file = await File('${tempDir.path}/share.png').create();
+      await file.writeAsBytes(image);
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          text: "Check out my ${title.toLowerCase()} on Viva Journal! 📝✨",
+        ),
+      );
     }
   }
 }
