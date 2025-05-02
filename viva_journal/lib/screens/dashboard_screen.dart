@@ -76,7 +76,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         isLoading = false;
       });
     } catch (e) {
-<<<<<<< HEAD
 
       print("Error loading mood data: $e");
       print("Error loading mood data: \$e");
@@ -84,9 +83,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       print("Error loading mood data: \$e");
 
       print("Error loading mood data: \$e");
-=======
       print("Error loading mood data: \$e");
->>>>>>> 68e0b18927f958f12491b2918f23b526b4c7d67d
       setState(() {
         isLoading = false;
       });

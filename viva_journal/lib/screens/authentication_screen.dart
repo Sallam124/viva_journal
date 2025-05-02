@@ -22,12 +22,8 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
     super.initState();
     _checkBiometricAvailability();
     _loadSavedBackground();
-<<<<<<< HEAD
     _authenticateWithBiometrics();
-=======
-    _clearPreviousUserData();  // Add this line to clear old data
-    _authenticateWithBiometrics(); // Trigger biometric authentication on load
->>>>>>> 68e0b18927f958f12491b2918f23b526b4c7d67d
+    // _clearPreviousUserData(); // ⚠️ Only use this if you actually want to reset auth
   }
 
   void _checkBiometricAvailability() async {
@@ -47,13 +43,6 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
     }
   }
 
-  // ✅ Clear old session data
-  void _clearPreviousUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('passcode');  // Clear old PIN
-    await prefs.remove('isAuthenticated');  // Reset authentication status
-  }
-
   Future<void> _authenticateWithBiometrics() async {
     try {
       bool isAuthenticated = false;
@@ -69,13 +58,12 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('isAuthenticated', true);
         Navigator.pushReplacement(
-          // ignore: use_build_context_synchronously
           context,
           MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
       }
     } catch (e) {
-      //working with biometric authentication
+      print("Biometric authentication error: $e");
     }
   }
 
@@ -84,20 +72,11 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
     final savedPin = prefs.getString('passcode')?.trim();
     final enteredPin = _pinController.text.trim();
 
-<<<<<<< HEAD
     print('DEBUG -> Saved PIN: $savedPin | Entered PIN: $enteredPin');
 
     if (enteredPin.isEmpty || enteredPin.length < 4) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a 4-digit PIN')),
-=======
-    if (savedPin == enteredPin) {
-      await prefs.setBool('isAuthenticated', true); // Save verification status
-      Navigator.pushReplacement(
-        // ignore: use_build_context_synchronously
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
->>>>>>> 68e0b18927f958f12491b2918f23b526b4c7d67d
       );
       return;
     }
@@ -118,7 +97,6 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
         );
       }
     } else {
-      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Incorrect PIN, please try again!')),
       );
