@@ -8,6 +8,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 final logger = Logger();
 
+// Define constants to avoid duplication
+const String dateFormat = "yyyy-MM-dd";
+const String dateDisplayFormat = "MMM dd, yyyy";
+const String fontName = "SF Pro Display";
+
 // Define the model for the entry
 class Entry {
   int? id;
@@ -41,7 +46,7 @@ class Entry {
       'id': id,
       'type': type,
       'mood': mood,
-      'date': DateFormat('yyyy-MM-dd').format(date),
+      'date': DateFormat(dateFormat).format(date),
       'input': input,
       'tags': tags != null ? jsonEncode(tags) : null,
       'title': title,
@@ -57,7 +62,7 @@ class Entry {
       id: map['id'],
       type: map['type'],
       mood: map['mood'],
-      date: DateFormat('yyyy-MM-dd').parse(map['date']),
+      date: DateFormat(dateFormat).parse(map['date']),
       input: map['input'],
       tags: map['tags'] != null ? List<String>.from(jsonDecode(map['tags'])) : null,
       title: map['title'],
@@ -107,7 +112,7 @@ class DatabaseHelper {
   }
 
   Future<void> _onCreate(Database db, int version) async {
-    await db.execute('''
+    await db.execute(''' 
       CREATE TABLE entries(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         type TEXT NOT NULL,
@@ -165,8 +170,8 @@ class DatabaseHelper {
       final db = await database;
       DateTime currentDate = DateTime.now();
       DateTime sevenDaysAgo = currentDate.subtract(Duration(days: 7));
-      String formattedCurrentDate = DateFormat('yyyy-MM-dd').format(currentDate);
-      String formattedSevenDaysAgo = DateFormat('yyyy-MM-dd').format(sevenDaysAgo);
+      String formattedCurrentDate = DateFormat(dateFormat).format(currentDate);
+      String formattedSevenDaysAgo = DateFormat(dateFormat).format(sevenDaysAgo);
 
       final List<Map<String, dynamic>> maps = await db.query(
         'entries',
@@ -185,7 +190,7 @@ class DatabaseHelper {
   Future<Entry?> getEntryForDate(DateTime date) async {
     try {
       final db = await database;
-      String formattedDate = DateFormat('yyyy-MM-dd').format(date);
+      String formattedDate = DateFormat(dateFormat).format(date);
       final List<Map<String, dynamic>> maps = await db.query(
         'entries',
         where: 'date = ?',
@@ -206,7 +211,7 @@ class DatabaseHelper {
     try {
       final db = await database;
       Map<String, dynamic> entryMap = entry.toMap();
-      entryMap['date'] = DateFormat('yyyy-MM-dd').format(entry.date);
+      entryMap['date'] = DateFormat(dateFormat).format(entry.date);
       return await db.insert('entries', entryMap);
     } catch (e) {
       logger.e('Error inserting entry: $e');
@@ -219,12 +224,12 @@ class DatabaseHelper {
       final db = await database;
       Map<String, dynamic> entryMap = entry.toMap();
       entryMap.remove('id');
-      entryMap['date'] = DateFormat('yyyy-MM-dd').format(entry.date);
+      entryMap['date'] = DateFormat(dateFormat).format(entry.date);
       return await db.update(
         'entries',
         entryMap,
         where: 'date = ?',
-        whereArgs: [DateFormat('yyyy-MM-dd').format(entry.date)],
+        whereArgs: [DateFormat(dateFormat).format(entry.date)],
       );
     } catch (e) {
       logger.e('Error updating entry: $e');
@@ -235,7 +240,7 @@ class DatabaseHelper {
   Future<int> deleteEntry(DateTime date) async {
     try {
       final db = await database;
-      String formattedDate = DateFormat('yyyy-MM-dd').format(date);
+      String formattedDate = DateFormat(dateFormat).format(date);
       logger.i('Attempting to delete entry for date: $formattedDate');
 
       // First check if the entry exists using date-only comparison

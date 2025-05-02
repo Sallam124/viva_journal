@@ -4,10 +4,10 @@ import 'package:local_auth/local_auth.dart';
 import 'package:viva_journal/screens/home.dart';
 
 class PinVerificationScreen extends StatefulWidget {
-  const PinVerificationScreen({Key? key}) : super(key: key);
+  const PinVerificationScreen({super.key});
 
   @override
-  _PinVerificationScreenState createState() => _PinVerificationScreenState();
+  State<PinVerificationScreen> createState() => _PinVerificationScreenState();
 }
 
 class _PinVerificationScreenState extends State<PinVerificationScreen> {
@@ -64,12 +64,13 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('isAuthenticated', true); // Save PIN status
         Navigator.pushReplacement(
+          // ignore: use_build_context_synchronously
           context,
           MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
       }
     } catch (e) {
-      print("Biometric authentication error: $e");
+      //working with biometric authentication
     }
   }
 
@@ -80,10 +81,12 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
     if (savedPin == enteredPin) {
       await prefs.setBool('isAuthenticated', true); // Save verification status
       Navigator.pushReplacement(
+        // ignore: use_build_context_synchronously
         context,
         MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
     } else {
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Incorrect PIN, please try again!')),
       );

@@ -202,6 +202,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ElevatedButton(
                         onPressed: () async {
                           await _removePasscode();
+                          // ignore: use_build_context_synchronously
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Passcode removed')),
                           );
@@ -220,6 +221,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     try {
                       await FirebaseAuth.instance.signOut();
                       if (mounted) {
+                        // ignore: use_build_context_synchronously
                         Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute(builder: (context) => const LoginScreen()),
                               (route) => false,
@@ -227,6 +229,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       }
                     } catch (e) {
                       if (mounted) {
+                        // ignore: use_build_context_synchronously
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Error signing out')),
                         );

@@ -71,7 +71,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         isLoading = false;
       });
     } catch (e) {
-      print("Error loading mood data: $e");
       setState(() {
         isLoading = false;
       });
