@@ -76,19 +76,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         isLoading = false;
       });
     } catch (e) {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-      print("Error loading mood data: $e");
-=======
       print("Error loading mood data: \$e");
->>>>>>> Stashed changes
-=======
-      print("Error loading mood data: \$e");
->>>>>>> Stashed changes
-=======
-      print("Error loading mood data: \$e");
->>>>>>> Stashed changes
       setState(() {
         isLoading = false;
       });
@@ -125,125 +113,125 @@ class _DashboardScreenState extends State<DashboardScreen> {
           body: isLoading
               ? const Center(child: CircularProgressIndicator())
               : SingleChildScrollView(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Card(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                    elevation: 4,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: SizedBox(
-                        height: 300,
-                        child: LineChart(
-                          LineChartData(
-                            minY: 1,
-                            maxY: 5,
-                            titlesData: FlTitlesData(
-                              bottomTitles: AxisTitles(
-                                sideTitles: SideTitles(
-                                  showTitles: true,
-                                  interval: 1,
-                                  getTitlesWidget: (value, meta) {
-                                    final index = value.toInt();
-                                    if (index >= 0 && index < moodDates.length) {
-                                      return Text(DateFormat('MM/dd').format(moodDates[index]));
-                                    }
-                                    return const Text('');
-                                  },
-                                ),
-                              ),
-                              leftTitles: AxisTitles(
-                                sideTitles: SideTitles(
-                                  showTitles: true,
-                                  interval: 1,
-                                  getTitlesWidget: (value, meta) {
-                                    int mood = value.toInt().clamp(1, 5);
-                                    return Text(
-                                      emojiLabels[mood - 1],
-                                      style: const TextStyle(fontSize: 20),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                            gridData: FlGridData(show: true),
-                            borderData: FlBorderData(show: true),
-                            lineBarsData: [
-                              LineChartBarData(
-                                spots: List.generate(
-                                  moodData.length,
-                                      (index) => FlSpot(index.toDouble(), moodData[index]),
-                                ),
-                                isCurved: true,
-                                color: Colors.blue,
-                                barWidth: 3,
-                                dotData: FlDotData(show: true),
-                                belowBarData: BarAreaData(
-                                  show: true,
-                                  color: Colors.blue.withOpacity(0.3),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Row(
+                  child: Column(
                     children: [
-                      Expanded(
+                      Padding(
+                        padding: const EdgeInsets.all(16),
                         child: Card(
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16)),
                           elevation: 4,
                           child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(avgEmoji, style: const TextStyle(fontSize: 48)),
-                                const SizedBox(height: 8),
-                                const Text("Weekly Avg", style: TextStyle(fontSize: 14)),
-                              ],
+                            padding: const EdgeInsets.all(16),
+                            child: SizedBox(
+                              height: 300,
+                              child: LineChart(
+                                LineChartData(
+                                  minY: 1,
+                                  maxY: 5,
+                                  titlesData: FlTitlesData(
+                                    bottomTitles: AxisTitles(
+                                      sideTitles: SideTitles(
+                                        showTitles: true,
+                                        interval: 1,
+                                        getTitlesWidget: (value, meta) {
+                                          final index = value.toInt();
+                                          if (index >= 0 && index < moodDates.length) {
+                                            return Text(DateFormat('MM/dd').format(moodDates[index]));
+                                          }
+                                          return const Text('');
+                                        },
+                                      ),
+                                    ),
+                                    leftTitles: AxisTitles(
+                                      sideTitles: SideTitles(
+                                        showTitles: true,
+                                        interval: 1,
+                                        getTitlesWidget: (value, meta) {
+                                          int mood = value.toInt().clamp(1, 5);
+                                          return Text(
+                                            emojiLabels[mood - 1],
+                                            style: const TextStyle(fontSize: 20),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                  gridData: FlGridData(show: true),
+                                  borderData: FlBorderData(show: true),
+                                  lineBarsData: [
+                                    LineChartBarData(
+                                      spots: List.generate(
+                                        moodData.length,
+                                        (index) => FlSpot(index.toDouble(), moodData[index]),
+                                      ),
+                                      isCurved: true,
+                                      color: Colors.blue,
+                                      barWidth: 3,
+                                      dotData: FlDotData(show: true),
+                                      belowBarData: BarAreaData(
+                                        show: true,
+                                        color: Colors.blue.withOpacity(0.3),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                      Expanded(
-                        child: Card(
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16)),
-                          elevation: 4,
-                          child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.text_snippet, size: 40, color: Colors.indigo),
-                                const SizedBox(height: 8),
-                                const Text("Most Frequent Mood", style: TextStyle(fontSize: 14)),
-                                const SizedBox(height: 8),
-                                Text('⭐ ' + moodDisplay,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Card(
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16)),
+                                elevation: 4,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(avgEmoji, style: const TextStyle(fontSize: 48)),
+                                      const SizedBox(height: 8),
+                                      const Text("Weekly Avg", style: TextStyle(fontSize: 14)),
+                                    ],
+                                  ),
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
+                            Expanded(
+                              child: Card(
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16)),
+                                elevation: 4,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.text_snippet, size: 40, color: Colors.indigo),
+                                      const SizedBox(height: 8),
+                                      const Text("Most Frequent Mood", style: TextStyle(fontSize: 14)),
+                                      const SizedBox(height: 8),
+                                      Text('⭐ ' + moodDisplay,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
-          ),
         ),
       ],
     );

@@ -4,8 +4,14 @@ import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:flutter/painting.dart';
 import 'package:logger/logger.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 final logger = Logger();
+
+// Define constants to avoid duplication
+const String dateFormat = "yyyy-MM-dd";
+const String dateDisplayFormat = "MMM dd, yyyy";
+const String fontName = "SF Pro Display";
 
 // Define the model for the entry
 class Entry {
@@ -18,7 +24,7 @@ class Entry {
   String? title;
   List<Map<String, dynamic>>? content;
   List<Map<String, dynamic>>? drawingPoints;
-  List<String>? mediaPaths;
+  List<Map<String, dynamic>>? media;
   Color? color;
 
   Entry({
@@ -31,7 +37,7 @@ class Entry {
     this.title,
     this.content,
     this.drawingPoints,
-    this.mediaPaths,
+    this.media,
     this.color,
   });
 
@@ -40,14 +46,14 @@ class Entry {
       'id': id,
       'type': type,
       'mood': mood,
-      'date': DateFormat('yyyy-MM-dd').format(date),
+      'date': DateFormat(dateFormat).format(date),
       'input': input,
       'tags': tags != null ? jsonEncode(tags) : null,
       'title': title,
       'content': content != null ? jsonEncode(content) : null,
       'drawingPoints': drawingPoints != null ? jsonEncode(drawingPoints) : null,
-      'mediaPaths': mediaPaths != null ? jsonEncode(mediaPaths) : null,
-      'color': color?.toARGB32(),
+      'media': media != null ? jsonEncode(media) : null,
+      'color': color?.value,
     };
   }
 
@@ -56,48 +62,57 @@ class Entry {
       id: map['id'],
       type: map['type'],
       mood: map['mood'],
-      date: DateFormat('yyyy-MM-dd').parse(map['date']),
+      date: DateFormat(dateFormat).parse(map['date']),
       input: map['input'],
       tags: map['tags'] != null ? List<String>.from(jsonDecode(map['tags'])) : null,
       title: map['title'],
       content: map['content'] != null ? List<Map<String, dynamic>>.from(jsonDecode(map['content'])) : null,
       drawingPoints: map['drawingPoints'] != null ? List<Map<String, dynamic>>.from(jsonDecode(map['drawingPoints'])) : null,
-      mediaPaths: map['mediaPaths'] != null ? List<String>.from(jsonDecode(map['mediaPaths'])) : null,
+      media: map['media'] != null ? List<Map<String, dynamic>>.from(jsonDecode(map['media'])) : null,
       color: map['color'] != null ? Color(map['color']) : null,
     );
   }
 }
 
 class DatabaseHelper {
-  static final DatabaseHelper _instance = DatabaseHelper._internal();
-  factory DatabaseHelper() => _instance;
-  static Database? _database;
+  static final Map<String, DatabaseHelper> _instances = {};
+  static final Map<String, Database> _databases = {};
+  final String _userId;
 
-  DatabaseHelper._internal();
+  factory DatabaseHelper() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('No user logged in');
+    }
+    return _instances.putIfAbsent(user.uid, () => DatabaseHelper._internal(user.uid));
+  }
+
+  DatabaseHelper._internal(this._userId);
 
   Future<Database> get database async {
-    if (_database != null) {
-      return _database!;
+    if (_databases.containsKey(_userId)) {
+      return _databases[_userId]!;
     } else {
-      _database = await _initDatabase();
-      return _database!;
+      final db = await _initDatabase();
+      _databases[_userId] = db;
+      return db;
     }
   }
 
   Future<Database> _initDatabase() async {
     final directory = await getApplicationDocumentsDirectory();
-    final path = '${directory.path}/journal.db';
+    final path = '${directory.path}/journal_$_userId.db';
 
     return await openDatabase(
       path,
-      version: 5, // Increment version to force migration
+      version: 6,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
   }
 
   Future<void> _onCreate(Database db, int version) async {
-    await db.execute('''
+    await db.execute(''' 
       CREATE TABLE entries(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         type TEXT NOT NULL,
@@ -108,65 +123,44 @@ class DatabaseHelper {
         title TEXT,
         content TEXT,
         drawingPoints TEXT,
-        mediaPaths TEXT,
+        media TEXT,
         color INTEGER
       )
     ''');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 5) {
-      // Drop old tables if they exist
-      await db.execute('DROP TABLE IF EXISTS moods');
-      await db.execute('DROP TABLE IF EXISTS journals');
+    if (oldVersion < 6) {
+      // Add new media column if it doesn't exist
+      await db.execute('ALTER TABLE entries ADD COLUMN media TEXT');
 
-      // Create new table
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS entries(
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          type TEXT NOT NULL,
-          mood TEXT,
-          date TEXT,
-          input TEXT,
-          tags TEXT,
-          title TEXT,
-          content TEXT,
-          drawingPoints TEXT,
-          mediaPaths TEXT,
-          color INTEGER
-        )
-      ''');
-
-      // Migrate data from old tables if they exist
+      // Migrate existing mediaPaths to new media format
       try {
-        // Migrate moods data
-        final List<Map<String, dynamic>> oldMoods = await db.query('moods');
-        for (var mood in oldMoods) {
-          await db.insert('entries', {
-            'type': 'mood',
-            'mood': mood['mood'],
-            'date': mood['date'],
-            'input': mood['input'],
-          });
+        final List<Map<String, dynamic>> entries = await db.query('entries');
+        for (var entry in entries) {
+          if (entry['mediaPaths'] != null) {
+            List<String> mediaPaths = List<String>.from(jsonDecode(entry['mediaPaths']));
+            List<Map<String, dynamic>> newMedia = mediaPaths.map((path) => {
+              'filePath': path,
+              'isVideo': path.toLowerCase().endsWith('.mp4'),
+              'position': {'dx': 0.0, 'dy': 0.0},
+              'size': 200.0,
+              'angle': 0.0,
+            }).toList();
+
+            await db.update(
+              'entries',
+              {'media': jsonEncode(newMedia)},
+              where: 'id = ?',
+              whereArgs: [entry['id']],
+            );
+          }
         }
 
-        // Migrate journals data
-        final List<Map<String, dynamic>> oldJournals = await db.query('journals');
-        for (var journal in oldJournals) {
-          await db.insert('entries', {
-            'type': 'journal',
-            'mood': journal['mood'],
-            'date': journal['date'],
-            'tags': journal['tags'],
-            'title': journal['title'],
-            'content': journal['content'],
-            'drawingPoints': journal['drawingPoints'],
-            'mediaPaths': journal['mediaPaths'],
-            'color': journal['color'],
-          });
-        }
+        // Drop the old mediaPaths column
+        await db.execute('ALTER TABLE entries DROP COLUMN mediaPaths');
       } catch (e) {
-        logger.e('Error during migration: $e');
+        logger.e('Error during media migration: $e');
       }
     }
   }
@@ -176,8 +170,8 @@ class DatabaseHelper {
       final db = await database;
       DateTime currentDate = DateTime.now();
       DateTime sevenDaysAgo = currentDate.subtract(Duration(days: 7));
-      String formattedCurrentDate = DateFormat('yyyy-MM-dd').format(currentDate);
-      String formattedSevenDaysAgo = DateFormat('yyyy-MM-dd').format(sevenDaysAgo);
+      String formattedCurrentDate = DateFormat(dateFormat).format(currentDate);
+      String formattedSevenDaysAgo = DateFormat(dateFormat).format(sevenDaysAgo);
 
       final List<Map<String, dynamic>> maps = await db.query(
         'entries',
@@ -196,7 +190,7 @@ class DatabaseHelper {
   Future<Entry?> getEntryForDate(DateTime date) async {
     try {
       final db = await database;
-      String formattedDate = DateFormat('yyyy-MM-dd').format(date);
+      String formattedDate = DateFormat(dateFormat).format(date);
       final List<Map<String, dynamic>> maps = await db.query(
         'entries',
         where: 'date = ?',
@@ -217,7 +211,7 @@ class DatabaseHelper {
     try {
       final db = await database;
       Map<String, dynamic> entryMap = entry.toMap();
-      entryMap['date'] = DateFormat('yyyy-MM-dd').format(entry.date);
+      entryMap['date'] = DateFormat(dateFormat).format(entry.date);
       return await db.insert('entries', entryMap);
     } catch (e) {
       logger.e('Error inserting entry: $e');
@@ -230,12 +224,12 @@ class DatabaseHelper {
       final db = await database;
       Map<String, dynamic> entryMap = entry.toMap();
       entryMap.remove('id');
-      entryMap['date'] = DateFormat('yyyy-MM-dd').format(entry.date);
+      entryMap['date'] = DateFormat(dateFormat).format(entry.date);
       return await db.update(
         'entries',
         entryMap,
         where: 'date = ?',
-        whereArgs: [DateFormat('yyyy-MM-dd').format(entry.date)],
+        whereArgs: [DateFormat(dateFormat).format(entry.date)],
       );
     } catch (e) {
       logger.e('Error updating entry: $e');
@@ -246,7 +240,7 @@ class DatabaseHelper {
   Future<int> deleteEntry(DateTime date) async {
     try {
       final db = await database;
-      String formattedDate = DateFormat('yyyy-MM-dd').format(date);
+      String formattedDate = DateFormat(dateFormat).format(date);
       logger.i('Attempting to delete entry for date: $formattedDate');
 
       // First check if the entry exists using date-only comparison
@@ -292,5 +286,14 @@ class DatabaseHelper {
       logger.e('Error getting all entries: $e');
       return [];
     }
+  }
+
+  // Add a method to clear the database when user logs out
+  static Future<void> clearUserDatabase(String userId) async {
+    if (_databases.containsKey(userId)) {
+      await _databases[userId]?.close();
+      _databases.remove(userId);
+    }
+    _instances.remove(userId);
   }
 }
