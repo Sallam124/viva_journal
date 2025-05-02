@@ -77,7 +77,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       });
     } catch (e) {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
       print("Error loading mood data: $e");
+=======
+      print("Error loading mood data: \$e");
+>>>>>>> Stashed changes
 =======
       print("Error loading mood data: \$e");
 >>>>>>> Stashed changes
