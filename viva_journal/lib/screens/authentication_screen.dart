@@ -12,7 +12,8 @@ class PinVerificationScreen extends StatefulWidget {
 
 class _PinVerificationScreenState extends State<PinVerificationScreen> {
   final LocalAuthentication _localAuth = LocalAuthentication();
-  String enteredPin = '';
+  final TextEditingController _pinController = TextEditingController();
+
   bool _isBiometricAvailable = false;
   String? _backgroundImage = 'assets/images/background.png';
 
@@ -21,7 +22,7 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
     super.initState();
     _checkBiometricAvailability();
     _loadSavedBackground();
-    _authenticateWithBiometrics(); // Trigger biometric authentication on load
+    _authenticateWithBiometrics();
   }
 
   void _checkBiometricAvailability() async {
@@ -52,9 +53,9 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
         );
       }
 
-      if (isAuthenticated) {
+      if (isAuthenticated && mounted) {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('isAuthenticated', true); // Save PIN status
+        await prefs.setBool('isAuthenticated', true);
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const HomeScreen()),
@@ -65,16 +66,35 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
     }
   }
 
-  void _verifyPin(String enteredPin) async {
+  Future<void> _verifyPin() async {
     final prefs = await SharedPreferences.getInstance();
-    final savedPin = prefs.getString('passcode');
+    final savedPin = prefs.getString('passcode')?.trim();
+    final enteredPin = _pinController.text.trim();
 
-    if (savedPin == enteredPin) {
-      await prefs.setBool('isAuthenticated', true); // Save verification status
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+    print('DEBUG -> Saved PIN: $savedPin | Entered PIN: $enteredPin');
+
+    if (enteredPin.isEmpty || enteredPin.length < 4) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a 4-digit PIN')),
       );
+      return;
+    }
+
+    if (savedPin == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No passcode was set. Please go to settings.')),
+      );
+      return;
+    }
+
+    if (enteredPin == savedPin) {
+      await prefs.setBool('isAuthenticated', true);
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Incorrect PIN, please try again!')),
@@ -88,7 +108,6 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
       appBar: AppBar(title: const Text('Enter PIN')),
       body: Stack(
         children: [
-          // Background Image
           Positioned.fill(
             child: Image.asset(
               _backgroundImage!,
@@ -100,25 +119,29 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                const Text(
+                  'Please enter your 4-digit passcode',
+                  style: TextStyle(fontSize: 18, color: Colors.white),
+                ),
+                const SizedBox(height: 20),
                 TextField(
+                  controller: _pinController,
                   keyboardType: TextInputType.number,
                   obscureText: true,
-                  onChanged: (value) {
-                    setState(() {
-                      enteredPin = value;
-                    });
-                  },
                   decoration: const InputDecoration(
-                    labelText: 'Enter your PIN',
+                    labelText: 'PIN',
                     border: OutlineInputBorder(),
+                    counterText: '',
                   ),
                   maxLength: 4,
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton(
-                  onPressed: () {
-                    _verifyPin(enteredPin);
-                  },
+                  onPressed: _verifyPin,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 32),
+                  ),
                   child: const Text('Verify PIN'),
                 ),
               ],

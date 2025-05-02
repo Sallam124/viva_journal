@@ -167,7 +167,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: Colors.white70,
                 children: const [
                   Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text("Dark")),
-                  Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text("System")),
+                  Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text("light")),
                 ],
               ),
               const SizedBox(height: 40),
