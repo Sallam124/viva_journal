@@ -59,6 +59,7 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   dotted_border: ^2.0.0
   firebase_auth_mocks: ^0.14.1
+  flutter_launcher_icons: ^0.14.3
 
 flutter:
   uses-material-design: true
@@ -107,3 +108,12 @@ flutter:
           weight: 700
         - asset: assets/fonts/SF-Pro.ttf
           weight: 500
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/app_icon.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/app_icon.png"

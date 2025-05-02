@@ -20,8 +20,6 @@ import 'dart:ui' as ui;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-const String fontName = "SF Pro Display";
-const String dateDisplayFormat = "MMM dd, yyyy";
 
 /// Home screen with a bottom navigation bar and a floating action button.
 class HomeScreen extends StatefulWidget {
@@ -156,7 +154,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               fontSize: 20,
                               fontWeight: FontWeight.normal,
                               color: Colors.black,
-                              fontFamily: fontName,
+                              fontFamily: 'SF Pro Display',
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -170,7 +168,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.black,
-                                      fontFamily: fontName,
+                                      fontFamily: 'SF Pro Display',
                                     ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -181,7 +179,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     fontSize: 20,
                                     fontWeight: FontWeight.normal,
                                     color: Colors.black,
-                                    fontFamily: fontName,
+                                    fontFamily: 'SF Pro Display',
                                   ),
                                 ),
                               ],
@@ -283,7 +281,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
-                  fontFamily: fontName,
+                  fontFamily: 'SF Pro Display',
                 ),
               ),
               const SizedBox(height: 8),
@@ -418,7 +416,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         style: TextStyle(
                           fontSize: 16,
                           color: Colors.grey,
-                          fontFamily: fontName,
+                          fontFamily: 'SF Pro Display',
                         ),
                       ),
                     );
@@ -461,11 +459,11 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    DateFormat(dateDisplayFormat).format(entry.date),
+                                    DateFormat('MMM dd, yyyy').format(entry.date),
                                     style: const TextStyle(
                                       fontSize: 14,
                                       color: Colors.grey,
-                                      fontFamily: fontName,
+                                      fontFamily: 'SF Pro Display',
                                     ),
                                   ),
                                   Row(
@@ -592,7 +590,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
-                                    fontFamily: fontName,
+                                    fontFamily: 'SF Pro Display',
                                   ),
                                 ),
                               if (entry.content != null && entry.content!.isNotEmpty) ...[
@@ -604,7 +602,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   style: const TextStyle(
                                     fontSize: 14,
                                     color: Colors.black87,
-                                    fontFamily: fontName,
+                                    fontFamily: 'SF Pro Display',
                                   ),
                                 ),
                               ],
@@ -988,7 +986,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     fontSize: 20,
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontFamily: fontName,
+                    fontFamily: 'SF Pro Display',
                   ),
                 ),
               ),
@@ -1004,7 +1002,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         fontSize: 48,
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontFamily: fontName,
+                        fontFamily: 'SF Pro Display',
                       ),
                     ),
                   ),
@@ -1082,7 +1080,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         fontSize: 12,
                         color: color == Colors.white ? Colors.black : Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontFamily: fontName,
+                        fontFamily: 'SF Pro Display',
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -1093,7 +1091,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         fontSize: 16,
                         color: color == Colors.white ? Colors.black : Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontFamily: fontName,
+                        fontFamily: 'SF Pro Display',
                       ),
                     ),
                   ],
@@ -1198,14 +1196,16 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           group['moods'].contains(entry.mood)
       );
       if (moodIndex != -1) {
-        totalMoodValue += moodIndex;
+        // Invert the mood index so positive moods have higher values
+        totalMoodValue += (moodGroups.length - 1 - moodIndex);
       }
     }
 
     final averageMoodIndex = totalMoodValue / entries.length;
     setState(() {
       _averageMoodPercentage = (averageMoodIndex / (moodGroups.length - 1)) * 100;
-      _averageMoodColor = moodGroups[averageMoodIndex.round()]['color'];
+      // Use the inverted index to get the correct color
+      _averageMoodColor = moodGroups[moodGroups.length - 1 - averageMoodIndex.round()]['color'];
     });
   }
 
@@ -1239,7 +1239,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(
-                      DateFormat(dateDisplayFormat).format(entry.date),
+                      DateFormat('MMM dd, yyyy').format(entry.date),
                       style: pw.TextStyle(
                         fontSize: 14,
                         color: PdfColors.grey,
@@ -1322,7 +1322,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       await SharePlus.instance.share(
         ShareParams(
           files: [XFile(file.path)],
-          text: "My journal entry from ${DateFormat(dateDisplayFormat).format(entry.date)} 📝",
+          text: "My journal entry from ${DateFormat('MMM dd, yyyy').format(entry.date)} 📝",
         ),
       );
     } catch (e) {
