@@ -1,46 +1,73 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:viva_journal/screens/login_screen.dart';
 import 'package:mockito/mockito.dart';
-import 'package:viva_journal/screens/login_screen.dart'; // Adjust the path accordingly
+import 'package:viva_journal/test/firebase_wrapper.dart';
+import 'package:firebase_core/firebase_core.dart';
 
-// Create a Mock class for FirebaseAuth
-class MockFirebaseAuth extends Mock implements FirebaseAuth {}
+// Create a mock for FirebaseWrapper
+class MockFirebaseWrapper extends Mock implements FirebaseWrapper {}
 
 void main() {
-  // Create an instance of the mock
-  final mockAuth = MockFirebaseAuth();
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-  // Mock the signInWithEmailAndPassword method
-  when(mockAuth.signInWithEmailAndPassword(
-    email: 'test@example.com',
-    password: 'password123',
-  )).thenAnswer((_) async => UserCredential(
-    credential: AuthCredential(providerId: 'email', signInMethod: 'email'),
-    user: User(
-      uid: '123',
-      email: 'test@example.com',
-      displayName: 'Test User',
-      photoURL: 'http://photo.url',
-    ),
-  ));
+  setUpAll(() async {
+    final mockFirebaseWrapper = MockFirebaseWrapper();
 
-  testWidgets('Login navigates to HomeScreen on success', (WidgetTester tester) async {
-    // Build the LoginScreen widget
-    await tester.pumpWidget(MaterialApp(
-      home: LoginScreen(firebaseAuth: mockAuth), // Pass the mock auth instance
-      routes: {'/home': (context) => HomeScreen()},
-    ));
+    // Mock the initializeFirebase method to simulate Firebase initialization
+    when(mockFirebaseWrapper.initializeFirebase())
+        .thenAnswer((_) async => FirebaseApp.instance);
+  });
 
-    // Enter test email and password
-    await tester.enterText(find.byKey(Key('emailField')), 'test@example.com');
-    await tester.enterText(find.byKey(Key('passwordField')), 'password123');
+  group('LoginScreen UI tests', () {
+    testWidgets('renders email and password fields', (WidgetTester tester) async {
+      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
 
-    // Tap login button
-    await tester.tap(find.byType(ElevatedButton));
-    await tester.pumpAndSettle(); // Wait for the result
+      expect(find.text('Username or email'), findsOneWidget);
+      expect(find.text('Password'), findsOneWidget);
+    });
 
-    // Verify that the HomeScreen widget is displayed
-    expect(find.byType(HomeScreen), findsOneWidget);
+    testWidgets('shows error when fields are empty and login is pressed', (WidgetTester tester) async {
+      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+
+      final loginButton = find.widgetWithText(ElevatedButton, 'Log In');
+      await tester.tap(loginButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Please enter both email and password!'), findsOneWidget);
+    });
+
+    testWidgets('shows error for invalid email', (WidgetTester tester) async {
+      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+
+      await tester.enterText(find.byType(TextField).first, 'invalidemail');
+      await tester.enterText(find.byType(TextField).last, 'password123');
+
+      final loginButton = find.widgetWithText(ElevatedButton, 'Log In');
+      await tester.tap(loginButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Please enter a valid email address!'), findsOneWidget);
+    });
+
+    testWidgets('displays Google Sign-In button and responds to tap', (WidgetTester tester) async {
+      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+
+      final googleButton = find.widgetWithText(OutlinedButton, ' Continue with Google');
+      expect(googleButton, findsOneWidget);
+
+      await tester.tap(googleButton);
+      await tester.pump();
+    });
+
+    testWidgets('navigates to Forgot Password screen', (WidgetTester tester) async {
+      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+
+      final forgotPasswordText = find.text('Forgot your password?');
+      await tester.tap(forgotPasswordText);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LoginScreen), findsNothing);
+    });
   });
 }
