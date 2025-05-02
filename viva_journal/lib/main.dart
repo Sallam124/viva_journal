@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'firebase_options.dart';
 import 'package:viva_journal/theme_provider.dart';
 import 'package:viva_journal/widgets/widgets.dart';
@@ -42,15 +43,9 @@ void main() async {
 class AuthStatus {
   final bool isLoggedIn;
   final bool isPinVerified;
-  final bool loggedInViaLoginScreen;
 
-  AuthStatus({
-    required this.isLoggedIn,
-    required this.isPinVerified,
-    required this.loggedInViaLoginScreen,
-  });
+  AuthStatus({required this.isLoggedIn, required this.isPinVerified});
 }
-
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -88,10 +83,7 @@ class MyApp extends StatelessWidget {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return _buildRoute(const LoadingScreen());
           } else if (snapshot.hasData && snapshot.data!.isLoggedIn) {
-            // Check if the user logged in via the Login Screen
-            if (!snapshot.data!.loggedInViaLoginScreen) {
-              return _buildRoute(const LoginScreen());
-            } else if (snapshot.data!.isPinVerified) {
+            if (snapshot.data!.isPinVerified) {
               return _buildRoute(const HomeScreen());
             } else {
               return _buildRoute(const PinVerificationScreen());
@@ -101,8 +93,6 @@ class MyApp extends StatelessWidget {
           }
         },
       ),
-
-
       routes: {
         '/signUp': (context) => _buildRoute(const SignUpScreen()),
         '/loading': (context) => _buildRoute(const LoadingScreen()),
@@ -134,16 +124,11 @@ class MyApp extends StatelessWidget {
     // Reset PIN verification status on app start
     await prefs.setBool('isAuthenticated', false);
 
-    // Retrieve loggedInViaLoginScreen flag
-    final loggedInViaLoginScreen = prefs.getBool('loggedInViaLoginScreen') ?? false;
-
     return AuthStatus(
       isLoggedIn: user != null,
       isPinVerified: savedPasscode == null, // Skip PIN screen if no PIN is saved
-      loggedInViaLoginScreen: loggedInViaLoginScreen, // Include this in AuthStatus
     );
   }
-
 }
 
 // Optional: Custom Page Transition (not used in current MaterialApp config)

@@ -9,7 +9,7 @@
 
     <application
         android:label="viva_journal"
-        android:icon="@mipmap/launcher_icon">
+        android:icon="@mipmap/ic_launcher">
 
         <!-- Support for biometric hardware (optional) -->
         <uses-library

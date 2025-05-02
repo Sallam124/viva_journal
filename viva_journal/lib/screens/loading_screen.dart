@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:flutter_svg/flutter_svg.dart';
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
@@ -14,13 +13,13 @@ class LoadingScreen extends StatefulWidget {
 
 class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateMixin {
   late List<AnimationController> _controllers;
-  late List<Animation<double>> _animations;
+  late List<Animation<Offset>> _animations;
   final List<Color> colors = [
-    const Color(0xFFFFE100),  // Yellow
-    const Color(0xFFFFC917),  // Light Orange
-    const Color(0xFFF8650C),  // Orange
-    const Color(0xFFF00000),  // Red
-    const Color(0xFF8C0000),  // Dark Red
+    Colors.yellow,
+    Colors.orangeAccent,
+    Colors.orange,
+    Colors.redAccent,
+    Colors.red[900]!,
   ];
 
   List<String> messages = [];
@@ -35,19 +34,18 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
     _controllers = List.generate(colors.length, (index) {
       return AnimationController(
         vsync: this,
-        duration: const Duration(milliseconds: 600), // Faster animation
+        duration: const Duration(milliseconds: 1200), // Slower animation
       );
     });
 
     _animations = List.generate(colors.length, (index) {
-      return Tween<double>(
-        begin: 0,
-        end: 1,
+      return Tween<Offset>(
+        begin: const Offset(0, 0),
+        end: const Offset(0, -1), // Smaller jump height
       ).animate(
         CurvedAnimation(
           parent: _controllers[index],
-          curve: Curves.easeOut,
-          reverseCurve: Curves.easeIn,
+          curve: Curves.easeInOut,
         ),
       );
     });
@@ -93,8 +91,8 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
 
   void _startSequentialPattern() {
     for (int i = 0; i < _controllers.length; i++) {
-      Future.delayed(Duration(milliseconds: i * 200), () { // Faster sequence
-        if (mounted && !_controllers[i].isAnimating) {
+      Future.delayed(Duration(milliseconds: i * 400), () {
+        if (mounted && !_controllers[i].isDismissed) {
           _controllers[i].repeat(reverse: true);
         }
       });
@@ -112,34 +110,22 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.white,
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(colors.length, (index) {
-              return AnimatedBuilder(
-                animation: _animations[index],
-                builder: (context, child) {
-                  return Transform.translate(
-                    offset: Offset(0, -20 * _animations[index].value), // More pronounced bounce
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 5.0),
-                      child: SizedBox(
-                        width: 40,
-                        height: 40,
-                        child: SvgPicture.asset(
-                          "assets/images/Star.svg",
-                          colorFilter: ColorFilter.mode(
-                              colors[index],
-                              BlendMode.srcIn
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
+              return SlideTransition(
+                position: _animations[index],
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5.0),
+                  child: CustomPaint(
+                    size: const Size(40, 40),
+                    painter: ConcaveStarPainter(colors[index]),
+                  ),
+                ),
               );
             }),
           ),
@@ -149,15 +135,42 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
             child: Text(
               currentMessage,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Colors.white,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
           ),
         ],
       ),
     );
+  }
+}
+
+class ConcaveStarPainter extends CustomPainter {
+  final Color color;
+
+  ConcaveStarPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final Path path = Path();
+
+    path.moveTo(size.width * 0.5, 0);
+    path.lineTo(size.width * 0.64, size.height * 0.36);
+    path.lineTo(size.width, size.height * 0.5);
+    path.lineTo(size.width * 0.64, size.height * 0.64);
+    path.lineTo(size.width * 0.5, size.height);
+    path.lineTo(size.width * 0.36, size.height * 0.64);
+    path.lineTo(0, size.height * 0.5);
+    path.lineTo(size.width * 0.36, size.height * 0.36);
+    path.close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) {
+    return false;
   }
 }

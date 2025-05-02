@@ -7,12 +7,6 @@ version: 1.0.0+1
 environment:
   sdk: ^3.7.0
 
-targets:
-  $default:
-    builders:
-      mockito|mockBuilder:
-        generate_for:
-          - test/mocks.dart # Only generate for this file
 dependencies:
   flutter:
     sdk: flutter
@@ -38,19 +32,15 @@ dependencies:
   speech_to_text: 7.0.0
   flutter_tts: ^4.2.2
   intl: ^0.19.0 # Latest version
-  video_player: ^2.9.5
+  video_player: ^2.7.0
   cloud_firestore: ^5.6.5
   email_validator: ^3.0.0
   fl_chart: ^0.71.0
   flutter_quill: ^11.2.0
   flutter_quill_extensions: ^11.0.0
   share_plus: ^11.0.0
-  mockito: ^5.4.0
-  test: ^1.25.15
-  build_runner: ^2.4.0
   pdf: ^3.11.3
   printing: ^5.14.2
-  chewie: ^1.7.0
 
 
 
@@ -59,8 +49,6 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
   dotted_border: ^2.0.0
-  firebase_auth_mocks: ^0.14.1
-  flutter_launcher_icons: ^0.14.3
 
 flutter:
   uses-material-design: true
@@ -109,12 +97,3 @@ flutter:
           weight: 700
         - asset: assets/fonts/SF-Pro.ttf
           weight: 500
-
-flutter_launcher_icons:
-  android: true
-  ios: true
-  image_path: "assets/images/app_icon.png"
-  min_sdk_android: 21
-  remove_alpha_ios: true
-  adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/images/app_icon.png"

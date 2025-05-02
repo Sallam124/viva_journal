@@ -28,8 +28,6 @@ class AuthService {
         'created_at': FieldValue.serverTimestamp(),
       });
 
-    } catch (e) {
-      // Handle the error (e.g., log it or show a message to the user)
     }
   }
 

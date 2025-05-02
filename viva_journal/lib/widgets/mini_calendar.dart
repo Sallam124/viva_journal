@@ -7,8 +7,7 @@ import 'package:viva_journal/screens/trackerlog_screen.dart';
 import 'dart:async';
 
 class MiniCalendar extends StatefulWidget {
-  final GlobalKey<MiniCalendarState>? calendarKey;
-  const MiniCalendar({this.calendarKey}) : super(key: calendarKey);
+  const MiniCalendar({super.key});
 
   @override
   MiniCalendarState createState() => MiniCalendarState();
@@ -75,7 +74,7 @@ class MiniCalendarState extends State<MiniCalendar> {
         }
       }
     } catch (e) {
-      debugPrint('Error fetching entries: $e');
+      print('Error fetching entries: $e');
     }
   }
 
@@ -103,12 +102,6 @@ class MiniCalendarState extends State<MiniCalendar> {
     if (emotionProgressions[3].contains(mood)) return const Color(0xFFF00000);
     if (emotionProgressions[4].contains(mood)) return const Color(0xFF8C0000);
     return Colors.grey;
-  }
-
-  void refresh() {
-    if (mounted) {
-      _fetchEntriesForWeek();
-    }
   }
 
   @override

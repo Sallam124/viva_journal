@@ -50,9 +50,6 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   double _averageMoodPercentage = 0.0;
   int _totalEntries = 0;
   Color _averageMoodColor = const Color(0xFFF8650C); // Default to Neutral
-  bool _isNavigating = false;  // Add flag to prevent multiple navigations
-  Entry? _currentEntry;  // Add this field to store the current entry
-  final GlobalKey<MiniCalendarState> _miniCalendarKey = GlobalKey<MiniCalendarState>();
 
   final List<Map<String, dynamic>> moodGroups = [
     {
@@ -222,7 +219,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ],
           ),
           const SizedBox(height: 16),
-          MiniCalendar(calendarKey: _miniCalendarKey),
+          MiniCalendar(key: const ValueKey('mini_calendar')),
           const SizedBox(height: 32), // Increased space between calendar and blocks
           // Blocks Section
           Row(
@@ -239,6 +236,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 percentage: "$_streakCount",
                 onTap: () {
+                  // TODO: Handle Streak block tap
                 },
               ),
               const SizedBox(width: 12),
@@ -253,6 +251,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       iconPath: 'assets/images/your_calendar_icon.png',
                       subtitle: "$_totalEntries",
                       onTap: () {
+                        // TODO: Handle Total Entries tap
                       },
                     ),
                     const SizedBox(height: 12),
@@ -263,6 +262,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       iconPath: 'assets/images/your_mood_icon.png',
                       subtitle: "${_averageMoodPercentage.toStringAsFixed(0)}%",
                       onTap: () {
+                        // TODO: Handle Average mood tap
                       },
                     ),
                   ],
@@ -297,7 +297,8 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         margin: const EdgeInsets.only(right: 8),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: _selectedMoodFilter == 'all' ? Colors.black : Colors.grey.withAlpha((0.1 * 255).round()),
+                          // ignore: deprecated_member_use
+                          color: _selectedMoodFilter == 'all' ? Colors.black : Colors.grey.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: _selectedMoodFilter == 'all' ? Colors.black : Colors.grey,
@@ -323,7 +324,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         decoration: BoxDecoration(
                           color: _selectedMoodFilter == group['name']
                               ? group['color']
-                              : group['color'].withAlpha((0.1 * 255).round()),
+                              : group['color'].withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: group['color'],
@@ -366,7 +367,8 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   margin: const EdgeInsets.only(top: 8),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.grey.withAlpha((0.1 * 255).round()),
+                    // ignore: deprecated_member_use
+                    color: Colors.grey.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: Colors.grey,
@@ -494,9 +496,6 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       PopupMenuButton<String>(
                                         icon: const Icon(Icons.more_vert),
                                         onSelected: (value) async {
-                                          final context = this.context;
-                                          final messenger = ScaffoldMessenger.of(context);
-
                                           if (value == 'delete') {
                                             final confirmed = await showDialog<bool>(
                                               context: context,
@@ -525,7 +524,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
                                                 if (result > 0) {
                                                   if (mounted) {
-                                                    messenger.showSnackBar(
+                                                    ScaffoldMessenger.of(context).showSnackBar(
                                                       const SnackBar(
                                                         content: Text('Entry deleted successfully'),
                                                         duration: Duration(seconds: 2),
@@ -535,15 +534,11 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                     await _loadStreakData();
                                                     await _loadTotalEntries();
                                                     await _loadAverageMood();
-                                                    // Refresh the mini calendar
-                                                    setState(() {
-                                                      _miniCalendarKey.currentState?.refresh();
-                                                    });
                                                   }
                                                 }
                                               } catch (e) {
                                                 if (mounted) {
-                                                  messenger.showSnackBar(
+                                                  ScaffoldMessenger.of(context).showSnackBar(
                                                     SnackBar(
                                                       content: Text('Error deleting entry: $e'),
                                                       backgroundColor: Colors.red,
@@ -613,7 +608,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   children: entry.tags!.map((tag) => Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                     decoration: BoxDecoration(
-                                      color: (entry.color ?? Colors.grey).withAlpha((0.1 * 255).round()),
+                                      color: (entry.color ?? Colors.grey).withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(20),
                                       border: Border.all(
                                         color: entry.color ?? Colors.grey,
@@ -677,19 +672,15 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     _glowController.repeat();
 
-    _splashController.addStatusListener((status) async {
-      if (status == AnimationStatus.completed && !_isNavigating) {
-        _isNavigating = true;
+    _splashController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
         // Delay the navigation slightly to ensure smooth transition
         Future.delayed(const Duration(milliseconds: 50), () {
           if (mounted) {
             Navigator.push(
               context,
               PageRouteBuilder(
-                pageBuilder: (context, animation, secondaryAnimation) => TrackerLogScreen(
-                  date: DateTime.now(),
-                  initialEntry: _currentEntry,
-                ),
+                pageBuilder: (context, animation, secondaryAnimation) => TrackerLogScreen(date: DateTime.now()),
                 transitionDuration: Duration.zero,
                 reverseTransitionDuration: Duration.zero,
               ),
@@ -699,7 +690,6 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   _isSplashAnimating = false;
                   _homeBarOpacity = 1.0;
                   _floatingButtonOpacity = 1.0;
-                  _isNavigating = false;
                 });
               }
             });
@@ -724,15 +714,8 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   /// Triggers animation and navigates to the tracker log screen.
-  void _onFloatingButtonPressed(TapDownDetails details) async {
-    if (_isNavigating) return;  // Prevent multiple taps while navigating
-
-    // Check for existing entry for today
-    final today = DateTime.now();
-    final existingEntry = await DatabaseHelper().getEntryForDate(today);
-
+  void _onFloatingButtonPressed(TapDownDetails details) {
     setState(() {
-      _currentEntry = existingEntry;  // Store the entry
       _isSplashAnimating = true;
       _splashPosition = details.globalPosition;
       _homeBarOpacity = 0.0;  // Start fade out
@@ -944,6 +927,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     required Color color,
     Widget? leftImage,
     required VoidCallback onTap,
+    String? subtitle,
     String? percentage,
     required GlobalKey key,
   }) {
@@ -959,7 +943,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Color.fromARGB(76, color.r.round(), color.g.round(), color.b.round()),
+                color: Color.fromARGB(76, color.red, color.green, color.blue),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -970,7 +954,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               if (leftImage != null)
                 Positioned(
                   left: 16,
-                  top: 50,
+                  top: 50, // Moved down to center the GIF
                   child: SizedBox(
                     width: 80,
                     height: 80,
@@ -994,28 +978,34 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 Positioned(
                   left: 110,
                   top: 50,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: Text(
-                      percentage,
-                      style: const TextStyle(
-                        fontSize: 48,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'SF Pro Display',
-                      ),
+                  child: Text(
+                    percentage,
+                    style: const TextStyle(
+                      fontSize: 32,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                 ),
               Positioned(
-                top: 8,
-                right: 8,
+                top: 16,
+                right: 16,
                 child: PopupMenuButton<String>(
                   icon: const Icon(Icons.open_in_new, color: Colors.white),
                   onSelected: (value) async {
                     if (value == 'share') {
-                      if (!mounted) return;
-                      await _shareBlock(key, title);
+                      final RenderBox box = key.currentContext!.findRenderObject() as RenderBox;
+                      final image = await _captureWidget(box);
+                      if (image != null) {
+                        final tempDir = await getTemporaryDirectory();
+                        final file = await File('${tempDir.path}/share.png').create();
+                        await file.writeAsBytes(image);
+                        await Share.shareXFiles(
+                          [XFile(file.path)],
+                          text: "Check out my ${title.toLowerCase()} on Viva Journal! 📝✨",
+                        );
+                      }
                     }
                   },
                   itemBuilder: (context) => [
@@ -1045,7 +1035,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     required Color color,
     required String iconPath,
     required VoidCallback onTap,
-    required String subtitle,
+    String? subtitle,
     required GlobalKey key,
   }) {
     return RepaintBoundary(
@@ -1059,7 +1049,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Color.fromARGB(76, color.r.round(), color.g.round(), color.b.round()),
+                color: Color.fromARGB(76, color.red, color.green, color.blue),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
@@ -1083,17 +1073,19 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         fontFamily: 'SF Pro Display',
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: color == Colors.white ? Colors.black : Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'SF Pro Display',
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: color == Colors.white ? Colors.black : Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'SF Pro Display',
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -1108,8 +1100,17 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   onSelected: (value) async {
                     if (value == 'share') {
-                      if (!mounted) return;
-                      await _shareBlock(key, title);
+                      final RenderBox box = key.currentContext!.findRenderObject() as RenderBox;
+                      final image = await _captureWidget(box);
+                      if (image != null) {
+                        final tempDir = await getTemporaryDirectory();
+                        final file = await File('${tempDir.path}/share.png').create();
+                        await file.writeAsBytes(image);
+                        await Share.shareXFiles(
+                          [XFile(file.path)],
+                          text: "Check out my ${title.toLowerCase()} on Viva Journal! 📝✨",
+                        );
+                      }
                     }
                   },
                   itemBuilder: (context) => [
@@ -1196,16 +1197,14 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           group['moods'].contains(entry.mood)
       );
       if (moodIndex != -1) {
-        // Invert the mood index so positive moods have higher values
-        totalMoodValue += (moodGroups.length - 1 - moodIndex);
+        totalMoodValue += moodIndex;
       }
     }
 
     final averageMoodIndex = totalMoodValue / entries.length;
     setState(() {
       _averageMoodPercentage = (averageMoodIndex / (moodGroups.length - 1)) * 100;
-      // Use the inverted index to get the correct color
-      _averageMoodColor = moodGroups[moodGroups.length - 1 - averageMoodIndex.round()]['color'];
+      _averageMoodColor = moodGroups[averageMoodIndex.round()]['color'];
     });
   }
 
@@ -1217,11 +1216,6 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _shareJournalAsPDF(Entry entry) async {
-    if (!mounted) return;
-
-    final context = this.context;
-    final messenger = ScaffoldMessenger.of(context);
-
     try {
       // Create a PDF document
       final pdf = pw.Document();
@@ -1319,55 +1313,20 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       await file.writeAsBytes(await pdf.save());
 
       // Share the PDF file
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(file.path)],
-          text: "My journal entry from ${DateFormat('MMM dd, yyyy').format(entry.date)} 📝",
-        ),
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: "My journal entry from ${DateFormat('MMM dd, yyyy').format(entry.date)} 📝",
       );
     } catch (e) {
       logger.e('Error generating PDF: $e');
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Error generating PDF: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  Future<void> _shareBlock(GlobalKey key, String title) async {
-    if (!mounted) return;
-
-    final context = this.context;
-    final messenger = ScaffoldMessenger.of(context);
-
-    final box = key.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null) return;
-
-    try {
-      final image = await _captureWidget(box);
-      if (image != null) {
-        final tempDir = await getTemporaryDirectory();
-        final file = await File('${tempDir.path}/share.png').create();
-        await file.writeAsBytes(image);
-        await SharePlus.instance.share(
-          ShareParams(
-            files: [XFile(file.path)],
-            text: "Check out my ${title.toLowerCase()} on Viva Journal! 📝✨",
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error generating PDF: $e'),
+            backgroundColor: Colors.red,
           ),
         );
       }
-    } catch (e) {
-      logger.e('Error sharing block: $e');
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Error sharing block: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 }
