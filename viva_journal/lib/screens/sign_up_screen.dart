@@ -143,19 +143,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (_newlyCreatedUser == null) return;
 
     _verificationTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
-      await _newlyCreatedUser!.reload();
+      await _newlyCreatedUser!.reload(); // Refresh user info
       final refreshedUser = _auth.currentUser;
 
       if (refreshedUser != null && refreshedUser.emailVerified) {
-        timer.cancel();
-        _verificationTimer?.cancel();
-
-        await _firestore.collection('users').doc(refreshedUser.uid).set({
-          'username': _usernameController.text.trim(),
-          'email': _emailController.text.trim(),
-          'password': _passwordController.text.trim(),
-          'createdAt': Timestamp.now(),
-        });
+        timer.cancel(); // Stop the periodic timer
 
         if (mounted) {
           Navigator.pushReplacement(
@@ -166,6 +158,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
       }
     });
   }
+
+
 
   Future<void> _resendVerificationEmail() async {
     if (_newlyCreatedUser == null) {

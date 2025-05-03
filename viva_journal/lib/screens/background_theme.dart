@@ -60,7 +60,7 @@ class BackgroundContainerState extends State<BackgroundContainer> with SingleTic
                         ),
                         Positioned.fill(
                           child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 1500, sigmaY: 1500), // Blur effect
+                            filter: ImageFilter.blur(sigmaX: 1800, sigmaY: 1800), // Blur effect
                             child: Container(color: Colors.transparent),
                           ),
                         ),
