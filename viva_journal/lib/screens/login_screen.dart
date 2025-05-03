@@ -5,19 +5,18 @@ import 'package:viva_journal/screens/background_theme.dart';
 import 'package:viva_journal/screens/reset_password.dart';
 import 'package:viva_journal/widgets/widgets.dart';
 import 'package:email_validator/email_validator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
-  final FirebaseAuth? auth;
-
-  const LoginScreen({super.key, this.auth});
+  const LoginScreen({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _LoginScreenState createState() => _LoginScreenState();
 }
 
-
 class _LoginScreenState extends State<LoginScreen> {
-  late final FirebaseAuth _auth;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   final TextEditingController _emailController = TextEditingController();
@@ -63,10 +62,16 @@ class _LoginScreenState extends State<LoginScreen> {
         password: password,
       );
 
+      // ✅ Clear previous session data
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.clear();  // Clear any cached preferences
+
       if (userCredential.user != null && !userCredential.user!.emailVerified) {
-        setState(() =>
-        errorMessage = "Please verify your email before logging in!");
+        setState(() => errorMessage = "Please verify your email before logging in!");
       } else {
+        // ✅ Store new session data
+        await prefs.setBool('loggedInViaLoginScreen', true);
+
         // ignore: use_build_context_synchronously
         Navigator.pushReplacementNamed(context, '/home');
       }
@@ -76,17 +81,15 @@ class _LoginScreenState extends State<LoginScreen> {
           errorMessage = "No user found for this email!";
         } else if (e.code == 'wrong-password') {
           errorMessage = "Incorrect password. Please try again!";
-        } else if (e.code == 'invalid-credential') {
-          errorMessage = "Wrong Email or Passowrd";
         } else {
           errorMessage = "Login error: ${e.message}";
         }
       });
-
     } catch (error) {
       setState(() => errorMessage = "Error: $error");
     }
   }
+
 
   void _togglePasswordVisibility() {
     setState(() => _obscurePassword = !_obscurePassword);
@@ -98,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: GestureDetector(
           onTap: () => FocusScope.of(context).unfocus(),
-          child: Container(
+          child: BackgroundContainer(
             child: Column(
               children: [
                 const SizedBox(height: 30),
