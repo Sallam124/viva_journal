@@ -7,8 +7,9 @@ class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
 
   @override
-  _CalendarScreenState createState() => _CalendarScreenState();
+  State<CalendarScreen> createState() => _CalendarScreenState();
 }
+
 
 class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProviderStateMixin {
   int _selectedMonth = DateTime.now().month;
@@ -417,6 +418,7 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
 
                               // Navigate to TrackerLogScreen with the entry data
                               final result = await Navigator.push(
+                                // ignore: use_build_context_synchronously
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => TrackerLogScreen(
