@@ -53,29 +53,34 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   final List<Map<String, dynamic>> moodGroups = [
     {
-      'name': 'Group',
+      'name': 'Ecstatic',
       'moods': ["Ecstatic", "Cheerful", "Excited", "Thrilled", "Overjoyed"],
       'color': const Color(0xFFFFE100),
+      'displayText': 'Group',
     },
     {
-      'name': 'Group',
+      'name': 'Happy',
       'moods': ["Happy", "Content", "Pleasant", "Cheerful", "Delighted"],
       'color': const Color(0xFFFFC917),
+      'displayText': 'Group',
     },
     {
-      'name': 'Group',
+      'name': 'Neutral',
       'moods': ["Neutral", "Fine", "Satisfied", "Meh", "Indifferent"],
       'color': const Color(0xFFF8650C),
+      'displayText': 'Group',
     },
     {
-      'name': 'Group',
+      'name': 'Angry',
       'moods': ["Angry", "Irritated", "Stressed", "Frustrated", "Fuming"],
       'color': const Color(0xFFF00000),
+      'displayText': 'Group',
     },
     {
-      'name': 'Group',
+      'name': 'Down',
       'moods': ["Down", "Distressed", "Anxious", "Defeated", "Exhausted"],
       'color': const Color(0xFF8C0000),
+      'displayText': 'Group',
     },
   ];
 
@@ -346,7 +351,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              group['name'],
+                              group['displayText'],
                               style: TextStyle(
                                 color: _selectedMoodFilter == group['name'] ? Colors.white : group['color'],
                                 fontSize: 12,
