@@ -1220,7 +1220,7 @@ class MediaWidgetState extends State<MediaWidget> {
               decoration: BoxDecoration(
                 border: _isInEditMode
                     ? Border.all(
-                    color: Colors.green,
+                    color: Colors.black,
                     width: 2)
                     : null,
               ),
