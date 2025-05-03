@@ -12,7 +12,8 @@ class AuthService {
   Future<void> signUp(String email, String password, String username) async {
     try {
       // Create user in Firebase Auth
-      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
@@ -21,15 +22,19 @@ class AuthService {
       String uid = userCredential.user!.uid;
 
       // Store the username in Firestore under 'users' collection with UID as document ID
-      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .set({
         'username': username,
         'email': email,
-        // Add other user details if necessary, e.g., registration date, etc.
         'created_at': FieldValue.serverTimestamp(),
       });
-
+    } catch (e) {
+      // Handle any other errors
     }
   }
+
 
   // Log in with email and password
   Future<UserCredential?> logIn(String email, String password) async {
