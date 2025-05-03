@@ -23,7 +23,6 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
     _checkBiometricAvailability();
     _loadSavedBackground();
     _authenticateWithBiometrics();
-    // _clearPreviousUserData(); // ⚠️ Only use this if you actually want to reset auth
   }
 
   void _checkBiometricAvailability() async {
@@ -33,7 +32,7 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
     });
   }
 
-  void _loadSavedBackground() async {
+  Future<void> _loadSavedBackground() async {
     final prefs = await SharedPreferences.getInstance();
     final savedBackground = prefs.getString('background_image');
     if (savedBackground != null) {
@@ -44,6 +43,11 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
   }
 
   Future<void> _authenticateWithBiometrics() async {
+    // Capture navigator ahead of any async gaps
+    final navigator = Navigator.of(context);
+    // Prepare prefs future ahead of time
+    final prefsFuture = SharedPreferences.getInstance();
+
     try {
       bool isAuthenticated = false;
 
@@ -54,50 +58,53 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
         );
       }
 
-      if (isAuthenticated && mounted) {
-        final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
+
+      if (isAuthenticated) {
+        final prefs = await prefsFuture;
         await prefs.setBool('isAuthenticated', true);
-        Navigator.pushReplacement(
-          context,
+        navigator.pushReplacement(
           MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
       }
     } catch (e) {
-      print("Biometric authentication error: $e");
+      // You might want to log this or show a fallback UI
+      debugPrint("Biometric authentication error: $e");
     }
   }
 
   Future<void> _verifyPin() async {
+    // Capture navigator and messenger ahead of any async gaps
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
     final prefs = await SharedPreferences.getInstance();
     final savedPin = prefs.getString('passcode')?.trim();
     final enteredPin = _pinController.text.trim();
 
-    print('DEBUG -> Saved PIN: $savedPin | Entered PIN: $enteredPin');
-
     if (enteredPin.isEmpty || enteredPin.length < 4) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(content: Text('Please enter a 4-digit PIN')),
       );
       return;
     }
 
     if (savedPin == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No passcode was set. Please go to settings.')),
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('No passcode was set. Please go to settings.'),
+        ),
       );
       return;
     }
 
     if (enteredPin == savedPin) {
       await prefs.setBool('isAuthenticated', true);
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
-      }
+      navigator.pushReplacement(
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(content: Text('Incorrect PIN, please try again!')),
       );
     }
@@ -141,7 +148,8 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
                   onPressed: _verifyPin,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 32),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 14, horizontal: 32),
                   ),
                   child: const Text('Verify PIN'),
                 ),
