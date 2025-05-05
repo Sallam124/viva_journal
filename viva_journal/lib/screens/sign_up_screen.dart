@@ -140,16 +140,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   void _startVerificationCheck() {
-    if (_newlyCreatedUser == null) return;
+    if (_newlyCreatedUser == null) return; // user credential fields are empty
 
     _verificationTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
       await _newlyCreatedUser!.reload(); // Refresh user info
-      final refreshedUser = _auth.currentUser;
+      final refreshedUser = _auth.currentUser; // stores the user info
 
-      if (refreshedUser != null && refreshedUser.emailVerified) {
+      if (refreshedUser != null && refreshedUser.emailVerified) { // checks if user exists in firebased, and his email is verified
         timer.cancel(); // Stop the periodic timer
 
-        if (mounted) {
+        if (mounted) { // checks if widget is still on the screen
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const LoginScreen()),

@@ -1,67 +1,54 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.viva_journal">
 
-    <!-- Biometric / fingerprint -->
+    <!-- Permissions for biometric and fingerprint authentication -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
-
-    <!-- Only request RECORD_AUDIO if you actually record voice notes -->
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-
-    <!-- Internet access -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <application
         android:label="viva_journal"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/ic_launcher">
 
-    <!-- Disable cleartext traffic by default -->
-    android:usesCleartextTraffic="false"
+        <!-- Support for biometric hardware (optional) -->
+        <uses-library
+            android:name="android.hardware.biometrics"
+            android:required="false" />
 
-    <!-- Disable auto-backup to avoid unintentional data exposure -->
-    android:allowBackup="false"
-    android:fullBackupContent="@xml/backup_rules"  <!-- if you want selective backup, define rules -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
 
-    >
+            <!-- Initial theme shown before Flutter UI -->
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
 
-    <!-- Optional biometric hardware support -->
-    <uses-library
-        android:name="android.hardware.biometrics"
-        android:required="false" />
+            <!-- Launcher intent -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 
-    <activity
-        android:name=".MainActivity"
-        android:exported="true"
-        android:launchMode="singleTop"
-        android:taskAffinity=""
-        android:theme="@style/LaunchTheme"
-        android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-        android:hardwareAccelerated="true"
-        android:windowSoftInputMode="adjustResize">
-
-        <!-- Initial theme shown before Flutter UI -->
+        <!-- Required for Flutter plugin registration -->
         <meta-data
-            android:name="io.flutter.embedding.android.NormalTheme"
-            android:resource="@style/NormalTheme" />
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
 
-        <!-- Launcher intent -->
-        <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
-    </activity>
-
-    <!-- Required for Flutter plugin registration -->
-    <meta-data
-        android:name="flutterEmbedding"
-        android:value="2" />
-</application>
-
-    <!-- Required for PROCESS_TEXT support (text selection) -->
-<queries>
-<intent>
-    <action android:name="android.intent.action.PROCESS_TEXT" />
-    <data android:mimeType="text/plain" />
-</intent>
-</queries>
-    </manifest>
+    <!-- Required for ProcessTextPlugin (used in text selection, etc.) -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
+        </intent>
+    </queries>
+</manifest>
