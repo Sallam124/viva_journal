@@ -156,10 +156,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const Text('Theme Mode:', style: TextStyle(fontSize: 18, color: Colors.white)),
               const SizedBox(height: 10),
               ToggleButtons(
-                isSelected: [currentTheme == ThemeMode.dark, currentTheme == ThemeMode.system],
+                isSelected: [currentTheme == ThemeMode.dark, currentTheme == ThemeMode.light],
                 onPressed: (index) {
                   if (index == 0) themeProvider.setTheme(ThemeMode.dark);
-                  if (index == 1) themeProvider.setTheme(ThemeMode.system);
+                  if (index == 1) themeProvider.setTheme(ThemeMode.light);
                 },
                 borderRadius: BorderRadius.circular(20),
                 selectedColor: Colors.white,
