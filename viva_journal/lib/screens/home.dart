@@ -103,14 +103,19 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _fetchUserData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
+      // Using FirebaseAuth user data directly
+      setState(() {
+        _username = user.displayName;  // Display name from FirebaseAuth
+        _profilePictureUrl = user.photoURL;  // Profile picture URL from FirebaseAuth
+      });
+
+      // If additional data is required, you can still fetch it from Firestore
       final doc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .get();
       if (doc.exists) {
         setState(() {
-          _username = doc.data()?['username'] as String?;
-          _profilePictureUrl = doc.data()?['profilePicture'] as String?;
           _hasNotifications = doc.data()?['hasNotifications'] as bool? ?? false;
         });
       }
